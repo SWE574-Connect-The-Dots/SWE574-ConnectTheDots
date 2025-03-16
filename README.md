@@ -11,7 +11,10 @@
 * Search spaces by tags
 
 ## 🛠 Tech Stack
-* TBD
+* **Frontend:** ReactJS
+* **Backend:** Python Django
+* **Database:** PostgreSQL
+* **Containerization:** Docker
 
 ## 📝 Wiki
 * For more information and documentation about the project you can check out Wiki page -> [SWE573 Wiki](https://github.com/yusufbayam/SWE573/wiki)
