@@ -1,0 +1,8 @@
+.env
+backend/api/__pycache__/
+connect-the-dots.code-workspace
+*.log
+*.pot
+*.pyc
+backend/backend/__pycache__/
+backend/api/migrations/__pycache__/

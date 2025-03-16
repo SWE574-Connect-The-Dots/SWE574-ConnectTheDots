@@ -1,7 +1,7 @@
-from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Profile
 from datetime import date
+from rest_framework import serializers
 
 class RegisterSerializer(serializers.ModelSerializer):
     # Add your custom field here, example: profession

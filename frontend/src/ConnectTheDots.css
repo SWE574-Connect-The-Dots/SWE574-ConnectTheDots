@@ -1,0 +1,214 @@
+.connect-dots-container {
+  font-family: Arial, sans-serif;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header Styles */
+.header {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.logo {
+  background-color: #fff;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.app-name {
+  font-weight: bold;
+  font-size: 18px;
+  white-space: nowrap;
+  color: white;
+  background-color: black;
+  padding: 10px;
+}
+
+.navigation {
+  display: flex;
+  margin-right: auto;
+}
+
+.nav-item {
+  margin: 0 15px;
+  cursor: pointer;
+  padding: 5px 0;
+  color: #000000;
+}
+
+.search-container {
+  position: relative;
+  margin-right: 15px;
+}
+
+.search-container input {
+  padding: 8px 30px 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  width: 200px;
+}
+
+.clear-button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.create-space-button {
+  background-color: #333;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Tabs Styles */
+.tabs-container {
+  display: flex;
+  background-color: #f0f0f0;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
+  text-align: center;
+  cursor: pointer;
+  font-weight: bold;
+  border-bottom: 2px solid transparent;
+  color: #000000;
+}
+
+.tab.active {
+  border-bottom-color: #333;
+}
+
+/* Spaces Container */
+.spaces-container {
+  padding: 20px;
+}
+
+/* Space Card Styles */
+.space-card {
+  border: 1px solid #ddd;
+  margin-bottom: 20px;
+  background-color: white;
+}
+
+.space-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.space-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.contributors {
+  font-size: 14px;
+  color: #666;
+}
+
+.space-content {
+  display: flex;
+  padding: 15px;
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.votes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.vote-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.vote-count {
+  margin: 5px 0;
+  font-weight: bold;
+}
+
+.comments-count {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.comment-bubble {
+  background-color: #000000;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.activities {
+  flex: 1;
+}
+
+.activity-item {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.space-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f7f7f7;
+}
+
+.tags {
+  display: flex;
+}
+
+.tag {
+  background-color: #000000;
+  padding: 5px 15px;
+  border-radius: 15px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.join-button {
+  background-color: #000000;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
