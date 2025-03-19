@@ -40,7 +40,7 @@ const Register = () => {
       <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
       <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
       <input name="profession" placeholder="Profession" onChange={handleChange} required />
-      <input type="date" name="dob" onChange={handleChange} required />
+      <input type="date" name="dob" placeholder="Date of Birth" onChange={handleChange} required />
       <button type="submit">Register</button>
       
       {error && <p style={{ color: 'red' }}>{error}</p>}
