@@ -1,10 +1,9 @@
 from django.contrib.auth.models import User
-from .models import Profile
+from .models import Profile, Tag, Space
 from datetime import date
 from rest_framework import serializers
 
 class RegisterSerializer(serializers.ModelSerializer):
-    # Add your custom field here, example: profession
     profession = serializers.CharField(write_only=True, required=True)
     dob = serializers.DateField(write_only=True, required=True)
     
@@ -39,3 +38,34 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         Profile.objects.create(user=user, profession=profession, dob=dob)
         return user
+    
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['id', 'name']
+
+class SpaceSerializer(serializers.ModelSerializer):
+    creator_username = serializers.ReadOnlyField(source='creator.username')
+    tags = TagSerializer(many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), 
+        many=True, 
+        write_only=True,
+        required=False
+    )
+    
+    class Meta:
+        model = Space
+        fields = ['id', 'title', 'description', 'created_at', 'creator_username', 'tags', 'tag_ids']
+        read_only_fields = ['creator_username', 'created_at']
+    
+    def create(self, validated_data):
+        tag_ids = validated_data.pop('tag_ids', [])
+        space = Space.objects.create(**validated_data)
+        
+        space.collaborators.add(validated_data['creator'])
+        
+        for tag in tag_ids:
+            space.tags.add(tag)
+            
+        return space
