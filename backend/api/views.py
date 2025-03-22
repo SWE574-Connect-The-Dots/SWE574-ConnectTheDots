@@ -6,10 +6,6 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer
 
-@api_view(['GET'])
-def hello_world(request):
-    return Response({"message": "Hello from CafeNero!", "description": "A description."})
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
