@@ -6,3 +6,4 @@ connect-the-dots.code-workspace
 *.pyc
 backend/backend/__pycache__/
 backend/api/migrations/__pycache__/
+frontend/.env.production
