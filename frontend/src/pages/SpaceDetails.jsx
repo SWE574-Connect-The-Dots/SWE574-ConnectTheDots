@@ -2,7 +2,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const SpaceDetail = () => {
+const SpaceDetails = () => {
   const location = useLocation();
   const { id } = useParams();
   const [space, setSpace] = useState({
@@ -35,4 +35,4 @@ const SpaceDetail = () => {
   );
 };
 
-export default SpaceDetail;
+export default SpaceDetails;
