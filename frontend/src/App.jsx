@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import CreateSpace from './pages/CreateSpace';
+import SpaceDetail from './pages/SpaceDetails'; 
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -22,6 +24,8 @@ function App() {
         <Route path="/" element={isAuthenticated ? <Home setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
         <Route path="/login" element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Home setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+        <Route path="/create-space" element={<CreateSpace/>} />
+        <Route path="/spaces/:id" element={<SpaceDetail />} />
       </Routes>
 
             <nav>

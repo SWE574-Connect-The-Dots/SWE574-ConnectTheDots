@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Profile, Tag, Space
+from .models import Profile, Space, Tag
 from datetime import date
 from rest_framework import serializers
 
@@ -48,7 +48,7 @@ class SpaceSerializer(serializers.ModelSerializer):
     creator_username = serializers.ReadOnlyField(source='creator.username')
     tags = TagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(), 
+        queryset=Tag.objects.all(),
         many=True, 
         write_only=True,
         required=False

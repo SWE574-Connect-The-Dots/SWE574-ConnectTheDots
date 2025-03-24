@@ -12,6 +12,10 @@ export default function Home({setIsAuthenticated}) {
     navigate('/login');
   };
 
+  const handleOnCreateSpace = () => {
+    navigate('/create-space');
+  };
+
   const [searchValue, setSearchValue] = useState('');
   
   const clearSearch = () => {
@@ -76,7 +80,7 @@ export default function Home({setIsAuthenticated}) {
           )}
         </div>
         
-        <button className="create-space-button">Create Space</button>
+        <button className="create-space-button" onClick={handleOnCreateSpace}>Create Space</button>
       </header>
       
       {/* Tabs */}

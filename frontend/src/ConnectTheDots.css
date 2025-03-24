@@ -172,6 +172,7 @@
   border-radius: 5px;
   font-size: 14px;
   font-weight: bold;
+  color: #ffffff;
 }
 
 .activities {
@@ -202,6 +203,7 @@
   border-radius: 15px;
   margin-right: 10px;
   font-size: 14px;
+  color: #ffffff;
 }
 
 .join-button {
