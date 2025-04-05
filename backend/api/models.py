@@ -12,6 +12,8 @@ class Profile(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
+    wikidata_id = models.CharField(max_length=20, blank=True, null=True)
+    wikidata_label = models.CharField(max_length=100, blank=True, null=True)
     
     def __str__(self):
         return self.name
