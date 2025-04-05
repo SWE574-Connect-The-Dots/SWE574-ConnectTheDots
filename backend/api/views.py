@@ -8,6 +8,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer
 from rest_framework import viewsets, permissions
 from .models import Space, Tag
+from django.utils import timezone
+from datetime import timedelta
+from django.db import models
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -116,3 +119,23 @@ class SpaceViewSet(viewsets.ModelViewSet):
             request.data['tag_ids'] = tag_ids
             
         return super().create(request, *args, **kwargs)
+    
+
+    @action(detail=False, methods=['get'])
+    def trending(self, request):
+        spaces = Space.objects.annotate(
+            num_collaborators=models.Count('collaborators')
+        ).order_by('-num_collaborators')
+
+        serializer = self.get_serializer(spaces, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def new(self, request):
+        recent_days = timezone.now() - timedelta(days=7)
+        spaces = Space.objects.filter(
+            created_at__gte=recent_days
+        ).order_by('-created_at')
+
+        serializer = self.get_serializer(spaces, many=True)
+        return Response(serializer.data)

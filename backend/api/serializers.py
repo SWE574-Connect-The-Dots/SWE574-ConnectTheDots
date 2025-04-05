@@ -53,10 +53,10 @@ class SpaceSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    
+    collaborators = serializers.StringRelatedField(many=True, read_only=True)
     class Meta:
         model = Space
-        fields = ['id', 'title', 'description', 'created_at', 'creator_username', 'tags', 'tag_ids']
+        fields = ['id', 'title', 'description', 'created_at', 'creator_username', 'tags', 'tag_ids', 'collaborators']
         read_only_fields = ['creator_username', 'created_at']
     
     def create(self, validated_data):
