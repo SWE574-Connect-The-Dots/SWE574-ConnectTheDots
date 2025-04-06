@@ -11,6 +11,11 @@ from .models import Space, Tag
 from django.utils import timezone
 from datetime import timedelta
 from django.db import models
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .graph import SpaceGraph, Node, Edge, GraphSnapshot
+from .wikidata import get_wikidata_properties
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -139,3 +144,94 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(spaces, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='add-node')
+    def add_node(self, request, pk=None):
+        data = request.data
+        source_node_id = data.get('source_node_id')
+        wikidata_entity = data['wikidata_entity']
+        selected_properties = data.get('selected_properties', [])            
+        edge_label = data.get('edge_label', '')
+
+        new_node = Node.objects.create(
+            label=wikidata_entity['label'],
+            wikidata_id=wikidata_entity['id'],
+            created_by=request.user
+        )
+
+        # Only create an edge if there's a source node
+        if source_node_id:
+            source = Node.objects.get(id=source_node_id)
+            Edge.objects.create(source=source, target=new_node, relation_property=edge_label)
+
+        return Response({'node_id': new_node.id}, status=201)
+
+    @action(detail=True, methods=['get'], url_path='nodes')
+    def nodes(self, request, pk=None):
+        nodes = Node.objects.filter(created_by__joined_spaces__id=pk)
+        data = [{'id': node.id, 'label': node.label} for node in nodes]
+        return Response(data)
+    
+    @action(detail=True, methods=['get'], url_path='snapshots')
+    def snapshots(self, request, pk=None):
+        snapshots = GraphSnapshot.objects.filter(space_id=pk).order_by('-created_at')
+        data = [{'id': s.id, 'created_at': s.created_at} for s in snapshots]
+        return Response(data)
+    
+    @action(detail=True, methods=['post'], url_path='snapshots/create')
+    def create_snapshot(self, request, pk=None):
+        graph = SpaceGraph(pk)
+        graph.load_from_db()
+        snapshot = graph.create_snapshot(request.user)
+        return Response({'snapshot_id': snapshot.id, 'created_at': snapshot.created_at})
+    
+    @action(detail=True, methods=['post'], url_path='snapshots/revert')
+    def revert_snapshot(self, request, pk=None):
+        snapshot_id = request.data.get('snapshot_id')
+        if not snapshot_id: 
+            return Response({'error': 'snapshot_id is required'}, status=400)
+        
+        graph = SpaceGraph(pk)
+        graph.revert_to_snapshot(snapshot_id)
+        return Response({'message': 'Graph reverted successfully'})
+    
+    @action(detail=False, methods=['get'], url_path='wikidata-search')
+    def wikidata_search(self, request):
+        """Search Wikidata entities by query"""
+        query = request.query_params.get('q', '')
+        if not query:
+            return Response({"error": "Query parameter is required"}, status=400)
+
+        url = 'https://www.wikidata.org/w/api.php'
+        params = {
+            'action': 'wbsearchentities',
+            'format': 'json',
+            'search': query,
+            'language': 'en',
+            'limit': 50
+        }
+
+        try:
+            response = requests.get(url, params=params)
+            data = response.json()
+
+            results = [{
+                'id': item.get('id'),
+                'label': item.get('label'),
+                'description': item.get('description', ''),
+                'url': item.get('url', '')
+            } for item in data.get('search', [])]
+
+            return Response(results)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['get'], url_path='wikidata-entity-properties/(?P<entity_id>[^/.]+)')
+    def wikidata_entity_properties(self, request, entity_id=None):
+        """Fetch entity properties from Wikidata"""
+        if not entity_id:
+            return Response({"error": "Missing entity_id"}, status=400)
+
+        properties = get_wikidata_properties(entity_id)
+        return Response(properties)

@@ -12,6 +12,7 @@ gunicorn==23.0.0
 idna==3.10
 isort==6.0.1
 mccabe==0.7.0
+networkx==3.4.2
 packaging==24.2
 platformdirs==4.3.6
 psycopg2-binary==2.9.10

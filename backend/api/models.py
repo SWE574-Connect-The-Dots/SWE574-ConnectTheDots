@@ -31,3 +31,22 @@ class Space(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+class Node(models.Model):
+    label = models.CharField(max_length=255)
+    wikidata_id = models.CharField(max_length=50, blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+class Edge(models.Model):
+    source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
+    target = models.ForeignKey(Node, related_name='target_edges', on_delete=models.CASCADE)
+    relation_property = models.CharField(max_length=255)
+
+class GraphSnapshot(models.Model):
+    space_id = models.IntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    snapshot_data = models.JSONField()
+
+    def __str__(self):
+        return f"Snapshot {self.id} at {self.created_at}"
+
