@@ -73,7 +73,7 @@ const CreateSpace = () => {
     setError('');
     try {
       const tagsPromises = selectedTags.map(tag => 
-        api.post('/api/tags/', {
+        api.post('/tags/', {
           name: tag.name,
           wikidata_id: tag.wikidata_id,
           wikidata_label: tag.wikidata_label
@@ -93,7 +93,7 @@ const CreateSpace = () => {
       const tagResponses = await Promise.all(tagsPromises);
       const tagNames = tagResponses.map(res => res.data.name);
 
-      const response = await api.post('/api/spaces/', {
+      const response = await api.post('/spaces/', {
         title: formData.title,
         description: formData.description,
         tags: tagNames
