@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../axiosConfig';
 
 function Login({ setIsAuthenticated }) {
   const [username, setUsername] = useState('');
@@ -12,7 +12,7 @@ function Login({ setIsAuthenticated }) {
     e.preventDefault();
     setMessage('');
     try {
-      const res = await axios.post('http://localhost:8000/api/login/', {
+      const res = await api.post('/login/', {
         username,
         password
       });

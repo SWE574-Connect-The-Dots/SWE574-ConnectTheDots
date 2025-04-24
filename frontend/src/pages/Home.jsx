@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from '../axiosConfig';
 import "../ConnectTheDots.css";
 import AppLogo from "../assets/AppLogo.svg";
 
@@ -34,8 +34,8 @@ export default function Home({ setIsAuthenticated }) {
   }, [activeTab]);
   
   const fetchSpaces = () => {
-    axios
-      .get(`http://localhost:8000/api/spaces/${activeTab}/`, {
+    api
+      .get(`/spaces/${activeTab}/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },

@@ -1,6 +1,6 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from '../axiosConfig';
 
 const SpaceDetails = () => {
   const location = useLocation();
@@ -22,8 +22,8 @@ const SpaceDetails = () => {
 
   useEffect(() => {
     if (!location.state) {
-      axios
-        .get(`http://localhost:8000/api/spaces/${id}/`, {
+      api
+        .get(`/spaces/${id}/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -40,8 +40,8 @@ const SpaceDetails = () => {
         });
     }
 
-    axios
-      .get(`http://localhost:8000/api/spaces/${id}/snapshots/`, {
+    api
+      .get(`/spaces/${id}/snapshots/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -49,8 +49,8 @@ const SpaceDetails = () => {
       .then((res) => setSnapshots(res.data))
       .catch((err) => console.error("Failed to fetch snapshots", err));
 
-    axios
-      .get(`http://localhost:8000/api/spaces/${id}/nodes/`, {
+    api
+      .get(`/spaces/${id}/nodes/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((res) => setExistingNodes(res.data))
@@ -60,8 +60,8 @@ const SpaceDetails = () => {
   const searchWikidata = async () => {
     if (!query.trim()) return;
     try {
-      const response = await axios.get(
-        `http://localhost:8000/api/spaces/wikidata-search/?q=${encodeURIComponent(
+      const response = await api.get(
+        `/spaces/wikidata-search/?q=${encodeURIComponent(
           query
         )}`,
         {
@@ -79,8 +79,8 @@ const SpaceDetails = () => {
 
   const fetchProperties = async (entityId) => {
     try {
-      const response = await axios.get(
-        `http://localhost:8000/api/spaces/wikidata-entity-properties/${encodeURIComponent(
+      const response = await api.get(
+        `/spaces/wikidata-entity-properties/${encodeURIComponent(
           entityId
         )}/`,
         {
@@ -131,9 +131,9 @@ const SpaceDetails = () => {
             const snapshotId = e.target.value;
             if (!snapshotId) return;
 
-            axios
+            api
               .post(
-                `http://localhost:8000/api/spaces/${id}/snapshots/revert/`,
+                `/spaces/${id}/snapshots/revert/`,
                 { snapshot_id: snapshotId },
                 {
                   headers: {
@@ -241,9 +241,9 @@ const SpaceDetails = () => {
           <button
             disabled={!selectedEntity}
             onClick={() => {
-              axios
+              api
                 .post(
-                  `http://localhost:8000/api/spaces/${id}/add-node/`,
+                  `/spaces/${id}/add-node/`,
                   {
                     source_node_id: sourceNodeId,
                     wikidata_entity: selectedEntity,
@@ -260,8 +260,8 @@ const SpaceDetails = () => {
                   alert("Node and edge added successfully!");
 
                   try {
-                    await axios.post(
-                      `http://localhost:8000/api/spaces/${id}/snapshots/create/`,
+                    await api.post(
+                      `/spaces/${id}/snapshots/create/`,
                       {},
                       {
                         headers: {
