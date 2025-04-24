@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 
 const CreateSpace = () => {
@@ -30,7 +30,7 @@ const CreateSpace = () => {
     
     setSearchLoading(true);
     try {
-      const response = await axios.get(`http://localhost:8000/api/tags/search_wikidata/?query=${encodeURIComponent(tagQuery)}`, {
+      const response = await api.get(`/tags/search_wikidata/?query=${encodeURIComponent(tagQuery)}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -73,7 +73,7 @@ const CreateSpace = () => {
     setError('');
     try {
       const tagsPromises = selectedTags.map(tag => 
-        axios.post('http://localhost:8000/api/tags/', {
+        api.post('/api/tags/', {
           name: tag.name,
           wikidata_id: tag.wikidata_id,
           wikidata_label: tag.wikidata_label
@@ -93,7 +93,7 @@ const CreateSpace = () => {
       const tagResponses = await Promise.all(tagsPromises);
       const tagNames = tagResponses.map(res => res.data.name);
 
-      const response = await axios.post('http://localhost:8000/api/spaces/', {
+      const response = await api.post('/api/spaces/', {
         title: formData.title,
         description: formData.description,
         tags: tagNames
