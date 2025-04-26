@@ -31,6 +31,11 @@ class Space(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        
+class Property(models.Model):
+    node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')
+    property_id = models.CharField(max_length=255)
+    
 class Node(models.Model):
     label = models.CharField(max_length=255)
     wikidata_id = models.CharField(max_length=50, blank=True, null=True)
@@ -41,7 +46,7 @@ class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
     target = models.ForeignKey(Node, related_name='target_edges', on_delete=models.CASCADE)
     relation_property = models.CharField(max_length=255)
-
+    
 class GraphSnapshot(models.Model):
     space_id = models.IntegerField()
     created_at = models.DateTimeField(default=timezone.now)

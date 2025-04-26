@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer
 from rest_framework import viewsets, permissions
-from .models import Space, Tag
+from .models import Space, Tag, Property
 from django.utils import timezone
 from datetime import timedelta
 from django.db import models
@@ -158,6 +158,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
             created_by=request.user,
             space = space
         )
+        
+        for property_id in selected_properties:
+            Property.objects.create(node=new_node, property_id=property_id)
 
         # Only create an edge if there's a source node
         if source_node_id:
