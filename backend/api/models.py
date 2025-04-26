@@ -35,6 +35,7 @@ class Node(models.Model):
     label = models.CharField(max_length=255)
     wikidata_id = models.CharField(max_length=50, blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    space = models.ForeignKey(Space, on_delete=models.CASCADE)
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)

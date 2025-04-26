@@ -150,11 +150,13 @@ class SpaceViewSet(viewsets.ModelViewSet):
         wikidata_entity = data['wikidata_entity']
         selected_properties = data.get('selected_properties', [])            
         edge_label = data.get('edge_label', '')
+        space = self.get_object()
 
         new_node = Node.objects.create(
             label=wikidata_entity['label'],
             wikidata_id=wikidata_entity['id'],
-            created_by=request.user
+            created_by=request.user,
+            space = space
         )
 
         # Only create an edge if there's a source node
@@ -166,7 +168,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
-        nodes = Node.objects.filter(created_by__joined_spaces__id=pk)
+        nodes = Node.objects.filter(space_id=pk)
         data = [{'id': node.id, 'label': node.label} for node in nodes]
         return Response(data)
     
