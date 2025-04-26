@@ -1,6 +1,6 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import api from '../axiosConfig';
+import api from "../axiosConfig";
 
 const SpaceDetails = () => {
   const location = useLocation();
@@ -61,9 +61,7 @@ const SpaceDetails = () => {
     if (!query.trim()) return;
     try {
       const response = await api.get(
-        `/spaces/wikidata-search/?q=${encodeURIComponent(
-          query
-        )}`,
+        `/spaces/wikidata-search/?q=${encodeURIComponent(query)}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -80,9 +78,7 @@ const SpaceDetails = () => {
   const fetchProperties = async (entityId) => {
     try {
       const response = await api.get(
-        `/spaces/wikidata-entity-properties/${encodeURIComponent(
-          entityId
-        )}/`,
+        `/spaces/wikidata-entity-properties/${encodeURIComponent(entityId)}/`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -91,9 +87,31 @@ const SpaceDetails = () => {
         }
       );
       setEntityProperties(response.data);
+      setSelectedProperties([]);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handlePropertySelection = (e) => {
+    const selectedOptions = Array.from(
+      e.target.selectedOptions,
+      (option) => option.value
+    );
+    setSelectedProperties(selectedOptions);
+  };
+
+  const handleEntitySelection = (e) => {
+    const entityId = e.target.value;
+    if (!entityId) {
+      setSelectedEntity(null);
+      setEntityProperties([]);
+      return;
+    }
+
+    const entity = searchResults.find((entity) => entity.id === entityId);
+    setSelectedEntity(entity);
+    fetchProperties(entityId);
   };
 
   return (
@@ -164,60 +182,60 @@ const SpaceDetails = () => {
       )}
       <hr />
       <h3>Add Node from Wikidata</h3>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search Wikidata..."
-      />
-      <button onClick={searchWikidata}>Search</button>
-      <ul>
-        {searchResults.map((entity) => (
-          <li key={entity.id}>
-            {entity.label} ({entity.description})
-            <button
-              onClick={() => {
-                setSelectedEntity(entity);
-                fetchProperties(entity.id);
-              }}
-            >
-              Select
-            </button>
-          </li>
-        ))}
-      </ul>
-      {selectedEntity && (
-        <>
+      <div>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search Wikidata..."
+        />
+        <button onClick={searchWikidata}>Search</button>
+      </div>
+
+      {/* Entity selection dropdown */}
+      {searchResults.length > 0 && (
+        <div>
+          <h4>Select Entity</h4>
+          <select
+            value={selectedEntity?.id || ""}
+            onChange={handleEntitySelection}
+            style={{ width: "100%", maxWidth: "500px" }}
+          >
+            <option value="">-- Select an entity --</option>
+            {searchResults.map((entity) => (
+              <option key={entity.id} value={entity.id}>
+                {entity.label} ({entity.description})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Properties multi-select dropdown */}
+      {selectedEntity && entityProperties.length > 0 && (
+        <div>
           <h4>Selected Entity: {selectedEntity.label}</h4>
           <div>
-            <h5>Select Properties</h5>
-            {entityProperties.map((prop) => (
-              <div key={prop.property}>
-                <input
-                  type="checkbox"
-                  value={prop.property}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedProperties([
-                        ...selectedProperties,
-                        prop.property,
-                      ]);
-                    } else {
-                      setSelectedProperties(
-                        selectedProperties.filter((p) => p !== prop.property)
-                      );
-                    }
-                  }}
-                />
-                {prop.property}: {prop.value}
-              </div>
-            ))}
+            <h5>Select Properties (hold Ctrl/Cmd to select multiple)</h5>
+            <select
+              multiple
+              value={selectedProperties}
+              onChange={handlePropertySelection}
+              style={{ width: "100%", maxWidth: "500px", height: "200px" }}
+            >
+              {entityProperties.map((prop) => (
+                <option key={prop.property} value={prop.property}>
+                  {prop.property}: {prop.value}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div>
+          <div style={{ marginTop: "20px" }}>
             <label>Connect To Node:</label>
             <select
               value={sourceNodeId}
               onChange={(e) => setSourceNodeId(e.target.value)}
+              style={{ width: "100%", maxWidth: "500px" }}
             >
               <option value="">Select a source node</option>
               {existingNodes.map((node) => (
@@ -228,17 +246,19 @@ const SpaceDetails = () => {
             </select>
           </div>
 
-          <div>
+          <div style={{ marginTop: "10px" }}>
             <label>Edge Label:</label>
             <input
               type="text"
               value={edgeLabel}
               onChange={(e) => setEdgeLabel(e.target.value)}
               placeholder="e.g., related_to"
+              style={{ width: "100%", maxWidth: "500px" }}
             />
           </div>
 
           <button
+            style={{ marginTop: "20px" }}
             disabled={!selectedEntity}
             onClick={() => {
               api
@@ -286,7 +306,7 @@ const SpaceDetails = () => {
           >
             Add Node with Edge
           </button>
-        </>
+        </div>
       )}
     </div>
   );
