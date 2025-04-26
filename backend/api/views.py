@@ -108,7 +108,7 @@ class TagViewSet(viewsets.ModelViewSet):
 class SpaceViewSet(viewsets.ModelViewSet):
     queryset = Space.objects.all()
     serializer_class = SpaceSerializer
-    permission_classes = [permissions.IsAuthenticated, IsCreatorOrReadOnly]
+    # TODO: Write is contributor permission class
     
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)

@@ -134,14 +134,13 @@ const SpaceDetails = () => {
       {existingNodes.length === 0 && (
         <p>This space has no nodes yet. Start by adding one from Wikidata!</p>
       )}
-      <ul className="nodes-list">
+      <ol className="nodes-list">
         {existingNodes.map((node) => (
           <li key={node.id} className="node-item">
-            <strong>{node.id}</strong>
             <strong>{node.label}</strong>
           </li>
         ))}
-      </ul>
+      </ol>
       <h3>Revert Graph to Previous State</h3>
       {snapshots.length > 0 ? (
         <select
@@ -191,7 +190,6 @@ const SpaceDetails = () => {
         <button onClick={searchWikidata}>Search</button>
       </div>
 
-      {/* Entity selection dropdown */}
       {searchResults.length > 0 && (
         <div>
           <h4>Select Entity</h4>
@@ -210,7 +208,7 @@ const SpaceDetails = () => {
         </div>
       )}
 
-      {/* Properties multi-select dropdown */}
+
       {selectedEntity && entityProperties.length > 0 && (
         <div>
           <h4>Selected Entity: {selectedEntity.label}</h4>
