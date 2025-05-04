@@ -9,5 +9,6 @@ router.register(r'tags', views.TagViewSet)
 urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.login, name='login'),
+    path('search/', views.search, name='search'),
     path('', include(router.urls)),
 ]

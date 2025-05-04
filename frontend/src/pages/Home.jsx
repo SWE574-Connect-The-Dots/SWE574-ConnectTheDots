@@ -25,6 +25,18 @@ export default function Home({ setIsAuthenticated }) {
     navigate("/create-space");
   };
   
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
+    }
+  };
+  
+  const handleSearchButtonClick = () => {
+    if (searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
+    }
+  };
+  
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
@@ -70,18 +82,60 @@ export default function Home({ setIsAuthenticated }) {
           <div className="nav-item">My Spaces</div>
           <div className="nav-item">Profile</div>
         </nav>
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-          {searchValue && (
-            <button className="clear-button" onClick={() => setSearchValue("")}>
-              ×
-            </button>
-          )}
+        <div className="search-container" style={{ 
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              type="text"
+              placeholder="Search spaces or users..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={{ 
+                paddingRight: '30px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
+            {searchValue && (
+              <button 
+                className="clear-button" 
+                onClick={() => setSearchValue("")}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  zIndex: 2
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button 
+            className="search-button" 
+            onClick={handleSearchButtonClick}
+            style={{
+              marginLeft: '5px',
+              padding: '5px 10px',
+              backgroundColor: '#1a73e8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Search
+          </button>
         </div>
         <button className="create-space-button" onClick={handleOnCreateSpace}>
           Create Space

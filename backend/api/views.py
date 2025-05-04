@@ -1,16 +1,18 @@
 from datetime import timedelta
 import requests
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property
 from .graph import SpaceGraph, Node, Edge, GraphSnapshot
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer
 from .wikidata import get_wikidata_properties
 
 @api_view(['POST'])
@@ -36,16 +38,39 @@ def login(request):
         })
     return Response({"message": "Invalid credentials"}, status=400)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search(request):
+    query = request.query_params.get('q', '').strip()
+    if not query:
+        return Response({
+            'spaces': [],
+            'users': []
+        })
+    
+    spaces = Space.objects.filter(
+        Q(title__icontains=query) | 
+        Q(description__icontains=query) |
+        Q(tags__name__icontains=query)
+    ).distinct().order_by('-created_at')
+    
+    users = User.objects.filter(
+        username__icontains=query
+    ).order_by('username')
+    
+    space_serializer = SpaceSerializer(spaces, many=True)
+    user_serializer = UserSerializer(users, many=True)
+    
+    return Response({
+        'spaces': space_serializer.data,
+        'users': user_serializer.data
+    })
+
 class IsCreatorOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
         return obj.creator == request.user
-
-class TagViewSet(viewsets.ModelViewSet):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
