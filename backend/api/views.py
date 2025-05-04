@@ -1,18 +1,16 @@
+from datetime import timedelta
 import requests
-from rest_framework.response import Response
+from django.contrib.auth import authenticate
+from django.db import models
+from django.utils import timezone
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer
-from rest_framework import viewsets, permissions
-from .models import Space, Tag, Property
-from django.utils import timezone
-from datetime import timedelta
-from django.db import models
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import Space, Tag, Property
 from .graph import SpaceGraph, Node, Edge, GraphSnapshot
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer
 from .wikidata import get_wikidata_properties
 
 @api_view(['POST'])
@@ -146,10 +144,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-node')
     def add_node(self, request, pk=None):
         data = request.data
-        source_node_id = data.get('source_node_id')
+        related_node_id = data.get('related_node_id')
         wikidata_entity = data['wikidata_entity']
         selected_properties = data.get('selected_properties', [])            
         edge_label = data.get('edge_label', '')
+        is_new_node_source = data.get('is_new_node_source', False)
         space = self.get_object()
 
         new_node = Node.objects.create(
@@ -162,10 +161,12 @@ class SpaceViewSet(viewsets.ModelViewSet):
         for property_id in selected_properties:
             Property.objects.create(node=new_node, property_id=property_id)
 
-        # Only create an edge if there's a source node
-        if source_node_id:
-            source = Node.objects.get(id=source_node_id)
-            Edge.objects.create(source=source, target=new_node, relation_property=edge_label)
+        if related_node_id:
+            related_node = Node.objects.get(id=related_node_id)
+            if is_new_node_source:
+                Edge.objects.create(source=new_node, target=related_node, relation_property=edge_label)
+            else:
+                Edge.objects.create(source=related_node, target=new_node, relation_property=edge_label)
 
         return Response({'node_id': new_node.id}, status=201)
 
@@ -173,6 +174,28 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk)
         data = [{'id': node.id, 'label': node.label} for node in nodes]
+        return Response(data)
+    
+    @action(detail=True, methods=['get'], url_path='edges')
+    def edges(self, request, pk=None):
+        """Get all edges for a specific space"""
+        space_nodes = Node.objects.filter(space_id=pk).values_list('id', flat=True)
+        
+        edges = Edge.objects.filter(
+            source_id__in=space_nodes,
+            target_id__in=space_nodes
+        )
+        
+        data = [
+            {
+                'id': edge.id,
+                'source': edge.source.id,
+                'target': edge.target.id,
+                'label': edge.relation_property
+            } 
+            for edge in edges
+        ]
+        
         return Response(data)
     
     @action(detail=True, methods=['get'], url_path='snapshots')
