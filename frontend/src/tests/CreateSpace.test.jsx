@@ -1,11 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-import axios from 'axios';
+import api from '../axiosConfig';
 import { BrowserRouter } from 'react-router-dom';
 import CreateSpace from '../pages/CreateSpace';
-
-vi.mock('axios');
 
 const mockedNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -18,7 +16,8 @@ vi.mock('react-router-dom', async () => {
 
 describe('CreateSpace Component', () => {
   beforeEach(() => {
-    axios.post.mockClear();
+    api.post.mockReset();
+    api.get.mockReset();
     mockedNavigate.mockClear();
   });
 
@@ -31,12 +30,12 @@ describe('CreateSpace Component', () => {
 
     expect(screen.getByLabelText(/Title:/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Description:/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Tags \(comma separated\):/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tags:/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Create Space/i })).toBeInTheDocument();
   });
 
   test('successfully creates space and navigates to detail page', async () => {
-    axios.post.mockResolvedValue({
+    api.post.mockResolvedValue({
       data: {
         id: 1,
         title: 'New Space',
@@ -52,22 +51,21 @@ describe('CreateSpace Component', () => {
 
     fireEvent.change(screen.getByLabelText(/Title:/i), { target: { value: 'New Space' } });
     fireEvent.change(screen.getByLabelText(/Description:/i), { target: { value: 'A test description' } });
-    fireEvent.change(screen.getByLabelText(/Tags/i), { target: { value: 'tag1, tag2' } });
-
+    
     fireEvent.click(screen.getByRole('button', { name: /Create Space/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith(
-        'http://localhost:8000/api/spaces/',
+      expect(api.post).toHaveBeenCalledWith(
+        '/spaces/',
         {
           title: 'New Space',
           description: 'A test description',
-          tags: ['tag1', 'tag2']
+          tags: []
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': expect.stringContaining('Bearer')
+            'Authorization': 'Bearer fake-jwt-token'
           }
         }
       );
@@ -77,7 +75,7 @@ describe('CreateSpace Component', () => {
   });
 
   test('displays error message if API call fails', async () => {
-    axios.post.mockRejectedValue({
+    api.post.mockRejectedValue({
       response: {
         data: { message: 'Creation failed' }
       }
@@ -101,7 +99,7 @@ describe('CreateSpace Component', () => {
   });
 
   test('handles loading state correctly', async () => {
-    axios.post.mockResolvedValue({
+    api.post.mockResolvedValue({
       data: { id: 1 }
     });
 
