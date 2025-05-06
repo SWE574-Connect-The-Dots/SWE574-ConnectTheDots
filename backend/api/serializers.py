@@ -39,6 +39,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         Profile.objects.create(user=user, profession=profession, dob=dob)
         return user
     
+class UserSerializer(serializers.ModelSerializer):
+    profession = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'profession']
+    
+    def get_profession(self, obj):
+        try:
+            return obj.profile.profession
+        except Profile.DoesNotExist:
+            return None
+    
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag

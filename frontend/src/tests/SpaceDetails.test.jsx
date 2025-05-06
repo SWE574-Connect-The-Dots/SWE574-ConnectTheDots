@@ -1,11 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-import axios from 'axios';
+import api from '../axiosConfig';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import SpaceDetail from '../pages/SpaceDetails';
-
-vi.mock('axios');
 
 describe('SpaceDetail Component', () => {
   const mockSpaceData = {
@@ -14,10 +12,27 @@ describe('SpaceDetail Component', () => {
   };
 
   beforeEach(() => {
-    axios.get.mockClear();
+    api.get.mockReset();
+    api.get.mockResolvedValue({ data: mockSpaceData });
+    
+    api.get.mockImplementation((url) => {
+      if (url.includes('/snapshots/')) {
+        return Promise.resolve({ data: [] });
+      } else if (url.includes('/nodes/')) {
+        return Promise.resolve({ data: [] });
+      } else {
+        return Promise.resolve({ data: mockSpaceData });
+      }
+    });
+    
+    localStorage.setItem('token', 'fake-jwt-token');
   });
 
-  test('renders correctly with navigation state', () => {
+  afterEach(() => {
+    localStorage.removeItem('token');
+  });
+
+  test('renders correctly with navigation state', async () => {
     render(
       <MemoryRouter initialEntries={[{ pathname: '/spaces/1', state: mockSpaceData }]}>
         <Routes>
@@ -28,14 +43,16 @@ describe('SpaceDetail Component', () => {
 
     expect(screen.getByText('Test Space')).toBeInTheDocument();
     expect(screen.getByText('This is a test space description.')).toBeInTheDocument();
-    expect(axios.get).not.toHaveBeenCalled();
+    
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledTimes(2);
+      const calls = api.get.mock.calls;
+      const spaceDetailsCalled = calls.some(call => call[0] === '/spaces/1/');
+      expect(spaceDetailsCalled).toBe(false);
+    });
   });
 
   test('fetches space details from API if no state provided', async () => {
-    axios.get.mockResolvedValue({
-      data: mockSpaceData
-    });
-
     render(
       <BrowserRouter>
         <SpaceDetail />
@@ -43,9 +60,9 @@ describe('SpaceDetail Component', () => {
     );
 
     await waitFor(() => {
-      expect(axios.get).toHaveBeenCalledWith('http://localhost:8000/api/spaces/undefined/', {
+      expect(api.get).toHaveBeenCalledWith('/spaces/undefined/', {
         headers: {
-          Authorization: expect.stringContaining('Bearer')
+          Authorization: 'Bearer fake-jwt-token'
         }
       });
 
@@ -55,9 +72,8 @@ describe('SpaceDetail Component', () => {
   });
 
   test('handles API errors gracefully', async () => {
-    axios.get.mockRejectedValue(new Error('API Error'));
+    api.get.mockRejectedValue(new Error('API Error'));
 
-    // Suppress console.error for this test
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     render(
@@ -67,7 +83,7 @@ describe('SpaceDetail Component', () => {
     );
 
     await waitFor(() => {
-      expect(axios.get).toHaveBeenCalled();
+      expect(api.get).toHaveBeenCalled();
       expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
     });
 

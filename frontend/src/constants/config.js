@@ -5,6 +5,7 @@ export const API_ENDPOINTS = {
   SNAPSHOTS: (spaceId) => `/spaces/${spaceId}/snapshots/`,
   WIKIDATA_SEARCH: '/spaces/wikidata-search/',
   WIKIDATA_PROPERTIES: (entityId) => `/spaces/wikidata-entity-properties/${entityId}/`,
+  SEARCH: '/search/',
 };
 
 export const GRAPH_CONFIG = {

@@ -1,13 +1,15 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Register from "../pages/Register";
-import axios from "axios";
+import api from "../axiosConfig";
 import { BrowserRouter } from "react-router-dom";
 import { vi } from "vitest";
 import "@testing-library/jest-dom";
 
-vi.mock("axios");
-
 describe("Register Component", () => {
+  beforeEach(() => {
+    api.post.mockReset();
+  });
+
   it("renders the registration form", () => {
     render(
       <BrowserRouter>
@@ -24,7 +26,7 @@ describe("Register Component", () => {
   });
 
   it("registers a user successfully", async () => {
-    axios.post.mockResolvedValue({ data: { message: "User registered successfully!" } });
+    api.post.mockResolvedValue({ data: { message: "User registered successfully!" } });
 
     render(
       <BrowserRouter>
@@ -32,7 +34,6 @@ describe("Register Component", () => {
       </BrowserRouter>
     );
 
-    // Fill the form
     fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "newuser" } });
     fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "newuser@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "securepassword" } });
@@ -45,7 +46,7 @@ describe("Register Component", () => {
   });
   
   it("shows an error when the username is already taken", async () => {
-    axios.post.mockRejectedValue({ response: { data: { username: ["Username is already taken."] } } });
+    api.post.mockRejectedValue({ response: { data: { username: ["Username is already taken."] } } });
 
     render(
       <BrowserRouter>
@@ -65,7 +66,7 @@ describe("Register Component", () => {
   });
 
   it("shows an error when the user is under 18", async () => {
-    axios.post.mockRejectedValue({ response: { data: { dob: ["You must be at least 18 years old to register."] } } });
+    api.post.mockRejectedValue({ response: { data: { dob: ["You must be at least 18 years old to register."] } } });
 
     render(
       <BrowserRouter>

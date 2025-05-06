@@ -1,17 +1,16 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Login from "../pages/Login";
-import axios from "axios";
+import api from "../axiosConfig";
 import { BrowserRouter } from "react-router-dom";
 import { vi } from "vitest";
 import "@testing-library/jest-dom";
-
-vi.mock("axios");
 
 describe("Login Component", () => {
   let setIsAuthenticatedMock;
 
   beforeEach(() => {
     setIsAuthenticatedMock = vi.fn();
+    api.post.mockReset();
   });
 
   it("renders the login form", () => {
@@ -28,7 +27,7 @@ describe("Login Component", () => {
 
   it("logs in a user successfully", async () => {
     const fakeToken = "fake-jwt-token";
-    axios.post.mockResolvedValue({ data: { token: fakeToken } });
+    api.post.mockResolvedValue({ data: { token: fakeToken } });
 
     render(
       <BrowserRouter>
@@ -39,7 +38,7 @@ describe("Login Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "testuser" } });
     fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "testpassword" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /login/i })); // Fix here
+    fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {
       expect(localStorage.getItem("token")).toBe(fakeToken);
@@ -48,7 +47,7 @@ describe("Login Component", () => {
   });
 
   it("shows error message for incorrect credentials", async () => {
-    axios.post.mockRejectedValue({ response: { data: { message: "Login failed." } } });
+    api.post.mockRejectedValue({ response: { data: { message: "Login failed." } } });
 
     render(
       <BrowserRouter>
