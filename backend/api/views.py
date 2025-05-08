@@ -14,6 +14,7 @@ from .models import Space, Tag, Property
 from .graph import SpaceGraph, Node, Edge, GraphSnapshot
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer
 from .wikidata import get_wikidata_properties
+from .permissions import IsCollaboratorOrReadOnly
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -131,8 +132,19 @@ class TagViewSet(viewsets.ModelViewSet):
 class SpaceViewSet(viewsets.ModelViewSet):
     queryset = Space.objects.all()
     serializer_class = SpaceSerializer
-    # TODO: Write is contributor permission class
     
+    def get_permissions(self):
+        """
+        Custom permissions based on action:
+        - join/leave/check-collaborator endpoints need only IsAuthenticated
+        - other write operations require IsCollaboratorOrReadOnly
+        """
+        if self.action in ['join_space', 'leave_space', 'check_collaborator']:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly]
+        return [permission() for permission in permission_classes]
+        
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
         
@@ -146,6 +158,37 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
         return super().create(request, *args, **kwargs)
     
+    @action(detail=True, methods=['post'], url_path='join')
+    def join_space(self, request, pk=None):
+        space = self.get_object()
+        user = request.user
+        
+        if user in space.collaborators.all():
+            return Response({'message': 'You are already a collaborator of this space'}, status=400)
+            
+        space.collaborators.add(user)
+        return Response({'message': 'Successfully joined the space'}, status=200)
+    
+    @action(detail=True, methods=['post'], url_path='leave')
+    def leave_space(self, request, pk=None):
+        space = self.get_object()
+        user = request.user
+        
+        if user == space.creator:
+            return Response({'message': 'Creator cannot leave the space'}, status=400)
+            
+        if user not in space.collaborators.all():
+            return Response({'message': 'You are not a collaborator of this space'}, status=400)
+            
+        space.collaborators.remove(user)
+        return Response({'message': 'Successfully left the space'}, status=200)
+    
+    @action(detail=True, methods=['get'], url_path='check-collaborator')
+    def check_collaborator(self, request, pk=None):
+        space = self.get_object()
+        user = request.user
+        is_collaborator = user in space.collaborators.all()
+        return Response({'is_collaborator': is_collaborator})
 
     @action(detail=False, methods=['get'])
     def trending(self, request):
@@ -168,13 +211,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='add-node')
     def add_node(self, request, pk=None):
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can add nodes'}, status=403)
+            
         data = request.data
         related_node_id = data.get('related_node_id')
         wikidata_entity = data['wikidata_entity']
         selected_properties = data.get('selected_properties', [])            
         edge_label = data.get('edge_label', '')
         is_new_node_source = data.get('is_new_node_source', False)
-        space = self.get_object()
 
         new_node = Node.objects.create(
             label=wikidata_entity['label'],
@@ -231,6 +277,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='snapshots/create')
     def create_snapshot(self, request, pk=None):
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can create snapshots'}, status=403)
+            
         graph = SpaceGraph(pk)
         graph.load_from_db()
         snapshot = graph.create_snapshot(request.user)
@@ -238,6 +288,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='snapshots/revert')
     def revert_snapshot(self, request, pk=None):
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can revert snapshots'}, status=403)
+            
         snapshot_id = request.data.get('snapshot_id')
         if not snapshot_id: 
             return Response({'error': 'snapshot_id is required'}, status=400)

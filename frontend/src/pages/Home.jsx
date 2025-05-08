@@ -14,6 +14,7 @@ export default function Home({ setIsAuthenticated }) {
   });
   
   const [spaces, setSpaces] = useState([]);
+  const [loadingSpaces, setLoadingSpaces] = useState({});
   
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -56,6 +57,39 @@ export default function Home({ setIsAuthenticated }) {
         setSpaces(res.data);
       })
       .catch((err) => console.error(err));
+  };
+  
+  const handleJoinLeaveSpace = async (spaceId, isCollaborator) => {
+    setLoadingSpaces(prev => ({ ...prev, [spaceId]: true }));
+    try {
+      const endpoint = isCollaborator ? 'leave' : 'join';
+      await api.post(`/spaces/${spaceId}/${endpoint}/`, {}, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }
+      });
+      
+      const response = await api.get(`/spaces/${spaceId}/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }
+      });
+      
+      setSpaces(prevSpaces => prevSpaces.map(space => {
+        if (space.id === spaceId) {
+          return {
+            ...space,
+            ...response.data
+          };
+        }
+        return space;
+      }));
+      
+    } catch (error) {
+      console.error('Error joining/leaving space:', error);
+    } finally {
+      setLoadingSpaces(prev => ({ ...prev, [spaceId]: false }));
+    }
   };
   
   const handleTabChange = (tab) => {
@@ -186,7 +220,20 @@ export default function Home({ setIsAuthenticated }) {
                   </div>
                 ))}
               </div>
-              <button className="join-button">JOIN</button>
+              <button 
+                className={`${space.collaborators?.includes(localStorage.getItem('username')) ? 'leave-button' : 'join-button'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleJoinLeaveSpace(
+                    space.id, 
+                    space.collaborators?.includes(localStorage.getItem('username'))
+                  );
+                }}
+                disabled={loadingSpaces[space.id]}
+              >
+                {loadingSpaces[space.id] ? 'Processing...' : 
+                 space.collaborators?.includes(localStorage.getItem('username')) ? 'LEAVE' : 'JOIN'}
+              </button>
             </div>
           </div>
         ))}
