@@ -47,7 +47,7 @@ describe("Login Component", () => {
   });
 
   it("shows error message for incorrect credentials", async () => {
-    api.post.mockRejectedValue({ response: { data: { message: "Login failed." } } });
+    api.post.mockRejectedValue({ response: { data: { message: "Login failed. Please check your credentials." } } });
 
     render(
       <BrowserRouter>
@@ -60,6 +60,6 @@ describe("Login Component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
-    await waitFor(() => expect(screen.getByText("Login failed.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Login failed. Please check your credentials.")).toBeInTheDocument());
   });
 });

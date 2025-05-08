@@ -4,36 +4,56 @@ import { vi } from 'vitest';
 import api from '../axiosConfig';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import SpaceDetail from '../pages/SpaceDetails';
+import { API_ENDPOINTS } from '../constants/config';
+
+// Mock API_ENDPOINTS
+vi.mock('../constants/config', () => ({
+  API_ENDPOINTS: {
+    SPACES: '/spaces',
+    NODES: (id) => `/spaces/${id}/nodes/`,
+    EDGES: (id) => `/spaces/${id}/edges/`,
+    SNAPSHOTS: (id) => `/spaces/${id}/snapshots/`,
+    WIKIDATA_SEARCH: '/spaces/wikidata-search/',
+    WIKIDATA_PROPERTIES: (entityId) => `/spaces/wikidata-entity-properties/${entityId}/`,
+    SEARCH: '/search/',
+  }
+}));
 
 describe('SpaceDetail Component', () => {
   const mockSpaceData = {
     title: 'Test Space',
-    description: 'This is a test space description.'
+    description: 'This is a test space description.',
+    collaborators: ['testuser']
   };
 
   beforeEach(() => {
     api.get.mockReset();
-    api.get.mockResolvedValue({ data: mockSpaceData });
     
+    // Set up localStorage with the test user
+    localStorage.setItem('token', 'fake-jwt-token');
+    localStorage.setItem('username', 'testuser');
+    
+    // Mock all API endpoints
     api.get.mockImplementation((url) => {
-      if (url.includes('/snapshots/')) {
+      console.log('Mock API called with URL:', url);
+      if (url === API_ENDPOINTS.SNAPSHOTS('1')) {
         return Promise.resolve({ data: [] });
-      } else if (url.includes('/nodes/')) {
+      } else if (url === API_ENDPOINTS.NODES('1')) {
         return Promise.resolve({ data: [] });
-      } else {
+      } else if (url === API_ENDPOINTS.SPACES + '/1/') {
         return Promise.resolve({ data: mockSpaceData });
       }
+      return Promise.resolve({ data: {} });
     });
-    
-    localStorage.setItem('token', 'fake-jwt-token');
   });
 
   afterEach(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem('username');
   });
 
   test('renders correctly with navigation state', async () => {
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={[{ pathname: '/spaces/1', state: mockSpaceData }]}>
         <Routes>
           <Route path="/spaces/:id" element={<SpaceDetail />} />
@@ -41,38 +61,78 @@ describe('SpaceDetail Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Test Space')).toBeInTheDocument();
-    expect(screen.getByText('This is a test space description.')).toBeInTheDocument();
-    
+    // First verify that the initial state is rendered
+    expect(screen.getByText(mockSpaceData.title)).toBeInTheDocument();
+    expect(screen.getByText(mockSpaceData.description)).toBeInTheDocument();
+
+    // Then wait for the API calls to complete
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledTimes(2);
       const calls = api.get.mock.calls;
-      const spaceDetailsCalled = calls.some(call => call[0] === '/spaces/1/');
-      expect(spaceDetailsCalled).toBe(false);
-    });
+      console.log('All API calls:', calls.map(call => call[0]));
+      
+      // Log each call for debugging
+      calls.forEach((call, index) => {
+        console.log(`Call ${index + 1}:`, call[0]);
+      });
+      
+      // Verify that all required API calls were made
+      const hasSpaceCall = calls.some(call => call[0] === API_ENDPOINTS.SPACES + '/1/');
+      const hasSnapshotsCall = calls.some(call => call[0] === API_ENDPOINTS.SNAPSHOTS('1'));
+      const hasNodesCall = calls.some(call => call[0] === API_ENDPOINTS.NODES('1'));
+      
+      console.log('Has space call:', hasSpaceCall);
+      console.log('Has snapshots call:', hasSnapshotsCall);
+      console.log('Has nodes call:', hasNodesCall);
+      
+      expect(hasSpaceCall).toBe(true);
+      expect(hasSnapshotsCall).toBe(true);
+      expect(hasNodesCall).toBe(true);
+    }, { timeout: 5000 });
+
+    // Verify that the content is still rendered after API calls
+    expect(screen.getByText(mockSpaceData.title)).toBeInTheDocument();
+    expect(screen.getByText(mockSpaceData.description)).toBeInTheDocument();
   });
 
   test('fetches space details from API if no state provided', async () => {
+    // Mock the API response for space details
+    api.get.mockImplementation((url) => {
+      console.log('Mock API called with URL:', url);
+      if (url === API_ENDPOINTS.SNAPSHOTS('1')) {
+        return Promise.resolve({ data: [] });
+      } else if (url === API_ENDPOINTS.NODES('1')) {
+        return Promise.resolve({ data: [] });
+      } else if (url === API_ENDPOINTS.SPACES + '/1/') {
+        return Promise.resolve({ data: mockSpaceData });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
     render(
-      <BrowserRouter>
-        <SpaceDetail />
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/spaces/1']}>
+        <Routes>
+          <Route path="/spaces/:id" element={<SpaceDetail />} />
+        </Routes>
+      </MemoryRouter>
     );
 
+    // Wait for the API calls to complete and content to be rendered
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith('/spaces/undefined/', {
+      expect(api.get).toHaveBeenCalledWith(API_ENDPOINTS.SPACES + '/1/', {
         headers: {
           Authorization: 'Bearer fake-jwt-token'
         }
       });
-
-      expect(screen.getByText('Test Space')).toBeInTheDocument();
-      expect(screen.getByText('This is a test space description.')).toBeInTheDocument();
     });
+
+    // Now verify that the content is rendered
+    expect(screen.getByText(mockSpaceData.title)).toBeInTheDocument();
+    expect(screen.getByText(mockSpaceData.description)).toBeInTheDocument();
   });
 
   test('handles API errors gracefully', async () => {
-    api.get.mockRejectedValue(new Error('API Error'));
+    const mockError = new Error('API Error');
+    api.get.mockRejectedValue(mockError);
 
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -84,7 +144,7 @@ describe('SpaceDetail Component', () => {
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalled();
-      expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith('Error fetching space data:', mockError);
     });
 
     consoleError.mockRestore();

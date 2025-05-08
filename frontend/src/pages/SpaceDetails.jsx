@@ -166,6 +166,7 @@ const SpaceDetails = () => {
           <button
             className={isCollaborator ? "leave-button" : "join-button"}
             onClick={handleJoinLeaveSpace}
+            data-testid={isCollaborator ? "leave-space-button" : "header-join-space-button"}
           >
             {isCollaborator ? "LEAVE SPACE" : "JOIN SPACE"}
           </button>
@@ -436,6 +437,7 @@ const SpaceDetails = () => {
             <button
               className="join-button"
               onClick={handleJoinLeaveSpace}
+              data-testid="bottom-join-space-button"
             >
               JOIN SPACE
             </button>
