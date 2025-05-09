@@ -40,17 +40,25 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
     
 class UserSerializer(serializers.ModelSerializer):
-    profession = serializers.SerializerMethodField()
-    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'profession']
-    
-    def get_profession(self, obj):
-        try:
-            return obj.profile.profession
-        except Profile.DoesNotExist:
-            return None
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    joined_spaces = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ['user', 'profession', 'bio', 'dob', 'created_at', 'updated_at', 'joined_spaces']
+
+    def get_joined_spaces(self, obj):
+        joined_spaces = Space.objects.filter(collaborators=obj.user)
+        return [{
+            'id': space.id,
+            'title': space.title,
+            'description': space.description
+        } for space in joined_spaces]
     
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
