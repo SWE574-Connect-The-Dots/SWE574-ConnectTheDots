@@ -206,11 +206,90 @@
   color: #ffffff;
 }
 
+.join-button, .leave-button {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
 .join-button {
   background-color: #000000;
+  color: white;
   border: none;
-  border-radius: 5px;
-  padding: 8px 20px;
-  font-weight: bold;
+  padding: 8px 16px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.join-button:hover {
+  background-color: #000000;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.leave-button {
+  background-color: #a00b00;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.leave-button:hover {
+  background-color: #a00b00;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.collaborators-sidebar {
+  width: 250px;
+  margin-left: 20px;
+}
+
+.collaborators-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.collaborators-header {
+  background-color: #f1f1f1;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.collaborators-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.collaborator-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.collaborator-item:last-child {
+  border-bottom: none;
+}
+
+.non-collaborator-box {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.non-collaborator-box p {
+  margin-bottom: 15px;
+  color: #555;
 }

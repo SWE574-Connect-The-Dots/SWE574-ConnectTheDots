@@ -12,22 +12,22 @@ function Login({ setIsAuthenticated }) {
     e.preventDefault();
     setMessage('');
     try {
-      const res = await api.post('/login/', {
+      const response = await api.post('/login/', {
         username,
         password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-      console.log("Full Response:", res.data);
-
-      if (res.data && res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        setIsAuthenticated(true);
-        navigate('/');
-      } else {
-        setMessage('Login successful, but no token received.');
-      }
       
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('username', username);
+      setIsAuthenticated(true);
+      navigate('/');
     } catch (error) {
-      setMessage('Login failed.');
+      setMessage('Login failed. Please check your credentials.');
+      console.error('Login error:', error);
     }
   };
 

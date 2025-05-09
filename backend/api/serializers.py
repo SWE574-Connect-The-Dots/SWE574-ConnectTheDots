@@ -66,11 +66,15 @@ class SpaceSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    collaborators = serializers.StringRelatedField(many=True, read_only=True)
+    collaborators = serializers.SerializerMethodField()
+    
     class Meta:
         model = Space
         fields = ['id', 'title', 'description', 'created_at', 'creator_username', 'tags', 'tag_ids', 'collaborators']
         read_only_fields = ['creator_username', 'created_at']
+    
+    def get_collaborators(self, obj):
+        return [user.username for user in obj.collaborators.all()]
     
     def create(self, validated_data):
         tag_ids = validated_data.pop('tag_ids', [])
