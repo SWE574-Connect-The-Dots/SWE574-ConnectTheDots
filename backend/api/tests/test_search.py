@@ -1,9 +1,9 @@
+from datetime import date
 from django.urls import reverse
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
-from api.models import Space, Tag, Profile
-from datetime import date
+from api.models import Space, Tag
 
 class SearchTests(APITestCase):
     def setUp(self):
@@ -13,14 +13,20 @@ class SearchTests(APITestCase):
             email='test@example.com',
             password='testpass123'
         )
-        Profile.objects.create(user=self.user1, profession="Developer", dob=date(2000, 1, 1))
+        # Update existing profile instead of creating a new one
+        self.user1.profile.profession = "Developer"
+        self.user1.profile.dob = date(2000, 1, 1)
+        self.user1.profile.save()
         
         self.user2 = User.objects.create_user(
             username='searchableuser',
             email='search@example.com',
             password='testpass123'
         )
-        Profile.objects.create(user=self.user2, profession="Designer", dob=date(2000, 1, 1))
+        # Update existing profile instead of creating a new one
+        self.user2.profile.profession = "Designer"
+        self.user2.profile.dob = date(2000, 1, 1)
+        self.user2.profile.save()
         
         # Create tags
         self.tag1 = Tag.objects.create(name='python')

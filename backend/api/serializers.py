@@ -36,7 +36,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password']
         )
-        Profile.objects.create(user=user, profession=profession, dob=dob)
+        # Update the profile that was automatically created by the signal
+        user.profile.profession = profession
+        user.profile.dob = dob
+        user.profile.save()
         return user
     
 class UserSerializer(serializers.ModelSerializer):
