@@ -9,22 +9,16 @@ class IsCollaboratorOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
             
-        # Allow join/leave/check actions
         if view.action in ['join_space', 'leave_space', 'check_collaborator']:
             return True
             
-        return True  # Object-level permissions will handle the rest
+        return True
     
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
             
-        # Allow join/leave/check actions
-        if view.action in ['join_space', 'leave_space', 'check_collaborator']:
-            return True
-        
-        # Write permissions are only allowed to collaborators
-        return request.user in obj.collaborators.all()
+        return request.user in obj.collaborators.all() or request.user == obj.creator
 
 class IsSpaceCollaborator(permissions.BasePermission):
     """
@@ -32,7 +26,6 @@ class IsSpaceCollaborator(permissions.BasePermission):
     """
     
     def has_permission(self, request, view):
-        # If space_pk is in the URL, check if user is a collaborator
         space_pk = view.kwargs.get('space_pk')
         if space_pk:
             from .models import Space
@@ -42,3 +35,13 @@ class IsSpaceCollaborator(permissions.BasePermission):
             except Space.DoesNotExist:
                 return False
         return True 
+
+class IsProfileOwner(permissions.BasePermission):
+    """
+    Custom permission to only allow owners of a profile to edit it.
+    """
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+            
+        return obj.user == request.user 

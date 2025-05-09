@@ -14,7 +14,7 @@ from .models import Space, Tag, Property, Profile
 from .graph import SpaceGraph, Node, Edge, GraphSnapshot
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer
 from .wikidata import get_wikidata_properties
-from .permissions import IsCollaboratorOrReadOnly
+from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -344,7 +344,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsProfileOwner]
 
     @action(detail=False, methods=['get'])
     def me(self, request):
