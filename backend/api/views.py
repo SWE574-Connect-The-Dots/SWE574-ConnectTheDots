@@ -5,16 +5,16 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property
+from .models import Space, Tag, Property, Profile
 from .graph import SpaceGraph, Node, Edge, GraphSnapshot
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer
 from .wikidata import get_wikidata_properties
-from .permissions import IsCollaboratorOrReadOnly
+from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -340,3 +340,27 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
         properties = get_wikidata_properties(entity_id)
         return Response(properties)
+
+class ProfileViewSet(viewsets.ModelViewSet):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProfileOwner]
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        profile = request.user.profile
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def user_profile(self, request, pk=None):
+        try:
+            user = User.objects.get(username=pk)
+            profile = user.profile
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def get_queryset(self):
+        return Profile.objects.all()

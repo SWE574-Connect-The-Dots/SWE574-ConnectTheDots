@@ -1,11 +1,14 @@
 export const API_ENDPOINTS = {
-  SPACES: '/spaces',
+  SPACES: "/spaces",
   NODES: (spaceId) => `/spaces/${spaceId}/nodes/`,
   EDGES: (spaceId) => `/spaces/${spaceId}/edges/`,
   SNAPSHOTS: (spaceId) => `/spaces/${spaceId}/snapshots/`,
-  WIKIDATA_SEARCH: '/spaces/wikidata-search/',
-  WIKIDATA_PROPERTIES: (entityId) => `/spaces/wikidata-entity-properties/${entityId}/`,
-  SEARCH: '/search/',
+  WIKIDATA_SEARCH: "/spaces/wikidata-search/",
+  WIKIDATA_PROPERTIES: (entityId) =>
+    `/spaces/wikidata-entity-properties/${entityId}/`,
+  SEARCH: "/search/",
+  PROFILE_ME: "/profiles/me/",
+  PROFILE: (username) => `/profiles/${username}/user_profile/`,
 };
 
 export const GRAPH_CONFIG = {
@@ -35,7 +38,7 @@ export const GRAPH_CONFIG = {
 };
 
 export const ERROR_MESSAGES = {
-  GRAPH_DATA: 'Failed to fetch graph data',
-  WIKIDATA_SEARCH: 'Failed to search Wikidata',
-  ENTITY_PROPERTIES: 'Failed to fetch entity properties',
-}; 
+  GRAPH_DATA: "Failed to fetch graph data",
+  WIKIDATA_SEARCH: "Failed to search Wikidata",
+  ENTITY_PROPERTIES: "Failed to fetch entity properties",
+};

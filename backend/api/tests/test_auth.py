@@ -32,6 +32,7 @@ class AuthTestCase(APITestCase):
         self.assertTrue(User.objects.filter(username="newuser").exists())
 
         user = User.objects.get(username="newuser")
+        self.assertTrue(hasattr(user, 'profile'))
         self.assertEqual(user.profile.profession, "Software Engineer")
         self.assertEqual(str(user.profile.dob), "2000-01-01")
 

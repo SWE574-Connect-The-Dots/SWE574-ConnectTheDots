@@ -1,4 +1,4 @@
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
@@ -17,6 +17,7 @@ const nodeTypes = {
 const SpaceDetails = () => {
   const location = useLocation();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [space, setSpace] = useState({
     title: location.state?.title || "",
     description: location.state?.description || "",
@@ -52,6 +53,7 @@ const SpaceDetails = () => {
   } = useWikidataSearch();
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchData = async () => {
       setIsLoading(true);
       
@@ -159,7 +161,7 @@ const SpaceDetails = () => {
   };
 
   return (
-    <div style={{ width: "100%", margin: "0 auto", padding: "20px", display: "flex" }}>
+    <div style={{ width: "100%", margin: "0 auto", padding: "20px", display: "flex", overflowX: "hidden", boxSizing: "border-box", maxWidth: "100vw" }}>
       <div style={{ flex: 1, marginRight: "20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2>{space.title}</h2>
@@ -478,8 +480,12 @@ const SpaceDetails = () => {
                       key={index} 
                       style={{ 
                         padding: "8px", 
-                        borderBottom: index < space.collaborators.length - 1 ? "1px solid #eee" : "none" 
+                        borderBottom: index < space.collaborators.length - 1 ? "1px solid #eee" : "none",
+                        cursor: "pointer",
+                        color: "#1a73e8",
+                        textDecoration: "underline"
                       }}
+                      onClick={() => navigate(`/profile/${collaborator}`)}
                     >
                       {collaborator}
                     </li>

@@ -1,12 +1,11 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import api from '../axiosConfig';
 import "../ConnectTheDots.css";
 import AppLogo from "../assets/AppLogo.svg";
 
-export default function Home({ setIsAuthenticated }) {
+export default function Home({ setIsAuthenticated, currentUser }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchValue, setSearchValue] = useState("");
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -114,7 +113,13 @@ export default function Home({ setIsAuthenticated }) {
         <nav className="navigation">
           <div className="nav-item">Discover</div>
           <div className="nav-item">My Spaces</div>
-          <div className="nav-item">Profile</div>
+          <div 
+            className="nav-item" 
+            onClick={() => currentUser && navigate(`/profile/${currentUser.username}`)}
+            style={{ cursor: 'pointer' }}
+          >
+            Profile
+          </div>
         </nav>
         <div className="search-container" style={{ 
           position: 'relative',
