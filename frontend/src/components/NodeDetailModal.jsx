@@ -84,6 +84,13 @@ const NodeDetailModal = ({
   const [availableProperties, setAvailableProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [allNodes, setAllNodes] = useState([]);
+  const [allEdges, setAllEdges] = useState([]);
+  const [addEdgeTarget, setAddEdgeTarget] = useState("");
+  const [addEdgeLabel, setAddEdgeLabel] = useState("");
+  const [addEdgeError, setAddEdgeError] = useState(null);
+  const [addEdgeLoading, setAddEdgeLoading] = useState(false);
+  const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
 
   const { fetchProperties } = useWikidataSearch();
 
@@ -119,6 +126,40 @@ const NodeDetailModal = ({
 
     fetchNodeProperties();
   }, [node, spaceId, fetchProperties]);
+
+  useEffect(() => {
+    const fetchNodesAndEdges = async () => {
+      try {
+        const [nodesRes, edgesRes] = await Promise.all([
+          api.get(`/spaces/${spaceId}/nodes/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }),
+          api.get(`/spaces/${spaceId}/edges/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }),
+        ]);
+        setAllNodes(nodesRes.data);
+        setAllEdges(edgesRes.data);
+      } catch (err) {}
+    };
+    fetchNodesAndEdges();
+  }, [spaceId, node.id]);
+
+  const connectedNodeIds = new Set();
+  allEdges.forEach((edge) => {
+    if (String(edge.source) === String(node.id))
+      connectedNodeIds.add(String(edge.target));
+    if (String(edge.target) === String(node.id))
+      connectedNodeIds.add(String(edge.source));
+  });
+  const possibleNodes = allNodes.filter(
+    (n) =>
+      String(n.id) !== String(node.id) && !connectedNodeIds.has(String(n.id))
+  );
 
   const handlePropertySelection = (newSelectedProperties) => {
     setSelectedProperties(newSelectedProperties);
@@ -337,6 +378,38 @@ const NodeDetailModal = ({
     );
   };
 
+  const handleAddEdge = async () => {
+    setAddEdgeError(null);
+    if (!addEdgeTarget || !addEdgeLabel.trim()) {
+      setAddEdgeError("Please select a node and enter a label.");
+      return;
+    }
+    setAddEdgeLoading(true);
+    try {
+      await api.post(
+        `/spaces/${spaceId}/edges/add/`,
+        {
+          source_id: isCurrentNodeSource ? node.id : addEdgeTarget,
+          target_id: isCurrentNodeSource ? addEdgeTarget : node.id,
+          label: addEdgeLabel.trim(),
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      setAddEdgeTarget("");
+      setAddEdgeLabel("");
+      onNodeUpdate();
+    } catch (err) {
+      setAddEdgeError(
+        err.response?.data?.error ||
+          "Failed to add edge. Maybe edge already exists."
+      );
+    } finally {
+      setAddEdgeLoading(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop">
       <div className="modal-content">
@@ -401,22 +474,85 @@ const NodeDetailModal = ({
               )}
             </div>
 
-            {availableProperties.length > 0 && (
-              <div className="edit-properties-section">
-                <h4>Edit Properties</h4>
-                <p className="selection-help-text">
-                  Select properties you want to include
-                </p>
-                <PropertySelectionList
-                  properties={availableProperties}
-                  selectedProperties={selectedProperties}
-                  onChange={handlePropertySelection}
+            <div className="edit-properties-section">
+              <h4>Add New Edge</h4>
+              <div style={{ marginBottom: 10 }}>
+                <label htmlFor="add-edge-target">Connect to node:</label>
+                <select
+                  id="add-edge-target"
+                  value={addEdgeTarget}
+                  onChange={(e) => setAddEdgeTarget(e.target.value)}
+                  style={{ width: "100%", marginBottom: 8 }}
+                  disabled={addEdgeLoading || possibleNodes.length === 0}
+                >
+                  <option value="">-- Select a node --</option>
+                  {possibleNodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.label} (ID: {n.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label htmlFor="add-edge-label">Edge Label:</label>
+                <input
+                  id="add-edge-label"
+                  type="text"
+                  value={addEdgeLabel}
+                  onChange={(e) => setAddEdgeLabel(e.target.value)}
+                  style={{ width: "100%" }}
+                  disabled={addEdgeLoading}
                 />
-                <button onClick={handleSaveChanges} className="save-button">
-                  Save Changes
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Direction:</label>
+                <button
+                  type="button"
+                  onClick={() => setIsCurrentNodeSource((v) => !v)}
+                  style={{
+                    marginLeft: 10,
+                    padding: "5px 10px",
+                    backgroundColor: isCurrentNodeSource
+                      ? "#4CAF50"
+                      : "#f44336",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                  disabled={addEdgeLoading || !addEdgeTarget}
+                >
+                  {isCurrentNodeSource
+                    ? `${node.data.label} → ${
+                        addEdgeTarget
+                          ? allNodes.find(
+                              (n) => String(n.id) === String(addEdgeTarget)
+                            )?.label || addEdgeTarget
+                          : "Target"
+                      }`
+                    : `${
+                        addEdgeTarget
+                          ? allNodes.find(
+                              (n) => String(n.id) === String(addEdgeTarget)
+                            )?.label || addEdgeTarget
+                          : "Target"
+                      } → ${node.data.label}`}
                 </button>
               </div>
-            )}
+              <button
+                onClick={handleAddEdge}
+                className="save-button"
+                disabled={addEdgeLoading || possibleNodes.length === 0}
+              >
+                Add Edge
+              </button>
+              {addEdgeError && <div className="error">{addEdgeError}</div>}
+              {possibleNodes.length === 0 && (
+                <div style={{ color: "#888", marginTop: 8 }}>
+                  All possible nodes are already connected.
+                </div>
+              )}
+            </div>
 
             <div className="danger-zone">
               <h4>Danger Zone</h4>

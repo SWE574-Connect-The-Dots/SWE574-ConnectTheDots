@@ -458,16 +458,26 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'], url_path='edges/(?P<edge_id>[^/.]+)/update')
     def update_edge(self, request, pk=None, edge_id=None):
-        """Update the label of an edge"""
+        """Update the label and/or direction of an edge"""
         space = self.get_object()
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can update edges'}, status=403)
         try:
             edge = Edge.objects.get(id=edge_id, source__space=space)
             new_label = request.data.get('label', '').strip()
-            if not new_label:
-                return Response({'error': 'Label is required'}, status=400)
-            edge.relation_property = new_label
+            new_source_id = request.data.get('source_id')
+            new_target_id = request.data.get('target_id')
+
+            if new_source_id and new_target_id:
+                if (str(edge.source.id) != str(new_source_id)) or (str(edge.target.id) != str(new_target_id)):
+                    if Edge.objects.filter(source_id=new_source_id, target_id=new_target_id).exclude(id=edge.id).exists() or \
+                       Edge.objects.filter(source_id=new_target_id, target_id=new_source_id).exclude(id=edge.id).exists():
+                        return Response({'error': 'Edge already exists between these nodes'}, status=400)
+                    edge.source_id = new_source_id
+                    edge.target_id = new_target_id
+
+            if new_label:
+                edge.relation_property = new_label
             edge.save()
             return Response({'message': 'Edge updated successfully'}, status=200)
         except Edge.DoesNotExist:
@@ -487,6 +497,29 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Edge deleted successfully'}, status=200)
         except Edge.DoesNotExist:
             return Response({'error': 'Edge not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['post'], url_path='edges/add')
+    def add_edge(self, request, pk=None):
+        """Add an edge between two existing nodes in the space"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can add edges'}, status=403)
+        source_id = request.data.get('source_id')
+        target_id = request.data.get('target_id')
+        label = request.data.get('label', '').strip()
+        if not source_id or not target_id or not label:
+            return Response({'error': 'source_id, target_id, and label are required'}, status=400)
+        try:
+            source = Node.objects.get(id=source_id, space=space)
+            target = Node.objects.get(id=target_id, space=space)
+            if Edge.objects.filter(source=source, target=target).exists() or Edge.objects.filter(source=target, target=source).exists():
+                return Response({'error': 'Edge already exists between these nodes'}, status=400)
+            edge = Edge.objects.create(source=source, target=target, relation_property=label)
+            return Response({'message': 'Edge created', 'edge_id': edge.id}, status=201)
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
