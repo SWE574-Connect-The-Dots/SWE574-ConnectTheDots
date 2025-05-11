@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import api from '../axiosConfig';
+import { useState, useCallback } from "react";
+import api from "../axiosConfig";
 
 const useGraphData = (spaceId) => {
   const [nodes, setNodes] = useState([]);
@@ -36,7 +36,7 @@ const useGraphData = (spaceId) => {
         },
         data: {
           label: node.label,
-          wikidata_id: node.wikidata_id,
+          wikidata_id: node.wikidata_id || null,
         },
       }));
 
@@ -54,7 +54,7 @@ const useGraphData = (spaceId) => {
       setNodes(flowNodes);
       setEdges(flowEdges);
     } catch (err) {
-      setError(err.message || 'Failed to fetch graph data');
+      setError(err.message || "Failed to fetch graph data");
       console.error("Error fetching graph data:", err);
     } finally {
       setLoading(false);
@@ -70,4 +70,4 @@ const useGraphData = (spaceId) => {
   };
 };
 
-export default useGraphData; 
+export default useGraphData;

@@ -8,3 +8,4 @@ backend/backend/__pycache__/
 backend/api/migrations/__pycache__/
 frontend/.env.production
 backend/.env.docker
+backend/.env.docker.prod

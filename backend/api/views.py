@@ -10,11 +10,12 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile
-from .graph import SpaceGraph, Node, Edge, GraphSnapshot
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot
+from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer
 from .wikidata import get_wikidata_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
+from django.core.cache import cache
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -244,7 +245,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk)
-        data = [{'id': node.id, 'label': node.label} for node in nodes]
+        data = [{'id': node.id, 'label': node.label, 'wikidata_id': node.wikidata_id} for node in nodes]
         return Response(data)
     
     @action(detail=True, methods=['get'], url_path='edges')
@@ -334,12 +335,126 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='wikidata-entity-properties/(?P<entity_id>[^/.]+)')
     def wikidata_entity_properties(self, request, entity_id=None):
-        """Fetch entity properties from Wikidata"""
+        """Fetch entity properties from Wikidata with enhanced labels and formatting"""
         if not entity_id:
             return Response({"error": "Missing entity_id"}, status=400)
+        
+        cache_key = f"wikidata_props_{entity_id}"
+        is_cached = cache.get(cache_key) is not None
+        
+        try:
+            properties = get_wikidata_properties(entity_id)
+            
+            headers = {}
+            if is_cached:
+                headers['X-Cache'] = 'HIT'
+            else:
+                headers['X-Cache'] = 'MISS'
+            
+            return Response(
+                properties, 
+                headers=headers
+            )
+        except Exception as e:
+            print(f"Error in wikidata_entity_properties for {entity_id}: {str(e)}")
+            return Response(
+                {"error": f"Failed to fetch properties for {entity_id}"},
+                status=500
+            )
 
-        properties = get_wikidata_properties(entity_id)
-        return Response(properties)
+    @action(detail=True, methods=['get'], url_path='nodes/(?P<node_id>[^/.]+)/properties')
+    def node_properties(self, request, pk=None, node_id=None):
+        """Get properties of a specific node with human-readable labels"""
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            properties = Property.objects.filter(node=node)
+            
+            if not properties:
+                return Response([])
+            
+            wikidata_props = {}
+            if node.wikidata_id:
+                try:
+                    wikidata_props_list = get_wikidata_properties(node.wikidata_id)
+                    wikidata_props = {prop["property"]: prop for prop in wikidata_props_list}
+                except Exception as e:
+                    print(f"Error fetching Wikidata properties: {str(e)}")
+            
+            result = []
+            for prop in properties:
+                prop_data = wikidata_props.get(prop.property_id, {})
+                result.append({
+                    'property_id': prop.property_id,
+                    'property_label': prop_data.get('property_label', prop.property_id.replace('P', 'Property ')),
+                    'property_value': prop_data.get('value', None),
+                    'display': prop_data.get('display', f"{prop.property_id}: No value available")
+                })
+                
+            return Response(result)
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+    
+    @action(detail=True, methods=['delete'], url_path='nodes/(?P<node_id>[^/.]+)')
+    def delete_node(self, request, pk=None, node_id=None):
+        """Delete a node and its associated edges and properties"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can delete nodes'}, status=403)
+            
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            Edge.objects.filter(source=node).delete()
+            Edge.objects.filter(target=node).delete()
+            Property.objects.filter(node=node).delete()
+            node.delete()
+            return Response({'message': 'Node successfully deleted'}, status=200)
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+    
+    @action(detail=True, methods=['put'], url_path='nodes/(?P<node_id>[^/.]+)/update-properties')
+    def update_node_properties(self, request, pk=None, node_id=None):
+        """Update the properties of a node"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can update nodes'}, status=403)
+            
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            selected_properties = request.data.get('selected_properties', [])
+            Property.objects.filter(node=node).delete()
+
+            for property_id in selected_properties:
+                Property.objects.create(node=node, property_id=property_id)
+                
+            return Response({'message': 'Node properties updated'}, status=200)
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['delete'], url_path='nodes/(?P<node_id>[^/.]+)/properties/(?P<property_id>[^/.]+)')
+    def delete_node_property(self, request, pk=None, node_id=None, property_id=None):
+        """Delete a single property from a node"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can update nodes'}, status=403)
+        
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            property_count = Property.objects.filter(node=node, property_id=property_id).delete()[0]
+            
+            if property_count == 0:
+                return Response({'error': 'Property not found'}, status=404)
+            
+            return Response({'message': 'Property deleted successfully'}, status=200)
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
