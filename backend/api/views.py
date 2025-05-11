@@ -456,6 +456,40 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
+    @action(detail=True, methods=['put'], url_path='edges/(?P<edge_id>[^/.]+)/update')
+    def update_edge(self, request, pk=None, edge_id=None):
+        """Update the label of an edge"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can update edges'}, status=403)
+        try:
+            edge = Edge.objects.get(id=edge_id, source__space=space)
+            new_label = request.data.get('label', '').strip()
+            if not new_label:
+                return Response({'error': 'Label is required'}, status=400)
+            edge.relation_property = new_label
+            edge.save()
+            return Response({'message': 'Edge updated successfully'}, status=200)
+        except Edge.DoesNotExist:
+            return Response({'error': 'Edge not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['delete'], url_path='edges/(?P<edge_id>[^/.]+)/delete')
+    def delete_edge(self, request, pk=None, edge_id=None):
+        """Delete an edge from the graph"""
+        space = self.get_object()
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can delete edges'}, status=403)
+        try:
+            edge = Edge.objects.get(id=edge_id, source__space=space)
+            edge.delete()
+            return Response({'message': 'Edge deleted successfully'}, status=200)
+        except Edge.DoesNotExist:
+            return Response({'error': 'Edge not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer

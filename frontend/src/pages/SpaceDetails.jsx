@@ -9,6 +9,7 @@ import "../components/NodeDetailModal.css";
 import useGraphData from "../hooks/useGraphData";
 import useWikidataSearch from "../hooks/useWikidataSearch";
 import { API_ENDPOINTS } from "../constants/config";
+import EdgeDetailModal from "../components/EdgeDetailModal";
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -110,6 +111,7 @@ const SpaceDetails = () => {
   const [relatedNodeId, setRelatedNodeId] = useState("");
   const [isNewNodeSource, setIsNewNodeSource] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState(null);
 
   const {
     nodes,
@@ -281,6 +283,10 @@ const SpaceDetails = () => {
     }
   }, [id, fetchGraphData]);
 
+  const handleEdgeClick = useCallback((event, edge) => {
+    setSelectedEdge(edge);
+  }, []);
+
   const PropertySelectionList = ({
     properties,
     selectedProperties,
@@ -443,6 +449,7 @@ const SpaceDetails = () => {
                 edges={edges}
                 nodeTypes={nodeTypes}
                 onNodeClick={handleNodeClick}
+                onEdgeClick={handleEdgeClick}
                 fitView
               >
                 <Background />
@@ -749,6 +756,18 @@ const SpaceDetails = () => {
           onClose={handleCloseModal}
           onNodeDelete={handleNodeDelete}
           onNodeUpdate={handleNodeUpdate}
+          spaceId={id}
+        />
+      )}
+
+      {selectedEdge && (
+        <EdgeDetailModal
+          edge={selectedEdge}
+          sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
+          targetNode={nodes.find((n) => n.id === selectedEdge.target)}
+          onClose={() => setSelectedEdge(null)}
+          onEdgeUpdate={fetchGraphData}
+          onEdgeDelete={fetchGraphData}
           spaceId={id}
         />
       )}
