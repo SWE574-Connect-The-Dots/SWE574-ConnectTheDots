@@ -1,11 +1,43 @@
 import { useState, useCallback } from "react";
 import api from "../axiosConfig";
+import dagre from "dagre";
 
 const useGraphData = (spaceId) => {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const nodeWidth = 160;
+  const nodeHeight = 160;
+
+  function layoutNodesWithDagre(nodes, edges, direction = "LR") {
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({ rankdir: direction });
+
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    });
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    return nodes.map((node) => {
+      const dagreNode = dagreGraph.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: dagreNode.x - nodeWidth / 2,
+          y: dagreNode.y - nodeHeight / 2,
+        },
+        sourcePosition: direction === "LR" ? "right" : "bottom",
+        targetPosition: direction === "LR" ? "left" : "top",
+      };
+    });
+  }
 
   const fetchGraphData = useCallback(async () => {
     try {
@@ -27,13 +59,10 @@ const useGraphData = (spaceId) => {
         console.warn("Edges endpoint not implemented yet");
       }
 
-      const flowNodes = nodesData.map((node, index) => ({
+      const flowNodes = nodesData.map((node) => ({
         id: node.id.toString(),
         type: "circular",
-        position: {
-          x: 200 + (index % 4) * 200,
-          y: 100 + Math.floor(index / 4) * 200,
-        },
+        position: { x: 0, y: 0 },
         data: {
           label: node.label,
           wikidata_id: node.wikidata_id || null,
@@ -49,9 +78,17 @@ const useGraphData = (spaceId) => {
         markerEnd: {
           type: "arrowclosed",
         },
+        labelStyle: {
+          background: "white",
+          padding: 2,
+          fontWeight: 600,
+          zIndex: 10,
+        },
       }));
 
-      setNodes(flowNodes);
+      const layoutedNodes = layoutNodesWithDagre(flowNodes, flowEdges);
+
+      setNodes(layoutedNodes);
       setEdges(flowEdges);
     } catch (err) {
       setError(err.message || "Failed to fetch graph data");
