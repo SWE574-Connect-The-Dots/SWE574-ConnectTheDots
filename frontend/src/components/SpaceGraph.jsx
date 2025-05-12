@@ -1,7 +1,7 @@
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
-import CircularNode from './CircularNode';
+import CircularNode from "./CircularNode";
 
 const nodeTypes = {
   circular: CircularNode,
@@ -27,12 +27,7 @@ const SpaceGraph = ({ nodes, edges, loading, error }) => {
 
   return (
     <div className="graph-container">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        fitView
-      >
+      <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView>
         <Background />
         <Controls />
       </ReactFlow>
@@ -41,28 +36,32 @@ const SpaceGraph = ({ nodes, edges, loading, error }) => {
 };
 
 SpaceGraph.propTypes = {
-  nodes: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired,
-    position: PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    }).isRequired,
-    data: PropTypes.shape({
-      label: PropTypes.string.isRequired,
-      wikidata_id: PropTypes.string,
-    }).isRequired,
-  })).isRequired,
-  edges: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    source: PropTypes.string.isRequired,
-    target: PropTypes.string.isRequired,
-    label: PropTypes.string,
-    animated: PropTypes.bool,
-    markerEnd: PropTypes.shape({
+  nodes: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
       type: PropTypes.string.isRequired,
-    }),
-  })).isRequired,
+      position: PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+      }).isRequired,
+      data: PropTypes.shape({
+        label: PropTypes.string.isRequired,
+        wikidata_id: PropTypes.string,
+      }).isRequired,
+    })
+  ).isRequired,
+  edges: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      source: PropTypes.string.isRequired,
+      target: PropTypes.string.isRequired,
+      label: PropTypes.string,
+      animated: PropTypes.bool,
+      markerEnd: PropTypes.shape({
+        type: PropTypes.string.isRequired,
+      }),
+    })
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
   error: PropTypes.string,
 };

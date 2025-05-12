@@ -1,14 +1,88 @@
 import { useLocation, useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
 import api from "../axiosConfig";
 import CircularNode from "../components/CircularNode";
+import NodeDetailModal from "../components/NodeDetailModal";
+import "../components/NodeDetailModal.css";
 import useGraphData from "../hooks/useGraphData";
 import useWikidataSearch from "../hooks/useWikidataSearch";
-import {
-  API_ENDPOINTS
-} from "../constants/config";
+import { API_ENDPOINTS } from "../constants/config";
+import EdgeDetailModal from "../components/EdgeDetailModal";
+
+const propertySelectionStyles = `
+.property-selection-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.property-selection-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.property-selection-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.property-selection-item:hover {
+  background-color: #f8f9fa;
+}
+
+.property-selection-item.selected {
+  background-color: #e6f4ff;
+}
+
+.property-checkbox {
+  margin-right: 10px;
+  margin-top: 4px;
+  min-width: 16px;
+}
+
+.property-selection-label {
+  display: block;
+  flex: 1;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.entity-link {
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.entity-link:hover {
+  text-decoration: underline;
+  color: #0f62fe;
+}
+
+.entity-indicator {
+  font-size: 0.85em;
+  color: #888;
+  font-style: italic;
+}
+
+.selection-help-text {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.property-label {
+  font-weight: 600;
+  color: #444;
+}
+`;
 
 const nodeTypes = {
   circular: CircularNode,
@@ -36,6 +110,8 @@ const SpaceDetails = () => {
   const [existingNodes, setExistingNodes] = useState([]);
   const [relatedNodeId, setRelatedNodeId] = useState("");
   const [isNewNodeSource, setIsNewNodeSource] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState(null);
 
   const {
     nodes,
@@ -56,47 +132,47 @@ const SpaceDetails = () => {
     window.scrollTo(0, 0);
     const fetchData = async () => {
       setIsLoading(true);
-      
+
       try {
         const spaceResponse = await api.get(API_ENDPOINTS.SPACES + `/${id}/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
-        
+
         setSpace({
           title: spaceResponse.data.title,
           description: spaceResponse.data.description,
           tags: spaceResponse.data.tags || [],
           collaborators: spaceResponse.data.collaborators || [],
         });
-        
+
         const username = localStorage.getItem("username");
-        const isUserCollaborator = spaceResponse.data.collaborators.includes(username);
+        const isUserCollaborator =
+          spaceResponse.data.collaborators.includes(username);
         setIsCollaborator(isUserCollaborator);
-        
+
         const snapshotsResponse = await api.get(API_ENDPOINTS.SNAPSHOTS(id), {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
         setSnapshots(snapshotsResponse.data);
-        
+
         const nodesResponse = await api.get(API_ENDPOINTS.NODES(id), {
-          headers: { 
-            Authorization: `Bearer ${localStorage.getItem("token")}` 
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
         setExistingNodes(nodesResponse.data);
         fetchGraphData();
-        
       } catch (error) {
         console.error("Error fetching space data:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [id, fetchGraphData]);
 
@@ -123,23 +199,23 @@ const SpaceDetails = () => {
     }
   };
 
-  const handlePropertySelection = (e) => {
-    const selectedOptions = Array.from(
-      e.target.selectedOptions,
-      (option) => option.value
-    );
-    setSelectedProperties(selectedOptions);
+  const handlePropertySelection = (newSelectedProperties) => {
+    setSelectedProperties(newSelectedProperties);
   };
-  
+
   const handleJoinLeaveSpace = async () => {
     try {
-      const endpoint = isCollaborator ? 'leave' : 'join';
-      await api.post(`/spaces/${id}/${endpoint}/`, {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+      const endpoint = isCollaborator ? "leave" : "join";
+      await api.post(
+        `/spaces/${id}/${endpoint}/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         }
-      });
-      
+      );
+
       setIsCollaborator(!isCollaborator);
 
       const spaceResponse = await api.get(API_ENDPOINTS.SPACES + `/${id}/`, {
@@ -147,28 +223,190 @@ const SpaceDetails = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       setSpace({
         title: spaceResponse.data.title,
         description: spaceResponse.data.description,
         tags: spaceResponse.data.tags || [],
         collaborators: spaceResponse.data.collaborators || [],
       });
-      
     } catch (error) {
-      console.error('Error joining/leaving space:', error);
+      console.error("Error joining/leaving space:", error);
     }
   };
 
+  const handleNodeClick = useCallback((event, node) => {
+    setSelectedNode(node);
+  }, []);
+
+  const handleCloseModal = () => {
+    setSelectedNode(null);
+  };
+
+  const handleNodeDelete = useCallback(async () => {
+    try {
+      await api.post(
+        `/spaces/${id}/snapshots/create/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      fetchGraphData();
+      const nodesResponse = await api.get(API_ENDPOINTS.NODES(id), {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setExistingNodes(nodesResponse.data);
+    } catch (err) {
+      console.error("Failed to refresh data after node deletion:", err);
+    }
+  }, [id, fetchGraphData]);
+
+  const handleNodeUpdate = useCallback(async () => {
+    try {
+      await api.post(
+        `/spaces/${id}/snapshots/create/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      fetchGraphData();
+    } catch (err) {
+      console.error("Failed to refresh data after node update:", err);
+    }
+  }, [id, fetchGraphData]);
+
+  const handleEdgeClick = useCallback((event, edge) => {
+    setSelectedEdge(edge);
+  }, []);
+
+  const PropertySelectionList = ({
+    properties,
+    selectedProperties,
+    onChange,
+  }) => {
+    const handleItemClick = (property, e) => {
+      const container = e.currentTarget.parentNode;
+      const scrollPos = container.scrollTop;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const newSelection = selectedProperties.includes(property)
+        ? selectedProperties.filter((id) => id !== property)
+        : [...selectedProperties, property];
+
+      onChange(newSelection);
+
+      setTimeout(() => {
+        if (container) container.scrollTop = scrollPos;
+      }, 0);
+    };
+
+    const renderPropertyValue = (prop) => {
+      if (
+        prop.value &&
+        typeof prop.value === "object" &&
+        prop.value.type === "entity"
+      ) {
+        return (
+          <a
+            href={`https://www.wikidata.org/wiki/${prop.value.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="entity-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              window.open(
+                `https://www.wikidata.org/wiki/${prop.value.id}`,
+                "_blank"
+              );
+            }}
+          >
+            {prop.value.text}
+          </a>
+        );
+      }
+
+      return prop.value ? String(prop.value) : "No value available";
+    };
+
+    return (
+      <div className="property-selection-container">
+        <div className="property-selection-list">
+          {properties.map((prop) => (
+            <div
+              key={prop.property}
+              className={`property-selection-item ${
+                selectedProperties.includes(prop.property) ? "selected" : ""
+              }`}
+              onClick={(e) => handleItemClick(prop.property, e)}
+            >
+              <input
+                type="checkbox"
+                id={`prop-${prop.property}`}
+                checked={selectedProperties.includes(prop.property)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleItemClick(prop.property, e);
+                }}
+                className="property-checkbox"
+              />
+              <label
+                htmlFor={`prop-${prop.property}`}
+                className="property-selection-label"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="property-label">
+                  {prop.property_label || prop.property}:
+                </span>{" "}
+                {renderPropertyValue(prop)}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ width: "100%", margin: "0 auto", padding: "20px", display: "flex", overflowX: "hidden", boxSizing: "border-box", maxWidth: "100vw" }}>
+    <div
+      style={{
+        width: "100%",
+        margin: "0 auto",
+        padding: "20px",
+        display: "flex",
+        overflowX: "hidden",
+        boxSizing: "border-box",
+        maxWidth: "100vw",
+      }}
+    >
+      {/* Inject CSS for property selection */}
+      <style>{propertySelectionStyles}</style>
+
       <div style={{ flex: 1, marginRight: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <h2>{space.title}</h2>
           <button
             className={isCollaborator ? "leave-button" : "join-button"}
             onClick={handleJoinLeaveSpace}
-            data-testid={isCollaborator ? "leave-space-button" : "header-join-space-button"}
+            data-testid={
+              isCollaborator ? "leave-space-button" : "header-join-space-button"
+            }
           >
             {isCollaborator ? "LEAVE SPACE" : "JOIN SPACE"}
           </button>
@@ -210,6 +448,8 @@ const SpaceDetails = () => {
                 nodes={nodes}
                 edges={edges}
                 nodeTypes={nodeTypes}
+                onNodeClick={handleNodeClick}
+                onEdgeClick={handleEdgeClick}
                 fitView
               >
                 <Background />
@@ -247,7 +487,9 @@ const SpaceDetails = () => {
                       { snapshot_id: snapshotId },
                       {
                         headers: {
-                          Authorization: `Bearer ${localStorage.getItem("token")}`,
+                          Authorization: `Bearer ${localStorage.getItem(
+                            "token"
+                          )}`,
                           "Content-Type": "application/json",
                         },
                       }
@@ -311,19 +553,15 @@ const SpaceDetails = () => {
               <div>
                 <h4>Selected Entity: {selectedEntity.label}</h4>
                 <div>
-                  <h5>Select Properties (hold Ctrl/Cmd to select multiple)</h5>
-                  <select
-                    multiple
-                    value={selectedProperties}
+                  <h5>Select Properties</h5>
+                  <p className="selection-help-text">
+                    Click on a property to select/deselect it
+                  </p>
+                  <PropertySelectionList
+                    properties={entityProperties}
+                    selectedProperties={selectedProperties}
                     onChange={handlePropertySelection}
-                    style={{ width: "100%", maxWidth: "500px", height: "200px" }}
-                  >
-                    {entityProperties.map((prop) => (
-                      <option key={prop.property} value={prop.property}>
-                        {prop.property}: {prop.value}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <div style={{ marginTop: "10px" }}>
                   <label>Edge Direction:</label>
@@ -342,15 +580,19 @@ const SpaceDetails = () => {
                     {isNewNodeSource ? "New → Existing" : "Existing → New"}
                   </button>
                 </div>
-                <div style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}>
+                <div
+                  style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}
+                >
                   {isNewNodeSource
                     ? `"${selectedEntity?.label || "New Node"}" → "${
-                        existingNodes.find((n) => n.id === parseInt(relatedNodeId))
-                          ?.label || "Selected Node"
+                        existingNodes.find(
+                          (n) => n.id === parseInt(relatedNodeId)
+                        )?.label || "Selected Node"
                       }"`
                     : `"${
-                        existingNodes.find((n) => n.id === parseInt(relatedNodeId))
-                          ?.label || "Selected Node"
+                        existingNodes.find(
+                          (n) => n.id === parseInt(relatedNodeId)
+                        )?.label || "Selected Node"
                       }" → "${selectedEntity?.label || "New Node"}"`}
                 </div>
                 <div style={{ marginTop: "20px" }}>
@@ -394,7 +636,9 @@ const SpaceDetails = () => {
                         },
                         {
                           headers: {
-                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                            Authorization: `Bearer ${localStorage.getItem(
+                              "token"
+                            )}`,
                           },
                         }
                       )
@@ -432,10 +676,13 @@ const SpaceDetails = () => {
             )}
           </>
         )}
-        
+
         {!isCollaborator && (
           <div className="non-collaborator-box">
-            <p>Join this space as a collaborator to add nodes and modify the graph.</p>
+            <p>
+              Join this space as a collaborator to add nodes and modify the
+              graph.
+            </p>
             <button
               className="join-button"
               onClick={handleJoinLeaveSpace}
@@ -446,44 +693,47 @@ const SpaceDetails = () => {
           </div>
         )}
       </div>
-      
+
       {/* Collaborators sidebar */}
       <div style={{ width: "250px" }}>
-        <div 
-          style={{ 
-            border: "1px solid #ddd", 
-            borderRadius: "4px", 
-            overflow: "hidden"
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            overflow: "hidden",
           }}
         >
-          <div 
-            style={{ 
-              backgroundColor: "#f1f1f1", 
-              padding: "10px", 
+          <div
+            style={{
+              backgroundColor: "#f1f1f1",
+              padding: "10px",
               cursor: "pointer",
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center"
+              alignItems: "center",
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
             <strong>Collaborators ({space.collaborators.length})</strong>
             <span>{isCollaboratorsOpen ? "▲" : "▼"}</span>
           </div>
-          
+
           {isCollaboratorsOpen && (
             <div style={{ padding: "10px" }}>
               {space.collaborators.length > 0 ? (
                 <ul style={{ listStyleType: "none", padding: 0 }}>
                   {space.collaborators.map((collaborator, index) => (
-                    <li 
-                      key={index} 
-                      style={{ 
-                        padding: "8px", 
-                        borderBottom: index < space.collaborators.length - 1 ? "1px solid #eee" : "none",
+                    <li
+                      key={index}
+                      style={{
+                        padding: "8px",
+                        borderBottom:
+                          index < space.collaborators.length - 1
+                            ? "1px solid #eee"
+                            : "none",
                         cursor: "pointer",
                         color: "#1a73e8",
-                        textDecoration: "underline"
+                        textDecoration: "underline",
                       }}
                       onClick={() => navigate(`/profile/${collaborator}`)}
                     >
@@ -498,6 +748,29 @@ const SpaceDetails = () => {
           )}
         </div>
       </div>
+
+      {/* Node detail modal */}
+      {selectedNode && isCollaborator && (
+        <NodeDetailModal
+          node={selectedNode}
+          onClose={handleCloseModal}
+          onNodeDelete={handleNodeDelete}
+          onNodeUpdate={handleNodeUpdate}
+          spaceId={id}
+        />
+      )}
+
+      {selectedEdge && (
+        <EdgeDetailModal
+          edge={selectedEdge}
+          sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
+          targetNode={nodes.find((n) => n.id === selectedEdge.target)}
+          onClose={() => setSelectedEdge(null)}
+          onEdgeUpdate={fetchGraphData}
+          onEdgeDelete={fetchGraphData}
+          spaceId={id}
+        />
+      )}
     </div>
   );
 };
