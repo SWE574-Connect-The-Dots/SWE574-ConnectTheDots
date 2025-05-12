@@ -523,6 +523,14 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
+    def destroy(self, request, *args, **kwargs):
+        space = self.get_object()
+        user = request.user
+        # Allow only creator or admin (is_staff or is_superuser)
+        if user != space.creator and not (user.is_staff or user.is_superuser):
+            return Response({'detail': 'You do not have permission to delete this space.'}, status=403)
+        return super().destroy(request, *args, **kwargs)
+
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer

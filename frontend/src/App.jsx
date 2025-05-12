@@ -48,7 +48,18 @@ function App() {
             },
           });
 
-          setCurrentUser(response.data.user);
+          const user = response.data.user;
+          const is_staff = user.is_staff ?? response.data.is_staff ?? false;
+          const is_superuser =
+            user.is_superuser ?? response.data.is_superuser ?? false;
+          const userWithFlags = {
+            ...user,
+            is_staff,
+            is_superuser,
+          };
+          setCurrentUser(userWithFlags);
+          localStorage.setItem("is_staff", String(is_staff));
+          localStorage.setItem("is_superuser", String(is_superuser));
         } catch (error) {
           console.error("Error fetching current user:", error);
           if (error.message.includes("401") || error.message.includes("403")) {
@@ -130,6 +141,9 @@ function App() {
               to="/logout"
               onClick={() => {
                 localStorage.removeItem("token");
+                localStorage.removeItem("username");
+                localStorage.removeItem("is_staff");
+                localStorage.removeItem("is_superuser");
                 setIsAuthenticated(false);
                 window.location.href = "/login";
               }}
