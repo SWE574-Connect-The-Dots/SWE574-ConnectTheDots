@@ -97,6 +97,7 @@ const SpaceDetails = () => {
     description: location.state?.description || "",
     tags: location.state?.tags || [],
     collaborators: location.state?.collaborators || [],
+    creator_username: location.state?.creator_username || "",
   });
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +113,9 @@ const SpaceDetails = () => {
   const [isNewNodeSource, setIsNewNodeSource] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const {
     nodes,
@@ -145,6 +149,7 @@ const SpaceDetails = () => {
           description: spaceResponse.data.description,
           tags: spaceResponse.data.tags || [],
           collaborators: spaceResponse.data.collaborators || [],
+          creator_username: spaceResponse.data.creator_username,
         });
 
         const username = localStorage.getItem("username");
@@ -229,6 +234,7 @@ const SpaceDetails = () => {
         description: spaceResponse.data.description,
         tags: spaceResponse.data.tags || [],
         collaborators: spaceResponse.data.collaborators || [],
+        creator_username: spaceResponse.data.creator_username,
       });
     } catch (error) {
       console.error("Error joining/leaving space:", error);
@@ -377,6 +383,43 @@ const SpaceDetails = () => {
     );
   };
 
+  const canDeleteSpace = () => {
+    const username = localStorage.getItem("username");
+    const isStaff =
+      localStorage.getItem("is_staff") === "true" ||
+      (window.currentUser && window.currentUser.is_staff);
+    const isSuperuser =
+      localStorage.getItem("is_superuser") === "true" ||
+      (window.currentUser && window.currentUser.is_superuser);
+    return (
+      (space.creator_username && space.creator_username === username) ||
+      isStaff ||
+      isSuperuser
+    );
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+    setDeleteError("");
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api.delete(`/spaces/${id}/`);
+      setShowDeleteModal(false);
+      navigate("/");
+    } catch (err) {
+      setDeleteError(
+        err.response?.data?.detail ||
+          "Failed to delete space. Please try again."
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -398,18 +441,50 @@ const SpaceDetails = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: 8,
           }}
         >
-          <h2>{space.title}</h2>
-          <button
-            className={isCollaborator ? "leave-button" : "join-button"}
-            onClick={handleJoinLeaveSpace}
-            data-testid={
-              isCollaborator ? "leave-space-button" : "header-join-space-button"
-            }
-          >
-            {isCollaborator ? "LEAVE SPACE" : "JOIN SPACE"}
-          </button>
+          <h2 style={{ margin: 0 }}>{space.title}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              className={isCollaborator ? "leave-button" : "join-button"}
+              onClick={handleJoinLeaveSpace}
+              data-testid={
+                isCollaborator
+                  ? "leave-space-button"
+                  : "header-join-space-button"
+              }
+            >
+              {isCollaborator ? "LEAVE SPACE" : "JOIN SPACE"}
+            </button>
+            {canDeleteSpace() && (
+              <button
+                className="delete-button"
+                title="Delete"
+                style={{
+                  background: "#e53935",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  fontWeight: 600,
+                  padding: "6px 16px",
+                  marginLeft: 8,
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                }}
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.background = "#b71c1c")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.background = "#e53935")
+                }
+              >
+                Delete
+              </button>
+            )}
+          </div>
         </div>
         <p>{space.description}</p>
         <ul className="tags-list">
@@ -690,6 +765,41 @@ const SpaceDetails = () => {
             >
               JOIN SPACE
             </button>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="modal-backdrop">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Confirm Delete</h3>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to delete the space "{space.title}"?
+                  This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <div style={{ color: "red" }}>{deleteError}</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  style={{ background: "#e53935", color: "white" }}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

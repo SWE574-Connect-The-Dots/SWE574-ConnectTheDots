@@ -18,6 +18,10 @@ class IsCollaboratorOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
             
+        # Allow admins (staff or superuser) the same permissions as creators
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+            
         return request.user in obj.collaborators.all() or request.user == obj.creator
 
 class IsSpaceCollaborator(permissions.BasePermission):
