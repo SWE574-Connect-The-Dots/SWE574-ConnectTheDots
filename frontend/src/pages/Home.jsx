@@ -154,8 +154,16 @@ export default function Home({ setIsAuthenticated, currentUser }) {
           <div className="app-name">Connect-The-Dots</div>
         </div>
         <nav className="navigation">
-          <div className="nav-item">Discover</div>
-          <div className="nav-item">My Spaces</div>
+          <div
+            className="nav-item"
+            onClick={() => {
+              setActiveTab("trending");
+              fetchSpaces();
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            Discover
+          </div>
           <div
             className="nav-item"
             onClick={() =>
