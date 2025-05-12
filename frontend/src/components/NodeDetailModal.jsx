@@ -474,6 +474,29 @@ const NodeDetailModal = ({
               )}
             </div>
 
+            {/* Property selection UI for editing node properties */}
+            {availableProperties.length > 0 && (
+              <div className="edit-properties-section">
+                <h4>Edit Node Properties</h4>
+                <p className="selection-help-text">
+                  Click on a property to select/deselect it
+                </p>
+                <PropertySelectionList
+                  properties={availableProperties}
+                  selectedProperties={selectedProperties}
+                  onChange={handlePropertySelection}
+                />
+                <button
+                  className="save-button"
+                  style={{ marginTop: 10 }}
+                  onClick={handleSaveChanges}
+                  disabled={loading}
+                >
+                  Save Properties
+                </button>
+              </div>
+            )}
+
             <div className="edit-properties-section">
               <h4>Add New Edge</h4>
               <div style={{ marginBottom: 10 }}>
