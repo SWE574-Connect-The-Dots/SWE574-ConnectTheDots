@@ -8,6 +8,7 @@ import "../ConnectTheDots.css";
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [joinedSpaces, setJoinedSpaces] = useState([]);
+  const [ownedSpaces, setOwnedSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { username } = useParams();
@@ -19,6 +20,7 @@ const Profile = () => {
         const response = await api.get(API_ENDPOINTS.PROFILE(username));
         setUser(response.data);
         setJoinedSpaces(response.data.joined_spaces);
+        setOwnedSpaces(response.data.owned_spaces || []);
         setLoading(false);
       } catch (err) {
         setError("Failed to load profile data");
@@ -54,6 +56,26 @@ const Profile = () => {
       </div>
 
       <div className="profile-content">
+        <div className="owned-spaces">
+          <h2>Owned Spaces</h2>
+          {ownedSpaces.length > 0 ? (
+            <div className="spaces-grid">
+              {ownedSpaces.map((space) => (
+                <div
+                  key={space.id}
+                  className="space-card"
+                  onClick={() => navigate(`/spaces/${space.id}`)}
+                >
+                  <h3>{space.title}</h3>
+                  <p>{space.description}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No owned spaces</p>
+          )}
+        </div>
+
         <div className="joined-spaces">
           <h2>Joined Spaces</h2>
           {joinedSpaces.length > 0 ? (

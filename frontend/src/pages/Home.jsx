@@ -171,7 +171,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
             }
             style={{ cursor: "pointer" }}
           >
-            Profile
+            {currentUser ? `Profile (${currentUser.username})` : "Profile"}
           </div>
         </nav>
         <div

@@ -327,6 +327,15 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.owned-spaces {
+  margin-bottom: 2rem;
+}
+
+.owned-spaces h2 {
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
 .joined-spaces h2 {
   color: #333;
   margin-bottom: 1.5rem;

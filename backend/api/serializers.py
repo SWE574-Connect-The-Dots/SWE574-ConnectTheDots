@@ -52,10 +52,11 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     joined_spaces = serializers.SerializerMethodField()
+    owned_spaces = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ['user', 'profession', 'bio', 'dob', 'created_at', 'updated_at', 'joined_spaces']
+        fields = ['user', 'profession', 'bio', 'dob', 'created_at', 'updated_at', 'joined_spaces', 'owned_spaces']
 
     def get_joined_spaces(self, obj):
         joined_spaces = Space.objects.filter(collaborators=obj.user)
@@ -64,6 +65,14 @@ class ProfileSerializer(serializers.ModelSerializer):
             'title': space.title,
             'description': space.description
         } for space in joined_spaces]
+        
+    def get_owned_spaces(self, obj):
+        owned_spaces = Space.objects.filter(creator=obj.user)
+        return [{
+            'id': space.id,
+            'title': space.title,
+            'description': space.description
+        } for space in owned_spaces]
     
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
