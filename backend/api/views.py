@@ -60,12 +60,21 @@ def search(request):
         username__icontains=query
     ).order_by('username')
     
+
+    user_data = []
+    for user in users:
+        user_serializer = UserSerializer(user).data
+        try:
+            user_serializer['profession'] = user.profile.profession
+        except:
+            user_serializer['profession'] = None
+        user_data.append(user_serializer)
+    
     space_serializer = SpaceSerializer(spaces, many=True)
-    user_serializer = UserSerializer(users, many=True)
     
     return Response({
         'spaces': space_serializer.data,
-        'users': user_serializer.data
+        'users': user_data
     })
 
 class IsCreatorOrReadOnly(permissions.BasePermission):
