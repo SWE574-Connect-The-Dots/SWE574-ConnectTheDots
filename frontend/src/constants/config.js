@@ -3,6 +3,8 @@ export const API_ENDPOINTS = {
   NODES: (spaceId) => `/spaces/${spaceId}/nodes/`,
   EDGES: (spaceId) => `/spaces/${spaceId}/edges/`,
   SNAPSHOTS: (spaceId) => `/spaces/${spaceId}/snapshots/`,
+  DISCUSSIONS: (spaceId) => `/spaces/${spaceId}/discussions/`,
+  ADD_DISCUSSION: (spaceId) => `/spaces/${spaceId}/discussions/add/`,
   WIKIDATA_SEARCH: "/spaces/wikidata-search/",
   WIKIDATA_PROPERTIES: (entityId) =>
     `/spaces/wikidata-entity-properties/${entityId}/`,

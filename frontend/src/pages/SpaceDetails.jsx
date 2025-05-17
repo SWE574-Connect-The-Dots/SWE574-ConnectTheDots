@@ -10,6 +10,7 @@ import useGraphData from "../hooks/useGraphData";
 import useWikidataSearch from "../hooks/useWikidataSearch";
 import { API_ENDPOINTS } from "../constants/config";
 import EdgeDetailModal from "../components/EdgeDetailModal";
+import SpaceDiscussions from "../components/SpaceDiscussions";
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -857,6 +858,9 @@ const SpaceDetails = () => {
             </div>
           )}
         </div>
+
+        {/* Add discussions component */}
+        <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} />
       </div>
 
       {/* Node detail modal */}

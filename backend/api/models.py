@@ -70,3 +70,15 @@ class GraphSnapshot(models.Model):
     def __str__(self):
         return f"Snapshot {self.id} at {self.created_at}"
 
+class Discussion(models.Model):
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name='discussions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    def __str__(self):
+        return f"Comment by {self.user.username} in {self.space.title}"
+    
+    class Meta:
+        ordering = ['-created_at']
+
