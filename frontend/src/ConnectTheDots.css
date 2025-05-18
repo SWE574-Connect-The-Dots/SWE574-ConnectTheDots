@@ -476,3 +476,60 @@
   border-radius: 4px;
   font-weight: bold;
 }
+
+/* Header Styles - Additional */
+.auth-buttons {
+  display: flex;
+  margin-left: auto;
+}
+
+.auth-button {
+  padding: 8px 16px;
+  margin-left: 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.auth-button.login {
+  background-color: transparent;
+  color: #333;
+  border: 1px solid #333;
+}
+
+.auth-button.login:hover {
+  background-color: #f5f5f5;
+}
+
+.auth-button.register {
+  background-color: #333;
+  color: white;
+  border: 1px solid #333;
+}
+
+.auth-button.register:hover {
+  background-color: #555;
+}
+
+.logout-button {
+  background-color: #a00b00;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 10px;
+  transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+  background-color: #c00;
+}
+
+.main-content {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
