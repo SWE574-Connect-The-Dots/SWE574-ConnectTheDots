@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Profile, Space, Tag
+from .models import Profile, Space, Tag, Discussion
 from datetime import date
 from rest_framework import serializers
 
@@ -108,3 +108,11 @@ class SpaceSerializer(serializers.ModelSerializer):
             space.tags.add(tag)
             
         return space
+
+class DiscussionSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    
+    class Meta:
+        model = Discussion
+        fields = ['id', 'text', 'created_at', 'username']
+        read_only_fields = ['created_at', 'username']

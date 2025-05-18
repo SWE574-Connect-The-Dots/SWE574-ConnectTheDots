@@ -10,9 +10,9 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion
 from .graph import SpaceGraph
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
 from .wikidata import get_wikidata_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
 from django.core.cache import cache
@@ -146,10 +146,13 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """
         Custom permissions based on action:
-        - join/leave/check-collaborator endpoints need only IsAuthenticated
+        - discussions endpoint is open to all (no permission required)
+        - join/leave/check-collaborator/add_discussion endpoints need only IsAuthenticated
         - other write operations require IsCollaboratorOrReadOnly
         """
-        if self.action in ['join_space', 'leave_space', 'check_collaborator']:
+        if self.action == 'discussions':
+            permission_classes = [permissions.AllowAny]
+        elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion']:
             permission_classes = [permissions.IsAuthenticated]
         else:
             permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly]
@@ -199,6 +202,40 @@ class SpaceViewSet(viewsets.ModelViewSet):
         user = request.user
         is_collaborator = user in space.collaborators.all()
         return Response({'is_collaborator': is_collaborator})
+
+    @action(detail=True, methods=['get'], url_path='discussions')
+    def discussions(self, request, pk=None):
+        """Get all discussions for a space"""
+        space = self.get_object()
+        user = request.user
+        
+        # Anyone can view discussions, no collaborator check needed
+        discussions = Discussion.objects.filter(space=space)
+        serializer = DiscussionSerializer(discussions, many=True)
+        return Response(serializer.data)
+        
+    @action(detail=True, methods=['post'], url_path='discussions/add')
+    def add_discussion(self, request, pk=None):
+        """Add a new discussion comment to a space"""
+        space = self.get_object()
+        user = request.user
+        
+        # Check if user is a collaborator
+        if user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can add discussions'}, status=403)
+            
+        text = request.data.get('text')
+        if not text:
+            return Response({'message': 'Text is required'}, status=400)
+            
+        discussion = Discussion.objects.create(
+            space=space,
+            user=user,
+            text=text
+        )
+        
+        serializer = DiscussionSerializer(discussion)
+        return Response(serializer.data, status=201)
 
     @action(detail=False, methods=['get'])
     def trending(self, request):
