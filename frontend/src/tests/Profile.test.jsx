@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import Profile from "../pages/Profile";
@@ -138,7 +138,6 @@ describe("Profile Component", () => {
     });
 
     expect(screen.queryByText(/Profession:/)).toBeNull();
-    expect(screen.queryByText(/Bio:/)).toBeNull();
     expect(screen.queryByText(/Date of Birth:/)).toBeNull();
 
     expect(screen.getByText("No spaces joined yet")).toBeDefined();
@@ -194,5 +193,148 @@ describe("Profile Component", () => {
 
     expect(formattedDOB).toMatch(/^\d{2}\.\d{2}\.\d{4}$/);
     expect(formattedJoinDate).toMatch(/^\d{2}\.\d{2}\.\d{4}$/);
+  });
+
+  test("shows edit button only for current user", async () => {
+    api.get.mockResolvedValue({ data: mockUser });
+
+    localStorage.getItem.mockReturnValue("otheruser");
+
+    render(
+      <MemoryRouter initialEntries={["/profile/testuser"]}>
+        <Routes>
+          <Route path="/profile/:username" element={<Profile />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(`${mockUser.user.username}'s Profile`)
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/edit profile/i)).not.toBeInTheDocument();
+
+    localStorage.getItem.mockReturnValue("testuser");
+
+    render(
+      <MemoryRouter initialEntries={["/profile/testuser"]}>
+        <Routes>
+          <Route path="/profile/:username" element={<Profile />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(`${mockUser.user.username}'s Profile`)
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/edit profile/i)).toBeInTheDocument();
+  });
+
+  test("shows bio placeholder when empty", async () => {
+    const userWithEmptyBio = { ...mockUser, bio: "" };
+    api.get.mockResolvedValue({ data: userWithEmptyBio });
+
+    render(
+      <MemoryRouter initialEntries={["/profile/testuser"]}>
+        <Routes>
+          <Route path="/profile/:username" element={<Profile />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/bio: -/i)).toBeInTheDocument();
+    });
+  });
+
+  test("allows editing profile and submitting changes", async () => {
+    api.get.mockResolvedValue({ data: mockUser });
+    api.put.mockResolvedValue({
+      data: {
+        ...mockUser,
+        bio: "Updated bio",
+        profession: "Data Scientist",
+      },
+    });
+
+    localStorage.getItem.mockReturnValue("testuser");
+
+    render(
+      <MemoryRouter initialEntries={["/profile/testuser"]}>
+        <Routes>
+          <Route path="/profile/:username" element={<Profile />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(`${mockUser.user.username}'s Profile`)
+      ).toBeInTheDocument();
+    });
+
+    const editButton = screen.getByText(/edit profile/i);
+    fireEvent.click(editButton);
+
+    const bioInput = screen.getByLabelText(/bio/i);
+    const professionInput = screen.getByLabelText(/profession/i);
+
+    fireEvent.change(bioInput, { target: { value: "Updated bio" } });
+    fireEvent.change(professionInput, { target: { value: "Data Scientist" } });
+
+    const saveButton = screen.getByText(/save/i);
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(expect.any(String), {
+        bio: "Updated bio",
+        profession: "Data Scientist",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/bio: updated bio/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/profession: data scientist/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("handles API errors during profile update", async () => {
+    api.get.mockResolvedValue({ data: mockUser });
+    api.put.mockRejectedValue(new Error("Update failed"));
+    localStorage.getItem.mockReturnValue("testuser");
+
+    render(
+      <MemoryRouter initialEntries={["/profile/testuser"]}>
+        <Routes>
+          <Route path="/profile/:username" element={<Profile />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(`${mockUser.user.username}'s Profile`)
+      ).toBeInTheDocument();
+    });
+
+    const editButton = screen.getByText(/edit profile/i);
+    fireEvent.click(editButton);
+
+    const bioInput = screen.getByLabelText(/bio/i);
+    fireEvent.change(bioInput, { target: { value: "New bio text" } });
+
+    const saveButton = screen.getByText(/save/i);
+    fireEvent.click(saveButton);
+
+    const errorElement = await screen.findByTestId("profile-error");
+    expect(errorElement).toBeInTheDocument();
+    expect(errorElement.textContent).toContain("Failed to update profile data");
   });
 });
