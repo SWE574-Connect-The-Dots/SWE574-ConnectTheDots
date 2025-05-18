@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
     `/spaces/wikidata-entity-properties/${entityId}/`,
   SEARCH: "/search/",
   PROFILE_ME: "/profiles/me/",
+  UPDATE_PROFILE: "/profiles/update_profile/",
   PROFILE: (username) => `/profiles/${username}/user_profile/`,
 };
 

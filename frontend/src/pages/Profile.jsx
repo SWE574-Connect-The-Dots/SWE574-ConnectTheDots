@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
@@ -11,6 +11,12 @@ const Profile = () => {
   const [ownedSpaces, setOwnedSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    bio: "",
+    profession: "",
+  });
+  const [isCurrentUser, setIsCurrentUser] = useState(false);
   const { username } = useParams();
   const navigate = useNavigate();
 
@@ -21,6 +27,16 @@ const Profile = () => {
         setUser(response.data);
         setJoinedSpaces(response.data.joined_spaces);
         setOwnedSpaces(response.data.owned_spaces || []);
+
+        const currentUsername = localStorage.getItem("username");
+        const isCurrentUserProfile = currentUsername === username;
+        setIsCurrentUser(isCurrentUserProfile);
+
+        setEditFormData({
+          bio: response.data.bio || "",
+          profession: response.data.profession || "",
+        });
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load profile data");
@@ -31,27 +47,131 @@ const Profile = () => {
     fetchProfileData();
   }, [username]);
 
+  const handleEditClick = () => {
+    setIsEditing(true);
+    // Clear any previous errors when entering edit mode
+    setError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditFormData({
+      bio: user.bio || "",
+      profession: user.profession || "",
+    });
+    // Clear any errors when cancelling
+    setError(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({
+      ...editFormData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (
+      user.profession &&
+      user.profession.trim() !== "" &&
+      (!editFormData.profession || editFormData.profession.trim() === "")
+    ) {
+      setError("Profession cannot be emptied once set");
+      return;
+    }
+
+    try {
+      const response = await api.put(
+        API_ENDPOINTS.UPDATE_PROFILE,
+        editFormData
+      );
+      setUser(response.data);
+      setIsEditing(false);
+      setError(null);
+    } catch (err) {
+      setError("Failed to update profile data");
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
 
-  if (error) {
-    return <div className="error">{error}</div>;
-  }
-
   return (
     <div className="profile-container">
+      {error && (
+        <div className="error-message" data-testid="profile-error">
+          <span>{error}</span>
+        </div>
+      )}
       <div className="profile-header">
         <h1>{user?.user?.username}'s Profile</h1>
-        {user?.profession && (
-          <p className="profession">Profession: {user.profession}</p>
-        )}
-        {user?.bio && <p className="bio">Bio: {user.bio}</p>}
-        {user?.dob && (
-          <p className="dob">Date of Birth: {formatDate(user.dob)}</p>
-        )}
-        {user?.created_at && (
-          <p className="created-at">Joined: {formatDate(user.created_at)}</p>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit} className="profile-edit-form">
+            <div className="form-group">
+              <label htmlFor="profession">Profession:</label>
+              <input
+                type="text"
+                id="profession"
+                name="profession"
+                value={editFormData.profession}
+                onChange={handleInputChange}
+                maxLength={100}
+                required={user.profession !== null && user.profession !== ""}
+              />
+              <small className="field-note">
+                Profession cannot be empty once set
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="bio">Bio (max 200 words):</label>
+              <textarea
+                id="bio"
+                name="bio"
+                value={editFormData.bio}
+                onChange={handleInputChange}
+                maxLength={200}
+                rows={4}
+              />
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" className="save-button">
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="cancel-button"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {user?.profession && (
+              <p className="profession">Profession: {user.profession}</p>
+            )}
+            <p className="bio">Bio: {user?.bio || "-"}</p>
+            {user?.dob && (
+              <p className="dob">Date of Birth: {formatDate(user.dob)}</p>
+            )}
+            {user?.created_at && (
+              <p className="created-at">
+                Joined: {formatDate(user.created_at)}
+              </p>
+            )}
+            {isCurrentUser && (
+              <button onClick={handleEditClick} className="edit-profile-button">
+                Edit Profile
+              </button>
+            )}
+          </>
         )}
       </div>
 

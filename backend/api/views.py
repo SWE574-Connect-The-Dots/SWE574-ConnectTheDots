@@ -588,6 +588,21 @@ class ProfileViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['put', 'patch'])
+    def update_profile(self, request):
+        profile = request.user.profile
+        bio = request.data.get('bio', None)
+        profession = request.data.get('profession', None)
+        
+        if bio is not None:
+            profile.bio = bio
+        if profession is not None:
+            profile.profession = profession
+            
+        profile.save()
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['get'])
     def user_profile(self, request, pk=None):
         try:
