@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import api from "../axiosConfig";
 import "../ConnectTheDots.css";
-import AppLogo from "../assets/AppLogo.svg";
 
 export default function Home({ setIsAuthenticated, currentUser }) {
   const navigate = useNavigate();
@@ -148,94 +147,6 @@ export default function Home({ setIsAuthenticated, currentUser }) {
 
   return (
     <div className="connect-dots-container">
-      <header className="header">
-        <div className="logo-container">
-          <img src={AppLogo} alt="Connect-The-Dots Logo" className="logo" />
-          <div className="app-name">Connect-The-Dots</div>
-        </div>
-        <nav className="navigation">
-          <div
-            className="nav-item"
-            onClick={() => {
-              setActiveTab("trending");
-              fetchSpaces();
-            }}
-            style={{ cursor: "pointer" }}
-          >
-            Discover
-          </div>
-          <div
-            className="nav-item"
-            onClick={() =>
-              currentUser && navigate(`/profile/${currentUser.username}`)
-            }
-            style={{ cursor: "pointer" }}
-          >
-            {currentUser ? `Profile (${currentUser.username})` : "Profile"}
-          </div>
-        </nav>
-        <div
-          className="search-container"
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ position: "relative", flex: 1 }}>
-            <input
-              type="text"
-              placeholder="Search spaces or users..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              style={{
-                paddingRight: "30px",
-                width: "100%",
-                boxSizing: "border-box",
-              }}
-            />
-            {searchValue && (
-              <button
-                className="clear-button"
-                onClick={() => setSearchValue("")}
-                style={{
-                  position: "absolute",
-                  right: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "18px",
-                  cursor: "pointer",
-                  color: "#666",
-                  zIndex: 2,
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <button
-            className="search-button"
-            onClick={handleSearchButtonClick}
-            style={{
-              marginLeft: "5px",
-              padding: "5px 10px",
-              backgroundColor: "#1a73e8",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Search
-          </button>
-        </div>
-        <button className="create-space-button" onClick={handleOnCreateSpace}>
-          Create Space
-        </button>
-      </header>
       {/* Tabs */}
       <div className="tabs-container">
         <div

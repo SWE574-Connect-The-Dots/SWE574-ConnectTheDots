@@ -488,19 +488,31 @@ const SpaceDetails = () => {
           </div>
         </div>
         <p>{space.description}</p>
-        <ul className="tags-list">
+        <div style={{ marginTop: "10px", marginBottom: "20px" }}>
           {space.tags.map((tag) => (
-            <li key={tag.id || tag.name} className="tag-item">
-              <strong>{tag.name}</strong>
+            <span
+              key={tag.id || tag.name}
+              style={{
+                display: "inline-block",
+                backgroundColor: "#b3e6b3",
+                padding: "3px 8px",
+                borderRadius: "12px",
+                fontSize: "12px",
+                marginRight: "5px",
+                marginBottom: "5px",
+              }}
+            >
+              {tag.name}
               {tag.wikidata_label && (
-                <p className="tag-label">{tag.wikidata_label}</p>
+                <span
+                  style={{ marginLeft: "5px", fontSize: "10px", color: "#666" }}
+                >
+                  (Wikidata label: {tag.wikidata_label})
+                </span>
               )}
-              {tag.wikidata_id && (
-                <span className="tag-id">ID: {tag.wikidata_id}</span>
-              )}
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
 
         {/* Graph Visualization */}
         <div style={{ marginBottom: "30px" }}>

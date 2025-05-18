@@ -1,108 +1,121 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import '@testing-library/jest-dom';
-import Home from '../pages/Home';
-import api from '../axiosConfig';
-import { vi } from 'vitest';
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
+import "@testing-library/jest-dom";
+import Header from "../components/Header";
+import { vi } from "vitest";
 
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ pathname: '/' })
+    useLocation: () => ({ pathname: "/" }),
   };
 });
 
-describe('Home Search Functionality', () => {
+describe("Header Search Functionality", () => {
+  const mockCurrentUser = { username: "testuser" };
+  const mockSetIsAuthenticated = vi.fn();
+
   beforeEach(() => {
     mockNavigate.mockReset();
-    api.get.mockReset();
-    api.get.mockResolvedValue({ data: [] });
   });
 
-  test('navigates to search page when search button is clicked', () => {
+  test("navigates to search page when search button is clicked", () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Header
+          isAuthenticated={true}
+          currentUser={mockCurrentUser}
+          setIsAuthenticated={mockSetIsAuthenticated}
+        />
       </BrowserRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Search spaces or users...');
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchInput = screen.getByPlaceholderText("Search...");
 
-    fireEvent.change(searchInput, { target: { value: 'test query' } });
-    fireEvent.click(searchButton);
-    expect(mockNavigate).toHaveBeenCalledWith('/search?q=test%20query');
+    fireEvent.change(searchInput, { target: { value: "test query" } });
+    fireEvent.submit(searchInput.closest("form"));
+    expect(mockNavigate).toHaveBeenCalledWith("/search?q=test%20query");
   });
 
-  test('navigates to search page when Enter key is pressed', () => {
+  test("navigates to search page when Enter key is pressed", () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Header
+          isAuthenticated={true}
+          currentUser={mockCurrentUser}
+          setIsAuthenticated={mockSetIsAuthenticated}
+        />
       </BrowserRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Search spaces or users...');
+    const searchInput = screen.getByPlaceholderText("Search...");
 
-    fireEvent.change(searchInput, { target: { value: 'react tutorial' } });
-    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
+    fireEvent.change(searchInput, { target: { value: "react tutorial" } });
+    fireEvent.submit(searchInput.closest("form"));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/search?q=react%20tutorial');
+    expect(mockNavigate).toHaveBeenCalledWith("/search?q=react%20tutorial");
   });
 
-  test('does not navigate when search input is empty', () => {
+  test("does not navigate when search input is empty", () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Header
+          isAuthenticated={true}
+          currentUser={mockCurrentUser}
+          setIsAuthenticated={mockSetIsAuthenticated}
+        />
       </BrowserRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Search spaces or users...');
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchInput = screen.getByPlaceholderText("Search...");
 
-    fireEvent.change(searchInput, { target: { value: '' } });
-    fireEvent.click(searchButton);
+    fireEvent.change(searchInput, { target: { value: "" } });
+    fireEvent.submit(searchInput.closest("form"));
 
     expect(mockNavigate).not.toHaveBeenCalled();
-    
-    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  test('clears search input when X button is clicked', () => {
+  test("clears search input when × button is clicked", () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Header
+          isAuthenticated={true}
+          currentUser={mockCurrentUser}
+          setIsAuthenticated={mockSetIsAuthenticated}
+        />
       </BrowserRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Search spaces or users...');
-    
-    fireEvent.change(searchInput, { target: { value: 'test query' } });
-    
-    const clearButton = screen.getByRole('button', { name: '×' });
+    const searchInput = screen.getByPlaceholderText("Search...");
+
+    fireEvent.change(searchInput, { target: { value: "test query" } });
+
+    const clearButton = screen.getByText("×");
     fireEvent.click(clearButton);
-    
-    expect(searchInput.value).toBe('');
+
+    expect(searchInput.value).toBe("");
   });
 
-  test('trims whitespace when searching', () => {
+  test("trims whitespace when searching", () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Header
+          isAuthenticated={true}
+          currentUser={mockCurrentUser}
+          setIsAuthenticated={mockSetIsAuthenticated}
+        />
       </BrowserRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Search spaces or users...');
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchInput = screen.getByPlaceholderText("Search...");
 
-    fireEvent.change(searchInput, { target: { value: '  django   ' } });
-    
-    fireEvent.click(searchButton);
+    fireEvent.change(searchInput, { target: { value: "  django   " } });
+    fireEvent.submit(searchInput.closest("form"));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/search?q=django');
+    expect(mockNavigate).toHaveBeenCalledWith("/search?q=django");
   });
-}); 
+});

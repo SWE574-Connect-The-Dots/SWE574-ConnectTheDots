@@ -3,7 +3,6 @@ import {
   Route,
   Routes,
   Navigate,
-  Link,
 } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Login from "./pages/Login";
@@ -13,8 +12,10 @@ import CreateSpace from "./pages/CreateSpace";
 import SpaceDetail from "./pages/SpaceDetails";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
+import Header from "./components/Header";
 import api from "./axiosConfig";
 import { API_ENDPOINTS } from "./constants/config";
+import "./ConnectTheDots.css";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -75,84 +76,65 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? (
-              <Home
-                setIsAuthenticated={setIsAuthenticated}
-                currentUser={currentUser}
-              />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
+      <div className="connect-dots-container">
+        <Header
+          isAuthenticated={isAuthenticated}
+          currentUser={currentUser}
+          setIsAuthenticated={setIsAuthenticated}
         />
-        <Route
-          path="/login"
-          element={
-            !isAuthenticated ? (
-              <Login setIsAuthenticated={setIsAuthenticated} />
-            ) : (
-              <Home
-                setIsAuthenticated={setIsAuthenticated}
-                currentUser={currentUser}
-              />
-            )
-          }
-        />
-        <Route
-          path="/register"
-          element={!isAuthenticated ? <Register /> : <Navigate to="/" />}
-        />
-        <Route
-          path="/create-space"
-          element={isAuthenticated ? <CreateSpace /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/spaces/:id"
-          element={isAuthenticated ? <SpaceDetail /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/search"
-          element={isAuthenticated ? <Search /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/profile/:username"
-          element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
-        />
-      </Routes>
 
-      <nav>
-        {!isAuthenticated ? (
-          <>
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
-          </>
-        ) : (
-          <>
-            <Link to="/">Home</Link>
-            <Link to="/search">Search</Link>
-            {currentUser && (
-              <Link to={`/profile/${currentUser.username}`}>Profile</Link>
-            )}
-            <Link
-              to="/logout"
-              onClick={() => {
-                localStorage.removeItem("token");
-                localStorage.removeItem("username");
-                localStorage.removeItem("is_staff");
-                localStorage.removeItem("is_superuser");
-                setIsAuthenticated(false);
-                window.location.href = "/login";
-              }}
-            >
-              Logout
-            </Link>
-          </>
-        )}
-      </nav>
+        <main className="main-content">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                isAuthenticated ? (
+                  <Home
+                    setIsAuthenticated={setIsAuthenticated}
+                    currentUser={currentUser}
+                  />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                !isAuthenticated ? (
+                  <Login setIsAuthenticated={setIsAuthenticated} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+            <Route
+              path="/register"
+              element={!isAuthenticated ? <Register /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/create-space"
+              element={
+                isAuthenticated ? <CreateSpace /> : <Navigate to="/login" />
+              }
+            />
+            <Route
+              path="/spaces/:id"
+              element={
+                isAuthenticated ? <SpaceDetail /> : <Navigate to="/login" />
+              }
+            />
+            <Route
+              path="/search"
+              element={isAuthenticated ? <Search /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/profile/:username"
+              element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
+            />
+          </Routes>
+        </main>
+      </div>
     </Router>
   );
 }

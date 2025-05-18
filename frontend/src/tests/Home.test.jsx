@@ -5,7 +5,6 @@ import api from "../axiosConfig";
 import { BrowserRouter } from "react-router-dom";
 import Home from "../pages/Home";
 
-// Mock the api module
 vi.mock("../axiosConfig", () => ({
   default: {
     get: vi.fn(),
@@ -13,7 +12,10 @@ vi.mock("../axiosConfig", () => ({
   },
 }));
 
-// Mock localStorage
+vi.mock("../components/Header", () => ({
+  default: vi.fn(() => <div data-testid="mock-header">Mock Header</div>),
+}));
+
 const localStorageMock = (() => {
   let store = {
     token: "fake-jwt-token",
@@ -40,6 +42,7 @@ Object.defineProperty(window, "localStorage", {
 
 describe("Home Component - Join Space Functionality", () => {
   const mockSetIsAuthenticated = vi.fn();
+  const mockCurrentUser = { username: "testuser" };
 
   const mockSpaces = [
     {
@@ -62,10 +65,8 @@ describe("Home Component - Join Space Functionality", () => {
     api.get.mockReset();
     api.post.mockReset();
 
-    // Mock API response for fetching spaces
     api.get.mockResolvedValue({ data: mockSpaces });
 
-    // Mock successful join/leave responses
     api.post.mockImplementation((url) => {
       if (url.includes("join")) {
         return Promise.resolve({
@@ -88,7 +89,10 @@ describe("Home Component - Join Space Functionality", () => {
   test("renders join button for spaces user is not part of", async () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={mockSetIsAuthenticated} />
+        <Home
+          setIsAuthenticated={mockSetIsAuthenticated}
+          currentUser={mockCurrentUser}
+        />
       </BrowserRouter>
     );
 
@@ -99,7 +103,6 @@ describe("Home Component - Join Space Functionality", () => {
       );
     });
 
-    // Find the first space (where user is not a collaborator)
     const joinButton = screen.getAllByText("JOIN")[0];
     expect(joinButton).toBeInTheDocument();
   });
@@ -107,7 +110,10 @@ describe("Home Component - Join Space Functionality", () => {
   test("renders leave button for spaces user is part of", async () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={mockSetIsAuthenticated} />
+        <Home
+          setIsAuthenticated={mockSetIsAuthenticated}
+          currentUser={mockCurrentUser}
+        />
       </BrowserRouter>
     );
 
@@ -118,7 +124,6 @@ describe("Home Component - Join Space Functionality", () => {
       );
     });
 
-    // Find the second space (where user is a collaborator)
     const leaveButton = screen.getAllByText("LEAVE")[0];
     expect(leaveButton).toBeInTheDocument();
   });
@@ -126,7 +131,10 @@ describe("Home Component - Join Space Functionality", () => {
   test("handles joining a space successfully", async () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={mockSetIsAuthenticated} />
+        <Home
+          setIsAuthenticated={mockSetIsAuthenticated}
+          currentUser={mockCurrentUser}
+        />
       </BrowserRouter>
     );
 
@@ -137,7 +145,6 @@ describe("Home Component - Join Space Functionality", () => {
       );
     });
 
-    // Mock the response for getting space details after joining
     api.get.mockImplementation((url) => {
       if (url.includes("/spaces/1")) {
         return Promise.resolve({
@@ -150,7 +157,6 @@ describe("Home Component - Join Space Functionality", () => {
       return Promise.resolve({ data: mockSpaces });
     });
 
-    // Find and click the join button
     const joinButton = screen.getAllByText("JOIN")[0];
     fireEvent.click(joinButton);
 
@@ -167,7 +173,10 @@ describe("Home Component - Join Space Functionality", () => {
   test("handles leaving a space successfully", async () => {
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={mockSetIsAuthenticated} />
+        <Home
+          setIsAuthenticated={mockSetIsAuthenticated}
+          currentUser={mockCurrentUser}
+        />
       </BrowserRouter>
     );
 
@@ -178,7 +187,6 @@ describe("Home Component - Join Space Functionality", () => {
       );
     });
 
-    // Mock the response for getting space details after leaving
     api.get.mockImplementation((url) => {
       if (url.includes("/spaces/2")) {
         return Promise.resolve({
@@ -193,7 +201,6 @@ describe("Home Component - Join Space Functionality", () => {
       return Promise.resolve({ data: mockSpaces });
     });
 
-    // Find and click the leave button
     const leaveButton = screen.getAllByText("LEAVE")[0];
     fireEvent.click(leaveButton);
 
@@ -209,34 +216,22 @@ describe("Home Component - Join Space Functionality", () => {
 });
 
 describe("Home Component - Navigation", () => {
+  const mockCurrentUser = { username: "testuser" };
+
   beforeEach(() => {
     api.get.mockReset();
     api.get.mockResolvedValue({ data: [] });
   });
 
-  test("clicking Discover button refreshes space list and sets tab to trending", async () => {
-    // First set the activeTab to "new" in localStorage
-    localStorage.setItem("activeTab", "new");
+  test("clicking tab buttons changes active tab and refreshes space list", async () => {
+    localStorage.setItem("activeTab", "trending");
 
     render(
       <BrowserRouter>
-        <Home setIsAuthenticated={vi.fn()} />
+        <Home setIsAuthenticated={vi.fn()} currentUser={mockCurrentUser} />
       </BrowserRouter>
     );
 
-    // First API call happens on component mount (should use the "new" tab from localStorage)
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/spaces/new/", expect.any(Object));
-    });
-
-    // Reset the mock to check the next call
-    api.get.mockClear();
-
-    // Click the Discover button
-    const discoverButton = screen.getByText("Discover");
-    fireEvent.click(discoverButton);
-
-    // Verify fetchSpaces was called again with the trending endpoint
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
         "/spaces/trending/",
@@ -244,7 +239,29 @@ describe("Home Component - Navigation", () => {
       );
     });
 
-    // Verify that localStorage was updated with the new activeTab value
+    api.get.mockClear();
+
+    const newTab = screen.getByText("New");
+    fireEvent.click(newTab);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/spaces/new/", expect.any(Object));
+    });
+
+    expect(localStorage.getItem("activeTab")).toBe("new");
+
+    api.get.mockClear();
+
+    const trendingTab = screen.getByText("Trending");
+    fireEvent.click(trendingTab);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith(
+        "/spaces/trending/",
+        expect.any(Object)
+      );
+    });
+
     expect(localStorage.getItem("activeTab")).toBe("trending");
   });
 });
