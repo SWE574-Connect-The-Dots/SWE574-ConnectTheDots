@@ -1,7 +1,7 @@
-# Welcome to the SWE573 Software Development Practice Wiki page
+# Welcome to the SWE574 Software Development as a Team Project
 
 ## 👾 Connect-The-Dots?
-* Welcome to the repository for Connect-The-Dots project which is a collaborative and explorative space for curious people where you can learn new things, increase your knowledge or share your knowledge with other people.
+Welcome to the repository for Connect-The-Dots project which is a collaborative and explorative space for curious people where you can learn new things, increase your knowledge or share your knowledge with other people.
 
 ## 🏀 Team
 * Gamze Güneri
@@ -24,4 +24,4 @@
 * **Containerization:** Docker
 
 ## 📝 Wiki
-* For more information and documentation about the project you can check out Wiki page -> [SWE573 Wiki](https://github.com/yusufbayam/SWE573/wiki)
+* For more information and documentation about the project you can check out Wiki page -> [SWE574 Wiki](https://github.com/SWE574-Connect-The-Dots/SWE574-ConnectTheDots/wiki)
