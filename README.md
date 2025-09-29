@@ -3,6 +3,13 @@
 ## 👾 Connect-The-Dots?
 * Welcome to the repository for Connect-The-Dots project which is a collaborative and explorative space for curious people where you can learn new things, increase your knowledge or share your knowledge with other people.
 
+## 🏀 Team
+* Gamze Güneri
+* Yusuf Bayam
+* Yasemin Tangül
+* Esra Nur Özüm
+* Batuhan Cömert
+
 ## 🎯 Features
 * Find or create a topic of your interest
 * See the elements of the topic with a graph visualization
