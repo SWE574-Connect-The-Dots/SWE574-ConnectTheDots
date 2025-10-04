@@ -18,7 +18,8 @@ Welcome to the repository for Connect-The-Dots project which is a collaborative 
 * Search spaces by tags
 
 ## 🛠 Tech Stack
-* **Frontend:** ReactJS
+* **Web - Frontend:** ReactJS
+* **Android - Frontend:** Kotlin
 * **Backend:** Python Django
 * **Database:** PostgreSQL
 * **Containerization:** Docker
