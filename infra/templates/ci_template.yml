@@ -1,0 +1,128 @@
+name: CI Template
+
+on:
+  workflow_call:
+    inputs:
+      run_docker_build:
+        type: boolean
+        required: true
+        description: "Enable Docker build & push stage"
+      run_compose_tests:
+        type: boolean
+        required: true
+        description: "Enable docker compose test stage"
+    secrets: inherit
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_DB: ${{ secrets.DB_NAME }}
+      POSTGRES_USER: ${{ secrets.DB_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Create .env from GitHub Secrets
+        run: |
+          echo "DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }}" >> .env
+          echo "DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }}" >> .env
+          echo "DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=db" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+
+      # --- Docker build stage ---
+      - name: Log in to GitHub Container Registry
+        if: ${{ inputs.run_docker_build }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build and push Docker image to GHCR
+        if: ${{ inputs.run_docker_build }}
+        run: |
+          REPO="ghcr.io/swe574-connect-the-dots/swe574"
+
+          # Derive tag based on context
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            TAG="pr-${GITHUB_HEAD_REF}"
+          elif [ "${GITHUB_REF_NAME}" = "develop" ]; then
+            TAG="develop"
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            TAG="latest"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          IMAGE="${REPO}:${TAG}"
+
+          echo "Building image: $IMAGE"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # --- Compose test stage ---
+      - name: Run containers (for test)
+        if: ${{ inputs.run_compose_tests }}
+        run: docker compose up -d
+
+      - name: Wait for services to settle
+        if: ${{ inputs.run_compose_tests }}
+        run: sleep 30
+
+      - name: Save Django logs
+        if: ${{ inputs.run_compose_tests }}
+        run: docker compose logs web > django_logs.txt
+
+      - name: Upload Django logs as artifact
+        if: ${{ inputs.run_compose_tests }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: django-logs
+          path: django_logs.txt
+
+      - name: Save PostgreSQL logs
+        if: ${{ inputs.run_compose_tests }}
+        run: docker compose logs db > postgres_logs.txt
+
+      - name: Upload PostgreSQL logs as artifact
+        if: ${{ inputs.run_compose_tests }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-logs
+          path: postgres_logs.txt
+
+      - name: Shut down containers
+        if: ${{ inputs.run_compose_tests || always() }}
+        run: docker compose down
