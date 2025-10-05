@@ -7,7 +7,7 @@ on:
 
 jobs:
   ci:
-    uses: SWE574-Connect-The-Dots/<REPO_NAME>/infra/templates/ci_template.yml@<COMMIT_SHA>
+    uses: SWE574-ConnectTheDots/infra/templates/ci_template.yml@develop
     with:
       run_docker_build: false
       run_compose_tests: true
