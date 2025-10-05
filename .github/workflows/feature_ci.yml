@@ -7,7 +7,7 @@ on:
 
 jobs:
   ci:
-    uses: SWE574-ConnectTheDots/infra/templates/ci_template.yml@develop
+    uses: ./.github/workflows/ci_template.yml
     with:
       run_docker_build: false
       run_compose_tests: true
