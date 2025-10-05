@@ -1,6 +1,6 @@
 # Welcome to the SWE574 Software Development as a Team Project
 
-## 👾 Connect-The-Dots?
+## 👾 Connect-The-Dots
 Welcome to the repository for Connect-The-Dots project which is a collaborative and explorative space for curious people where you can learn new things, increase your knowledge or share your knowledge with other people.
 
 ## 🏀 Team
