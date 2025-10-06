@@ -8,8 +8,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.yybb.myapplication.R
 import com.yybb.myapplication.presentation.navigation.Screen
 import com.yybb.myapplication.presentation.ui.utils.CollectAsEffect
 import com.yybb.myapplication.presentation.ui.viewmodel.AuthEvent
@@ -38,6 +40,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = "Login Screen")
+        Text(text = "This text is localized: ${stringResource(id = R.string.hello_world)}")
         Button(onClick = { viewModel.onLoginClicked() }) {
             Text(text = "Fake Login")
         }

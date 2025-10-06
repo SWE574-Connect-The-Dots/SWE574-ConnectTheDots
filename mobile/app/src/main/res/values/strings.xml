@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Connect-The-Dots</string>
+    <string name="hello_world">Hello!</string>
 </resources>
