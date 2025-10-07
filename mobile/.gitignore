@@ -1,0 +1,22 @@
+# Folders
+build/
+.gradle/
+captures/
+
+# Files
+*.apk
+*.aab
+*.ap_
+*.iml
+*.keystore
+*.jks
+local.properties
+
+# IDE files
+.idea/
+.DS_Store
+
+# C/C++
+.cxx/
+.externalNativeBuild/
+ CMakeLists.txt.user
