@@ -19,4 +19,10 @@ class LoginViewModel @Inject constructor() : ViewModel() {
             _eventChannel.send(AuthEvent.NavigateToMain)
         }
     }
+
+    fun onRegisterClicked() {
+        viewModelScope.launch {
+            _eventChannel.send(AuthEvent.NavigateToRegister)
+        }
+    }
 }
