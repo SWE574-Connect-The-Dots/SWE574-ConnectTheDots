@@ -31,6 +31,16 @@ fun LoginScreen(
                     }
                 }
             }
+            is AuthEvent.NavigateToRegister -> {
+                navController.navigate(Screen.Register.route) {
+                    popUpTo(Screen.AuthGraph.route) {
+                        inclusive = true
+                    }
+                }
+            }
+            else -> {
+
+            }
         }
     }
 
@@ -43,6 +53,9 @@ fun LoginScreen(
         Text(text = "This text is localized: ${stringResource(id = R.string.hello_world)}")
         Button(onClick = { viewModel.onLoginClicked() }) {
             Text(text = "Fake Login")
+        }
+        Button(onClick = { viewModel.onRegisterClicked() }) {
+            Text(text = "Register")
         }
     }
 }

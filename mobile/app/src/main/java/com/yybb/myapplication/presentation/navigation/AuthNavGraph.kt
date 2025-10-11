@@ -16,7 +16,7 @@ fun NavGraphBuilder.authNavGraph(navController: NavController) {
             LoginScreen(navController = navController)
         }
         composable(Screen.Register.route) {
-            RegisterScreen()
+            RegisterScreen(navController = navController)
         }
     }
 }
