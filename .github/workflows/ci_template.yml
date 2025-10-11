@@ -11,7 +11,6 @@ on:
         type: boolean
         required: true
         description: "Enable docker compose test stage"
-    secrets: inherit
 
 jobs:
   build:
