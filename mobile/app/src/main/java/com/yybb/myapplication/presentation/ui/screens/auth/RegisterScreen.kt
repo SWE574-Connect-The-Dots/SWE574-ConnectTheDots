@@ -26,8 +26,12 @@ import com.yybb.myapplication.presentation.ui.viewmodel.RegisterViewModel
 import java.util.Calendar
 import java.util.Locale
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +50,9 @@ fun RegisterScreen(
     val state by viewModel.viewState.collectAsState()
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
+        disabledBorderColor = Color(0xFF605E5E),
+        disabledPlaceholderColor = Color(0xFF9E9E9E),
+        disabledTrailingIconColor = Color(0xFF9E9E9E),
         unfocusedBorderColor = Color(0xFFB7B5B5),
         focusedBorderColor = Color(0xFF000000),
         cursorColor = Color(0xFF000000),
@@ -154,7 +161,7 @@ fun RegisterScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
+                        .fillMaxHeight()
                         .clickable { isDatePickerOpen = true }
                 ) {
                     OutlinedTextField(
@@ -234,34 +241,25 @@ fun RegisterScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF000000))
             ) {
-                Row {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         painter = painterResource(id = R.drawable.user),
                         contentDescription = "Register Icon",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text(stringResource(id = R.string.register_button), fontSize = 14.sp)
+                    Text(stringResource(id = R.string.register_button), fontSize = 14.sp, color = Color.White)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row {
-                Text(
-                    text = "${stringResource(id = R.string.have_account_text)} ",
-                    fontSize = 14.sp,
-                    color = Color.Black
-                )
-
-                Text(
-                    text = stringResource(id = R.string.sign_in_option),
-                    fontSize = 14.sp,
-                    color = Color(0xFF007BFF),
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { viewModel.onBackToLoginClicked() }
-                )
-            }
+            SignInText(
+                onClick = { viewModel.onBackToLoginClicked() }
+            )
         }
 
         if (state is ViewState.Loading) {
@@ -294,6 +292,7 @@ private fun InputField(
             placeholder = { Text(placeholder) },
             shape = MaterialTheme.shapes.small.copy(all = androidx.compose.foundation.shape.CornerSize(8.dp)),
             colors = colors,
+            singleLine = true,
             keyboardOptions = when {
                 isEmail -> KeyboardOptions(keyboardType = KeyboardType.Email)
                 isProfession -> KeyboardOptions(keyboardType = KeyboardType.Text)
@@ -301,9 +300,37 @@ private fun InputField(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .fillMaxHeight(),
         )
     }
+}
+
+@Composable
+fun SignInText(onClick: () -> Unit) {
+    val annotatedString = buildAnnotatedString {
+        append("${stringResource(R.string.have_account_text)} ")
+
+        pushStringAnnotation(tag = "SIGN_UP", annotation = "sign_up")
+        withStyle(
+            style = SpanStyle(
+                color = Color(0xFF007BFF),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+        ) {
+            append(stringResource(R.string.sign_in_option))
+        }
+        pop()
+    }
+
+    ClickableText(
+        text = annotatedString,
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(tag = "SIGN_UP", start = offset, end = offset)
+                .firstOrNull()?.let { _ -> onClick() }
+        },
+        style = LocalTextStyle.current.copy(fontSize = 14.sp, color = Color.Black)
+    )
 }
 
 @Preview(showSystemUi = true, showBackground = true)
