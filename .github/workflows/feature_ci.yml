@@ -11,4 +11,4 @@ jobs:
     with:
       run_docker_build: false
       run_compose_tests: true
-    secrets: inherit
+    
