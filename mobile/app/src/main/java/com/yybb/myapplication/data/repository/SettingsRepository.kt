@@ -9,7 +9,7 @@ import javax.inject.Singleton
 class SettingsRepository @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
-    val isColorBlindTheme: Flow<Boolean> = userPreferencesRepository.isColorBlindTheme
+    val isColorBlindTheme: Flow<Boolean> get() = userPreferencesRepository.isColorBlindTheme
 
     suspend fun setColorBlindTheme(isColorBlind: Boolean) {
         userPreferencesRepository.setColorBlindTheme(isColorBlind)
