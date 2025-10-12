@@ -9,8 +9,11 @@
     <string name="date_of_birth_title">Date Of Birth</string>
     <string name="location_consent_text">I agree to share my location for registration and personalized service purposes.</string>
     <string name="have_account_text">Already have an account?</string>
+    <string name="dont_have_account">Don\'t you have an account?</string>
     <string name="sign_in_option">Sign In</string>
+    <string name="sign_up_option">Sign Up!</string>
     <string name="register_button">Register</string>
+    <string name="login_button">Login</string>
     <string name="ok_button">Ok</string>
     <string name="cancel_button">Cancel</string>
     <string name="error">Error</string>

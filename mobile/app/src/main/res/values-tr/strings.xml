@@ -9,8 +9,11 @@
     <string name="date_of_birth_title">Doğum Tarihi</string>
     <string name="location_consent_text">Uygulama ile konumumu paylaşmayı kabul ediyorum.</string>
     <string name="have_account_text">Zaten bir hesabınız var mı?</string>
+    <string name="dont_have_account">Hesabınız yok mu?</string>
     <string name="sign_in_option">Giriş Yap</string>
+    <string name="sign_up_option">Hesap Oluştur!</string>
     <string name="register_button">Kayıt Ol</string>
+    <string name="login_button">Giriş Yap</string>
     <string name="ok_button">Tamam</string>
     <string name="cancel_button">İptal</string>
     <string name="error">Hata</string>
