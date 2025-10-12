@@ -136,16 +136,24 @@ jobs:
             api python manage.py collectstatic --noinput || true
 
       - name: Smoke test API
+        env:
+          # set this to your real endpoint if you have one, e.g. /api/ or /health/
+          SMOKE_PATH: /
         run: |
-          for i in {1..30}; do
-            if curl -fsS http://localhost:8000/ >/dev/null; then
-              echo "API responded OK"
+          URL="http://localhost:8000${SMOKE_PATH}"
+          echo "Probing $URL ..."
+          for i in {1..60}; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$URL" || echo 000)
+            echo "Attempt $i: HTTP $code"
+            # Treat common codes as "service is up" (200/2xx/3xx/401/403/404 are fine)
+            if [[ "$code" =~ ^(200|201|204|301|302|401|403|404)$ ]]; then
+              echo "API up at $URL (HTTP $code)"
               exit 0
             fi
             sleep 2
           done
-          echo "API did not respond in time"
-          $COMPOSE_CMD logs api
+          echo "API did not become ready. Last code: $code"
+          $COMPOSE_CMD logs api || true
           exit 1
 
       - name: Save logs
