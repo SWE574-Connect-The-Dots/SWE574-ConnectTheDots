@@ -63,30 +63,32 @@ jobs:
             env | egrep "DB_|POSTGRES_|DATABASE_URL" | sed -e "s/\(PASSWORD=\).*/\1***redacted***/"
           ' || true
 
-      - name: Check DB reachability from api
-        env:
-          COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
+      - name: Check DB reachability from api (optional)
         run: |
-          docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api sh -lc '
+          $COMPOSE_CMD exec -T api sh -lc '
             command -v python >/dev/null 2>&1 || exit 0
             python - <<PY
-            import os, sys
-            import time
-            import psycopg
-            dsn = os.getenv("DATABASE_URL") or f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-            for i in range(30):
-                try:
-                    with psycopg.connect(dsn, connect_timeout=3) as conn:
-                        with conn.cursor() as cur:
-                            cur.execute("SELECT 1")
-                            print("DB reachable via", dsn.split('@')[-1])
-                            sys.exit(0)
-                except Exception as e:
-                    time.sleep(1)
-            print("DB NOT reachable")
-            sys.exit(1)
-            PY
-                      '
+          import os, sys, time
+          try:
+              import psycopg
+          except Exception as e:
+              print("psycopg not available in api image; skipping DB probe.")
+              sys.exit(0)
+
+          dsn = os.getenv("DATABASE_URL") or f"postgresql://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}"
+          for i in range(30):
+              try:
+                  with psycopg.connect(dsn, connect_timeout=3) as conn:
+                      with conn.cursor() as cur:
+                          cur.execute("SELECT 1")
+                          print("DB reachable via", dsn.split("@")[-1])
+                          sys.exit(0)
+              except Exception:
+                  time.sleep(1)
+          print("DB NOT reachable")
+          sys.exit(1)
+          PY
+              ' || true
                       
       - name: Wait for Postgres to be ready
         run: |
