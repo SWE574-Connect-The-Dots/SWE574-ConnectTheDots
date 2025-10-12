@@ -108,8 +108,8 @@ jobs:
         env:
           COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
         run: |
-          docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api python manage.py migrate --noinput
-          docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api python manage.py collectstatic --noinput || true
+          $COMPOSE_CMD exec -T api python manage.py migrate --noinput
+          $COMPOSE_CMD exec -T api python manage.py collectstatic --noinput || true
 
       - name: Run Django tests (optional)
         run: |
