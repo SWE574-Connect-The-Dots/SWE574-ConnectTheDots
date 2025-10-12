@@ -14,18 +14,30 @@ services:
       - DOCKER=true
     depends_on:
       - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   db:
     image: postgres:16-alpine
     env_file:
       - ./backend/.env.docker
     ports:
-      - "5433:5432"
+      - "5433:5432"   # Keep for local dev; CI doesn't need host mapping
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
@@ -34,6 +46,12 @@ services:
       - "3000:80"
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   postgres_data:
