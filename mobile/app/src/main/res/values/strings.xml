@@ -22,4 +22,6 @@
     <string name="invalid_profession_error">Profession must contain only letters.</string>
     <string name="age_error">You must be at least 18 years old to register.</string>
     <string name="consent_error">You must agree to share your location.</string>
+    <string name="settings_page_title">Settings Page</string>
+    <string name="settings_color_blind_theme_label">Color-Blind Friendly Theme</string>
 </resources>
