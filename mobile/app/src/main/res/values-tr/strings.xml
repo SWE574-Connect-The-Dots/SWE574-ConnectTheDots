@@ -22,4 +22,6 @@
     <string name="invalid_profession_error">Meslek bilgisi yalnızca harf içermelidir.</string>
     <string name="age_error">Kayıt olmak için en az 18 yaşında olmanız gereklidir.</string>
     <string name="consent_error">Devam etmek için konumunuzu paylaşmayı kabul etmelisiniz.</string>
+    <string name="settings_page_title">Ayarlar Sayfası</string>
+    <string name="settings_color_blind_theme_label">Renk Körü Dostu Tema</string>
 </resources>
