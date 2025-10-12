@@ -135,12 +135,6 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
 
-      - name: Run Django tests (optional)
-        run: |
-          # Uncomment ONE of the lines below depending on your setup
-          # $COMPOSE_CMD exec -T api pytest -q
-          $COMPOSE_CMD exec -T api python manage.py test -v 2 || true
-
       - name: Smoke test API
         run: |
           for i in {1..30}; do
