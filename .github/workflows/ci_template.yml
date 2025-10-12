@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      COMPOSE_CMD: docker compose --project-directory . -f infra/docker-compose.yml
+      COMPOSE_CMD: docker compose --project-directory . -f infra/docker-compose.yaml
 
     steps:
       - name: Checkout
