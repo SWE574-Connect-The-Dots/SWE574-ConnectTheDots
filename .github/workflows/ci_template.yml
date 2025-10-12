@@ -106,22 +106,32 @@ jobs:
 
       - name: Django migrate & collectstatic
         run: |
-          # provide DB envs explicitly for this exec
+        # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
           $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
             -e DB_HOST=db \
             -e DB_PORT=5432 \
-            -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DB_USER='${{ secrets.DB_USER }}' \
             -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py migrate --noinput
 
           $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
             -e DB_HOST=db \
             -e DB_PORT=5432 \
-            -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DB_USER='${{ secrets.DB_USER }}' \
             -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
 
