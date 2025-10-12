@@ -50,9 +50,7 @@ jobs:
           make_env infra/backend/.env.docker
 
       - name: Build & start stack
-        env:
-          COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
-        run: docker compose --project-directory . -f "$COMPOSE_FILE" up -d --build
+        run: $COMPOSE_CMD up -d --build
 
       - name: Debug env inside api
         env:
