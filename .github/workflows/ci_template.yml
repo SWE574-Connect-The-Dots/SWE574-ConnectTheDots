@@ -105,11 +105,25 @@ jobs:
           exit 1
 
       - name: Django migrate & collectstatic
-        env:
-          COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
         run: |
-          $COMPOSE_CMD exec -T api python manage.py migrate --noinput
-          $COMPOSE_CMD exec -T api python manage.py collectstatic --noinput || true
+          # provide DB envs explicitly for this exec
+          $COMPOSE_CMD exec -T \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py migrate --noinput
+
+          $COMPOSE_CMD exec -T \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py collectstatic --noinput || true
 
       - name: Run Django tests (optional)
         run: |
