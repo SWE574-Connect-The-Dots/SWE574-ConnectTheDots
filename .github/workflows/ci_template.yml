@@ -106,7 +106,7 @@ jobs:
 
       - name: Django migrate & collectstatic
         run: |
-        # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
+          # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
           $COMPOSE_CMD exec -T \
             -e PGHOST=db \
             -e PGPORT=5432 \
