@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      COMPOSE_CMD: docker compose --project-directory . -f infra/docker-compose.yaml
+      COMPOSE_CMD: docker compose --project-directory infra -f infra/docker-compose.yaml
 
     steps:
       - name: Checkout
@@ -20,11 +20,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create backend/.env files
-        working-directory: .
+      - name: Create backend/.env
+        working-directory: backend
         run: |
-          mkdir -p backend
-          cat > backend/.env <<EOF
+          cat > .env <<EOF
           DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG=False
 
@@ -34,15 +33,13 @@ jobs:
           POSTGRES_HOST=db
           POSTGRES_PORT=5432
           EOF
-
-          echo "Created backend/.env"
-          echo "---- backend/.env preview ----"
-          cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
+              echo "✅ Created backend/.env"
+              echo "---- backend/.env preview ----"
+              cat .env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
 
 
       - name: Build & start stack
-        working-directory: infra
-        run: docker compose up -d --build
+        run: $COMPOSE_CMD up -d --build
 
       - name: Debug env inside api
         env:
