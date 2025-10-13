@@ -1,0 +1,178 @@
+name: CI (Docker Compose)
+
+on:
+  push:
+    branches:
+      - "[0-9]*_feature_*"
+      - "develop"
+
+jobs:
+  compose-ci:
+    runs-on: ubuntu-latest
+
+    env:
+      COMPOSE_CMD: docker compose --project-directory . -f infra/docker-compose.yaml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create backend/.env.docker for both resolutions
+        run: |
+          # root-level path
+          mkdir -p backend
+          # infra-level path (in case compose resolves relative to the file)
+          mkdir -p infra/backend
+
+          make_env() {
+            cat > "$1" <<'EOF'
+          DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+          DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+          POSTGRES_DB=${{ secrets.DB_NAME }}
+          POSTGRES_USER=${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=db
+          DB_PORT=5432
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          # Add DATABASE_URL so Django can't fall back to the local socket
+          DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}
+          EOF
+                    }
+
+          make_env backend/.env.docker
+          make_env infra/backend/.env.docker
+
+      - name: Build & start stack
+        run: $COMPOSE_CMD up -d --build
+
+      - name: Debug env inside api
+        env:
+          COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
+        run: |
+          docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api sh -lc '
+            echo "===== /app/.env.docker exists? ====="
+            [ -f /app/.env.docker ] && ls -l /app/.env.docker || echo "nope"
+            echo "===== print relevant env ====="
+            env | egrep "DB_|POSTGRES_|DATABASE_URL" | sed -e "s/\(PASSWORD=\).*/\1***redacted***/"
+          ' || true
+
+      - name: Check DB reachability from api (optional)
+        run: |
+          $COMPOSE_CMD exec -T api sh -lc '
+            command -v python >/dev/null 2>&1 || exit 0
+            python - <<PY
+          import os, sys, time
+          try:
+              import psycopg
+          except Exception as e:
+              print("psycopg not available in api image; skipping DB probe.")
+              sys.exit(0)
+
+          dsn = os.getenv("DATABASE_URL") or f"postgresql://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}"
+          for i in range(30):
+              try:
+                  with psycopg.connect(dsn, connect_timeout=3) as conn:
+                      with conn.cursor() as cur:
+                          cur.execute("SELECT 1")
+                          print("DB reachable via", dsn.split("@")[-1])
+                          sys.exit(0)
+              except Exception:
+                  time.sleep(1)
+          print("DB NOT reachable")
+          sys.exit(1)
+          PY
+              ' || true
+                      
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..60}; do
+            if $COMPOSE_CMD exec -T db sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1; then
+              echo "Postgres is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          $COMPOSE_CMD logs db
+          exit 1
+
+      - name: Django migrate & collectstatic
+        run: |
+          # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
+          $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py migrate --noinput
+
+          $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py collectstatic --noinput || true
+
+      - name: Smoke test API
+        env:
+          # set this to your real endpoint if you have one, e.g. /api/ or /health/
+          SMOKE_PATH: /
+        run: |
+          URL="http://localhost:8000${SMOKE_PATH}"
+          echo "Probing $URL ..."
+          for i in {1..60}; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$URL" || echo 000)
+            echo "Attempt $i: HTTP $code"
+            # Treat common codes as "service is up" (200/2xx/3xx/401/403/404 are fine)
+            if [[ "$code" =~ ^(200|201|204|301|302|401|403|404)$ ]]; then
+              echo "API up at $URL (HTTP $code)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become ready. Last code: $code"
+          $COMPOSE_CMD logs api || true
+          exit 1
+
+      - name: Save logs
+        if: always()
+        run: |
+          $COMPOSE_CMD logs api > django_logs.txt || true
+          $COMPOSE_CMD logs db > postgres_logs.txt || true
+          $COMPOSE_CMD logs frontend > frontend_logs.txt || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs
+          path: |
+            django_logs.txt
+            postgres_logs.txt
+            frontend_logs.txt
+
+      - name: Tear down
+        if: always()
+        run: $COMPOSE_CMD down -v
