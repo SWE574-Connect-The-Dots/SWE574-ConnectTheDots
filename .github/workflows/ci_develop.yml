@@ -20,7 +20,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create backend/.env.docker for both resolutions
+      - name: Create backend/.env for both resolutions
         run: |
           # root-level path
           mkdir -p backend
@@ -46,8 +46,8 @@ jobs:
           EOF
                     }
 
-          make_env backend/.env.docker
-          make_env infra/backend/.env.docker
+          make_env backend/.env
+          make_env infra/backend/.env
 
       - name: Build & start stack
         run: $COMPOSE_CMD up -d --build
@@ -57,8 +57,8 @@ jobs:
           COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
         run: |
           docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api sh -lc '
-            echo "===== /app/.env.docker exists? ====="
-            [ -f /app/.env.docker ] && ls -l /app/.env.docker || echo "nope"
+            echo "===== /app/.env exists? ====="
+            [ -f /app/.env ] && ls -l /app/.env || echo "nope"
             echo "===== print relevant env ====="
             env | egrep "DB_|POSTGRES_|DATABASE_URL" | sed -e "s/\(PASSWORD=\).*/\1***redacted***/"
           ' || true
