@@ -3,7 +3,7 @@ name: CI (Docker Compose)
 on:
   push:
     branches:
-      - "[0-9]*_feature_*"
+      - "feature/*"
       - "develop"
 
 jobs:
