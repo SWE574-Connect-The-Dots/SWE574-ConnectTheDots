@@ -124,6 +124,14 @@ jobs:
             -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
+      
+      - name: Run Django tests
+        run: |
+          echo "Running backend tests..."
+          $COMPOSE_CMD exec -T \
+            -e DJANGO_SETTINGS_MODULE=backend.settings \
+            api python manage.py test backend/api/tests --verbosity=2
+
 
       - name: Smoke test API
         env:
