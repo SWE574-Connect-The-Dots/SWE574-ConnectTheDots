@@ -130,7 +130,7 @@ jobs:
           echo "Running backend tests..."
           $COMPOSE_CMD exec -T \
             -e DJANGO_SETTINGS_MODULE=backend.settings \
-            api python manage.py test backend/api/tests --verbosity=2
+            api python manage.py test api.tests --verbosity=2
 
 
       - name: Smoke test API
