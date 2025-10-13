@@ -43,8 +43,10 @@ jobs:
               echo "✅ Created backend/.env and infra/backend/.env"
               echo "---- backend/.env preview ----"
               cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
+
       - name: Build & start stack
-        run: $COMPOSE_CMD up -d --build
+        working-directory: infra
+        run: docker compose up -d --build
 
       - name: Debug env inside api
         env:
