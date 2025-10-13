@@ -31,13 +31,11 @@ class ProfileRepository @Inject constructor() {
     )
 
     fun getProfile(userId: String): Flow<User> = flow {
-        // In a real app, you would fetch this from a data source
-        // and handle different userIds.
+        // TODO In a real app, we would fetch this from a data source and handle userIds.
         emit(user)
     }
 
     suspend fun updateProfile(userId: String, profession: String, bio: String) {
-        // Simulate a network call
         delay(1000)
         user = user.copy(profession = profession, bio = bio)
     }
