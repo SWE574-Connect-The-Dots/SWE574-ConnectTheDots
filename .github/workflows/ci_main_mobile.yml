@@ -41,14 +41,18 @@ jobs:
       - name: Set artifact name
         id: vars
         run: |
-          BRANCH_NAME="${GITHUB_REF_NAME}"
+          # Prefer real branch name if this is a PR event
+          BRANCH_NAME="${{ github.event.pull_request.head.ref || github.ref_name }}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
 
-          if [[ "$BRANCH_NAME" == "develop" ]]; then
+          # Clean up slashes (safe for filenames)
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
+
+          if [[ "$SAFE_BRANCH" == "develop" ]]; then
             ISSUE_NUM="develop"
           else
-            # Extract number between "feature/" and "-"
-            ISSUE_NUM=$(echo "$BRANCH_NAME" | sed -E 's|feature/([0-9]+)-.*|\1|')
+            # Extract number after "feature/"
+            ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|feature-([0-9]+)-.*|\1|')
           fi
 
           ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}.apk"
