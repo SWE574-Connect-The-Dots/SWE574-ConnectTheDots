@@ -40,25 +40,23 @@ jobs:
       - name: Set artifact name
         id: vars
         run: |
-          BRANCH_NAME="${GITHUB_REF_NAME}"
+          # Prefer real branch name if this is a PR event
+          BRANCH_NAME="${{ github.event.pull_request.head.ref || github.ref_name }}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
 
-          # Clean up branch name (remove slashes for PR refs like refs/pull/41/merge)
+          # Clean up slashes (safe for filenames)
           SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
 
           if [[ "$SAFE_BRANCH" == "develop" ]]; then
             ISSUE_NUM="develop"
           else
-            # Try to extract number after 'feature/', but handle PR refs gracefully
+            # Extract number after "feature/"
             ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|feature-([0-9]+)-.*|\1|')
-            # Fallback for PR refs like pull-41-merge
-            if [[ -z "$ISSUE_NUM" ]]; then
-              ISSUE_NUM=$(echo "$SAFE_BRANCH" | grep -oE '[0-9]+' | head -n 1)
-            fi
           fi
 
           ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}-rc.apk"
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
 
       #Rename the built APK file
       - name: Rename APK
