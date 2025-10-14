@@ -75,13 +75,22 @@ const useGraphData = (spaceId) => {
         target: edge.target.toString(),
         label: edge.label,
         animated: false,
+        style: {
+          stroke: '#374151',
+          strokeWidth: 2,
+        },
         markerEnd: {
           type: "arrowclosed",
+          color: '#374151',
         },
         labelStyle: {
-          background: "white",
-          padding: 2,
+          background: '#FFFFFF',
+          color: '#1B1F3B',
+          padding: 4,
           fontWeight: 600,
+          fontSize: 12,
+          borderRadius: 4,
+          border: '1px solid #68686B',
           zIndex: 10,
         },
       }));

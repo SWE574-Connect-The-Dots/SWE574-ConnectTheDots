@@ -281,7 +281,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                 Are you sure you want to delete the space "
                 {spaceToDelete?.title}"? This action cannot be undone.
               </p>
-              {deleteError && <div style={{ color: "red" }}>{deleteError}</div>}
+              {deleteError && <div style={{ color: "#BD4902" }}>{deleteError}</div>}
             </div>
             <div className="modal-footer">
               <button
@@ -292,7 +292,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                style={{ background: "#e53935", color: "white" }}
+                style={{ background: "#BD4902", color: "#FFFFFF" }}
                 disabled={deleting}
               >
                 {deleting ? "Deleting..." : "Delete"}

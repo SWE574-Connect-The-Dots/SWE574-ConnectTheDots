@@ -4,8 +4,8 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #dcdcdc;
+  color: #1B1F3B;
+  background-color: #F5F5F5;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,11 +15,11 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #0076B5;
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: #008296;
 }
 
 body {
@@ -27,7 +27,7 @@ body {
   place-items: top;
   min-width: 320px;
   min-height: 100vh;
-  color: #000000
+  color: #1B1F3B
 }
 
 h1 {
@@ -42,12 +42,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #0076B5;
+  color: #FFFFFF;
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #008296;
 }
 button:focus,
 button:focus-visible {
@@ -56,13 +57,14 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: #1B1F3B;
+    background-color: #F5F5F5;
   }
   a:hover {
-    color: #747bff;
+    color: #008296;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #0076B5;
+    color: #FFFFFF;
   }
 }
