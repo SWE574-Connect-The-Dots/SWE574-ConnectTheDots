@@ -43,11 +43,18 @@ jobs:
           BRANCH_NAME="${GITHUB_REF_NAME}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
 
-          if [[ "$BRANCH_NAME" == "develop" ]]; then
+          # Clean up branch name (remove slashes for PR refs like refs/pull/41/merge)
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
+
+          if [[ "$SAFE_BRANCH" == "develop" ]]; then
             ISSUE_NUM="develop"
           else
-            # Extract number between "feature/" and "-"
-            ISSUE_NUM=$(echo "$BRANCH_NAME" | sed -E 's|feature/([0-9]+)-.*|\1|')
+            # Try to extract number after 'feature/', but handle PR refs gracefully
+            ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|feature-([0-9]+)-.*|\1|')
+            # Fallback for PR refs like pull-41-merge
+            if [[ -z "$ISSUE_NUM" ]]; then
+              ISSUE_NUM=$(echo "$SAFE_BRANCH" | grep -oE '[0-9]+' | head -n 1)
+            fi
           fi
 
           ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}-rc.apk"
