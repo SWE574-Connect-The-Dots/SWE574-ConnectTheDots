@@ -40,8 +40,27 @@ jobs:
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
         # ":" prefix ensures gradle builds the app module specifically
 
-      - name: Upload APK (debug)
+      # set a custom artifact name
+      - name: Set artifact name
+        id: vars
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME}"
+          # example: feature/12-login-screen → extract "12"
+          ISSUE_NUM=$(echo "$BRANCH_NAME" | sed -E 's|feature/([0-9]+)-.*|\1|')
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}.apk"
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+      # rename the apk
+      - name: Rename APK
+        run: |
+          cd app/build/outputs/apk/debug
+          ORIGINAL_APK=$(ls *.apk | head -n 1)
+          mv "$ORIGINAL_APK" "${{ steps.vars.outputs.artifact_name }}"
+      
+      
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: mobile/app/build/outputs/apk/debug/*.apk
+          name: ${{ steps.vars.outputs.artifact_name }}
+          path: mobile/app/build/outputs/apk/debug/${{ steps.vars.outputs.artifact_name }}
