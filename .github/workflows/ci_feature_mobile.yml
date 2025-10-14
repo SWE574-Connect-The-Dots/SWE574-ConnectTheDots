@@ -1,12 +1,11 @@
 name: Android APK (Debug)
 
-on:         
-  pull_request:
+on:
+  push:
     branches:
-      - "feature/*"
-      - develop
+      - "feature/*"     
     paths:
-      - "mobile/**"
+      - "mobile/**"            
 
 jobs:
   build:
@@ -51,7 +50,7 @@ jobs:
             ISSUE_NUM=$(echo "$BRANCH_NAME" | sed -E 's|feature/([0-9]+)-.*|\1|')
           fi
 
-          ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}-rc.apk"
+          ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}-beta.apk"
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
       #Rename the built APK file
