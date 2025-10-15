@@ -120,10 +120,6 @@ fun EditProfileContent(
                     }
                 },
                 label = { Text("Bio") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Black,
-                    focusedLabelColor = Color.Black
-                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
