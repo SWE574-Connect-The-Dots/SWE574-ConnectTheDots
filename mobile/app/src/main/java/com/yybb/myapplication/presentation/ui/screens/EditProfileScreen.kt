@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -27,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.yybb.myapplication.data.model.User
 import com.yybb.myapplication.presentation.ui.viewmodel.EditProfileUiState
@@ -46,6 +49,7 @@ fun EditProfileScreen(
                 CircularProgressIndicator()
             }
         }
+
         is EditProfileUiState.Success -> {
             EditProfileContent(
                 user = state.user,
@@ -53,6 +57,7 @@ fun EditProfileScreen(
                 onSave = onSave
             )
         }
+
         is EditProfileUiState.Error -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(text = state.message)
@@ -70,6 +75,8 @@ fun EditProfileContent(
 ) {
     var profession by remember { mutableStateOf(user.profession) }
     var bio by remember { mutableStateOf(user.bio) }
+    val maxCharLimitForProfession = 100
+    val maxCharLimitForBio = 500
 
     Scaffold(
         topBar = {
@@ -92,15 +99,31 @@ fun EditProfileContent(
         ) {
             OutlinedTextField(
                 value = profession,
-                onValueChange = { profession = it },
+                onValueChange = {
+                    if (it.length <= maxCharLimitForProfession) {
+                        profession = it
+                    }
+                },
                 label = { Text("Profession") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Black,
+                    focusedLabelColor = Color.Black
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = bio,
-                onValueChange = { bio = it },
+                onValueChange = {
+                    if (it.length <= maxCharLimitForBio) {
+                        bio = it
+                    }
+                },
                 label = { Text("Bio") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Black,
+                    focusedLabelColor = Color.Black
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -108,7 +131,9 @@ fun EditProfileContent(
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { onSave(profession, bio) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                enabled = profession.isNotEmpty() && bio.isNotEmpty()
             ) {
                 Text("Save")
             }
