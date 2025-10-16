@@ -3,15 +3,24 @@ name: CI (Docker Compose)
 on:
   push:
     branches:
-      - "[0-9]*_feature_*"
+      - "feature/*"
+      - "bugfix/*"
+      - "refactor/*"
       - "develop"
+    paths-ignore:
+      - "mobile/**"           # ignore mobile changes
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - "mobile/**" 
 
 jobs:
   compose-ci:
     runs-on: ubuntu-latest
 
     env:
-      COMPOSE_CMD: docker compose --project-directory . -f infra/docker-compose.yaml
+      COMPOSE_CMD: docker compose --project-directory infra -f infra/docker-compose.yaml
 
     steps:
       - name: Checkout
@@ -20,34 +29,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create backend/.env.docker for both resolutions
+      - name: Create backend/.env
+        working-directory: backend
         run: |
-          # root-level path
-          mkdir -p backend
-          # infra-level path (in case compose resolves relative to the file)
-          mkdir -p infra/backend
+          cat > .env <<EOF
+          DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DJANGO_DEBUG=False
 
-          make_env() {
-            cat > "$1" <<'EOF'
-          DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }}
-          DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
-          POSTGRES_DB=${{ secrets.DB_NAME }}
           POSTGRES_USER=${{ secrets.DB_USER }}
           POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_HOST=db
-          DB_PORT=5432
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          # Add DATABASE_URL so Django can't fall back to the local socket
-          DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}
+          POSTGRES_DB=${{ secrets.DB_NAME }}
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
           EOF
-                    }
+              echo "✅ Created backend/.env"
+              echo "---- backend/.env preview ----"
+              cat .env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
 
-          make_env backend/.env.docker
-          make_env infra/backend/.env.docker
 
       - name: Build & start stack
         run: $COMPOSE_CMD up -d --build
@@ -57,13 +55,14 @@ jobs:
           COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
         run: |
           docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api sh -lc '
-            echo "===== /app/.env.docker exists? ====="
-            [ -f /app/.env.docker ] && ls -l /app/.env.docker || echo "nope"
+            echo "===== /app/.env exists? ====="
+            [ -f /app/.env ] && ls -l /app/.env || echo "nope"
             echo "===== print relevant env ====="
             env | egrep "DB_|POSTGRES_|DATABASE_URL" | sed -e "s/\(PASSWORD=\).*/\1***redacted***/"
           ' || true
 
       - name: Check DB reachability from api (optional)
+      
         run: |
           $COMPOSE_CMD exec -T api sh -lc '
             command -v python >/dev/null 2>&1 || exit 0
@@ -134,6 +133,14 @@ jobs:
             -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
+      
+      - name: Run Django tests
+        run: |
+          echo "Running backend tests..."
+          $COMPOSE_CMD exec -T \
+            -e DJANGO_SETTINGS_MODULE=backend.settings \
+            api python manage.py test api.tests --verbosity=2
+
 
       - name: Smoke test API
         env:

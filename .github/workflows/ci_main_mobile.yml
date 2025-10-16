@@ -1,0 +1,76 @@
+name: Android APK (Debug)
+
+on:           
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "mobile/**"
+
+jobs:
+  build:
+    if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: mobile   
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle cache + wrapper validation
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+        # ":" prefix ensures gradle builds the app module specifically
+      
+      - name: Run unit tests #mobile unit test
+        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+
+      # set a custom artifact name
+      # Extract branch number & commit SHA, build artifact name
+      - name: Set artifact name
+        id: vars
+        run: |
+          # Prefer real branch name if this is a PR event
+          BRANCH_NAME="${{ github.event.pull_request.head.ref || github.ref_name }}"
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+
+          # Clean up slashes (safe for filenames)
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
+
+          if [[ "$SAFE_BRANCH" == "develop" ]]; then
+            ISSUE_NUM="develop"
+          else
+            # Extract number after "feature/"
+            ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|feature-([0-9]+)-.*|\1|')
+          fi
+
+          ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}.apk"
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+      #Rename the built APK file
+      - name: Rename APK
+        run: |
+          cd app/build/outputs/apk/debug
+          ORIGINAL_APK=$(ls *.apk | head -n 1)
+          mv "$ORIGINAL_APK" "${{ steps.vars.outputs.artifact_name }}"
+      
+    
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.artifact_name }}
+          path: mobile/app/build/outputs/apk/debug/${{ steps.vars.outputs.artifact_name }}
