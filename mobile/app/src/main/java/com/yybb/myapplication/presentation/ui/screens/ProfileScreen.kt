@@ -56,9 +56,7 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         when (val state = uiState) {
             is ProfileUiState.Loading -> CircularProgressIndicator()
@@ -71,8 +69,8 @@ fun ProfileScreen(
                 },
                 onSpaceClick = { spaceId ->
                     navController.navigate(Screen.SpaceDetails.createRoute(spaceId.toInt()))
-                }
-            )
+                })
+
             is ProfileUiState.Error -> Text(text = state.message)
         }
     }
@@ -139,13 +137,10 @@ fun ProfileContent(
 fun ProfileInfo(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold
+            text = label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
         )
         Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium
+            text = value, style = MaterialTheme.typography.bodyMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
         HorizontalDivider()
@@ -154,10 +149,7 @@ fun ProfileInfo(label: String, value: String) {
 
 @Composable
 fun SpaceSection(
-    title: String,
-    spaces: List<Space>,
-    onSeeMore: () -> Unit,
-    onSpaceClick: (String) -> Unit
+    title: String, spaces: List<Space>, onSeeMore: () -> Unit, onSpaceClick: (String) -> Unit
 ) {
     Column {
         Text(
@@ -173,8 +165,7 @@ fun SpaceSection(
             if (spaces.size > 3) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = onSeeMore,
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = onSeeMore, modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("See More")
                 }
@@ -202,7 +193,7 @@ fun SpaceItem(space: Space, onSpaceClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -222,7 +213,7 @@ fun SpaceItem(space: Space, onSpaceClick: () -> Unit) {
                 }
             }
             Icon(
-                Icons.AutoMirrored.Filled.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "Go to space",
                 tint = Color.Gray
             )
