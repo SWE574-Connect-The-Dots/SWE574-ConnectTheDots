@@ -3,12 +3,12 @@ name: CI (Docker Compose)
 on:
   push:
     branches:
-      - "develop"
+      - "main"
     paths-ignore:
       - "mobile/**"           # ignore mobile changes
   pull_request:
     branches:
-      - develop
+      - main
     paths-ignore:
       - "mobile/**" 
 

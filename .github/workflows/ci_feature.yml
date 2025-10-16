@@ -3,14 +3,9 @@ name: CI (Docker Compose)
 on:
   push:
     branches:
-      - "develop"
+      - "feature/*
     paths-ignore:
       - "mobile/**"           # ignore mobile changes
-  pull_request:
-    branches:
-      - develop
-    paths-ignore:
-      - "mobile/**" 
 
 jobs:
   compose-ci:
