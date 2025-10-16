@@ -135,6 +135,10 @@ jobs:
               mkdir -p test-reports &&
               python runtests.py
             "
+      - name: Copy test reports from container
+        run: |
+          mkdir -p backend/api/test-reports
+          docker compose --project-directory infra -f infra/docker-compose.yaml cp api:/app/test-reports/. backend/api/test-reports/
 
       - name: Publish test results to GitHub summary
         uses: dorny/test-reporter@v1
@@ -157,7 +161,7 @@ jobs:
 
       - name: Smoke test API
         env:
-          # set this to your real endpoint if you have one, e.g. /api/ or /health/
+          
           SMOKE_PATH: /
         run: |
           URL="http://localhost:8000${SMOKE_PATH}"
