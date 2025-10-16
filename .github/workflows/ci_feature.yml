@@ -126,42 +126,18 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-      - name: Run Django tests with XML report
+      - name: Run Django tests
         run: |
-          mkdir -p test-reports
-          python manage.py test \
-            --testrunner xmlrunner.extra.djangotestrunner.XMLTestRunner \
-            --noinput \
-            --verbosity=2 \
-            --output-dir test-reports
-        env:
-          DJANGO_SETTINGS_MODULE: your_project.settings
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-report
-          path: test-reports/
-
-      - name: Copy and rename test reports from container
-        env:
-          REPORT_DIR: ${{ github.run_id }}-${{ github.ref_name }}-${{ github.head_ref || github.ref_name }}
-        run: |
-          docker cp $(docker-compose ps -q api):/app/test-reports "./$REPORT_DIR"
-
-      - name: Upload Django test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.REPORT_DIR }}
-          path: ./${{ env.REPORT_DIR }}
-
-      - name: Publish test results to GitHub UI
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: test-reports/**/*.xml
+          echo "Running backend tests..."
+          $COMPOSE_CMD exec -T \
+            -e DJANGO_SETTINGS_MODULE=backend.settings \
+            api sh -c '
+              mkdir -p test-reports &&
+              python manage.py test api.tests \
+                --verbosity=2 \
+                --testrunner=xmlrunner.extra.djangotestrunner.XMLTestRunner \
+                --noinput \
+                --output-dir=test-reports
 
 
       - name: Smoke test API
