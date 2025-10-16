@@ -136,6 +136,21 @@ jobs:
               python runtests.py
             "
 
+      - name: Publish test results to GitHub summary
+        uses: dorny/test-reporter@v1
+        if: always() 
+        with:
+          name: Backend Django Tests
+          path: backend/api/test-reports/*.xml
+          reporter: java-junit
+
+      
+      - name: Upload test report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-report
+          path: infra/api/test-reports/
 
 
 
