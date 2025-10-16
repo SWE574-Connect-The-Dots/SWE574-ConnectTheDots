@@ -131,13 +131,15 @@ jobs:
           echo "Running backend tests..."
           $COMPOSE_CMD exec -T \
             -e DJANGO_SETTINGS_MODULE=backend.settings \
-            api sh -c '
+            api sh -lc "
               mkdir -p test-reports &&
               python manage.py test api.tests \
                 --verbosity=2 \
                 --testrunner=xmlrunner.extra.djangotestrunner.XMLTestRunner \
                 --noinput \
                 --output-dir=test-reports
+            "
+
 
 
       - name: Smoke test API
