@@ -133,8 +133,9 @@ jobs:
             -e DJANGO_SETTINGS_MODULE=backend.settings \
             api sh -lc "
               mkdir -p test-reports &&
-              python -m xmlrunner discover -s api/tests -o test-reports
+              python runtests.py
             "
+
 
 
 
