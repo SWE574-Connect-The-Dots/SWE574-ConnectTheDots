@@ -133,12 +133,9 @@ jobs:
             -e DJANGO_SETTINGS_MODULE=backend.settings \
             api sh -lc "
               mkdir -p test-reports &&
-              python manage.py test api.tests \
-                --verbosity=2 \
-                --testrunner=xmlrunner.extra.djangotestrunner.XMLTestRunner \
-                --noinput \
-                --output-dir=test-reports
+              python -m xmlrunner discover -s api/tests -o test-reports
             "
+
 
 
 
