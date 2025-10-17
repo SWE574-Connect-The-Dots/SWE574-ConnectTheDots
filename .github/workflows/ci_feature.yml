@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "feature/*"
+      - "bugfix/*"
+      - "refactor/*"
     paths-ignore:
       - "mobile/**"           # ignore mobile changes
 
