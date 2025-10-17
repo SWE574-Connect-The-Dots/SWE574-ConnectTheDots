@@ -31,25 +31,14 @@ def register(request):
 def login(request):
     username = request.data.get('username')
     password = request.data.get('password')
-
-    if not username or not password:
-        return Response({"message": "Username and password required"}, status=400)
-
     user = authenticate(username=username, password=password)
-
-    if user is not None:
+    if user:
         refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                "message": "Login successful",
-                "token": str(refresh.access_token),
-                "refresh": str(refresh),
-            },
-            status=200,
-        )
-    else:
-        return Response({"message": "Invalid credentials"}, status=400)
-
+        return Response({
+            "message": "Login successful",
+            "token": str(refresh.access_token)
+        })
+    return Response({"message": "Invalid credentials"}, status=400)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
