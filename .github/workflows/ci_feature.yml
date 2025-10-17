@@ -157,18 +157,13 @@ jobs:
           name: Backend Django Tests
           path: infra/api/test-reports/*.xml
           reporter: java-junit
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Inspect generated reports
-        if: always()
-        run: |
-          $COMPOSE_CMD exec -T api ls -l /app/test-reports || true
-
-      - name: Upload test report artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload test results for GitHub "Tests" tab
+        uses: actions/upload-test-results@v1
         if: always()
         with:
-          name: backend-test-report
-          path: infra/api/test-reports/
+          files: infra/api/test-reports/*.xml
 
       - name: Smoke test API
         env:
