@@ -134,11 +134,14 @@ jobs:
       - name: Run Django tests
         run: |
           echo "Running backend tests..."
-          $COMPOSE_CMD exec -T api sh -lc "
-            python manage.py migrate --noinput &&
-            mkdir -p /app/test-reports &&
-            python runtests.py
-          "
+          $COMPOSE_CMD exec -T \
+            -e DJANGO_SETTINGS_MODULE=backend.settings_test \
+            api sh -lc "
+              python manage.py migrate --noinput &&
+              mkdir -p /app/test-reports &&
+              python runtests.py
+            "
+
       - name: Copy test reports from container
         if: always()
         run: |
