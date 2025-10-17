@@ -152,6 +152,11 @@ jobs:
           path: infra/api/test-reports/*.xml
           reporter: java-junit
 
+      - name: Inspect generated reports
+        if: always()
+        run: |
+          $COMPOSE_CMD exec -T api ls -l /app/test-reports || true
+
       - name: Upload test report artifact
         uses: actions/upload-artifact@v4
         if: always()
