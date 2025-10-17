@@ -159,8 +159,8 @@ jobs:
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload test results for GitHub "Tests" tab
-        uses: actions/upload-test-results@v1
+      - name: Publish to Tests tab
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: infra/api/test-reports/*.xml
