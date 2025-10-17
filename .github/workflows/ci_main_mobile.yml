@@ -56,6 +56,10 @@ jobs:
           else
             # Extract number after "feature/"
             ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|feature-([0-9]+)-.*|\1|')
+          else
+            ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|bugfix-([0-9]+)-.*|\1|')
+          else
+            ISSUE_NUM=$(echo "$SAFE_BRANCH" | sed -E 's|refactor-([0-9]+)-.*|\1|')
           fi
 
           ARTIFACT_NAME="${ISSUE_NUM}-${SHORT_SHA}.apk"
