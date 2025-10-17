@@ -3,7 +3,9 @@ name: Android APK (Debug)
 on:
   push:
     branches:
-      - "feature/*"     
+      - "feature/*"
+      - "bugfix/*"
+      - "refactor/*"     
     paths:
       - "mobile/**"            
 
@@ -34,6 +36,9 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
         # ":" prefix ensures gradle builds the app module specifically
+      
+      - name: Run unit tests #mobile unit test
+        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
 
       # set a custom artifact name
       # Extract branch number & commit SHA, build artifact name
