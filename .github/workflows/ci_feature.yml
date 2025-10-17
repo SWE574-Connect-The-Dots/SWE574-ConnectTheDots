@@ -132,7 +132,7 @@ jobs:
           $COMPOSE_CMD exec -T \
             -e DJANGO_SETTINGS_MODULE=backend.settings \
             api sh -lc "
-              mkdir -p test-reports &&
+              mkdir -p /app/test-reports &&
               python runtests.py
             "
       - name: Check test-reports inside container
