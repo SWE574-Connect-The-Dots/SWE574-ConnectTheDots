@@ -27,7 +27,10 @@ def get_property_labels(property_ids):
             "format": "json"
         }
         
-        response = requests.get(url, params=params, timeout=5)
+        headers = {
+            'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+        }
+        response = requests.get(url, params=params, headers=headers, timeout=5)
         data = response.json()
         
         result = {}
@@ -76,7 +79,10 @@ def get_wikidata_properties(entity_id):
     
     try:
         endpoint = f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}.json"
-        res = requests.get(endpoint, timeout=5)
+        headers = {
+            'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+        }
+        res = requests.get(endpoint, headers=headers, timeout=5)
         res.raise_for_status()
         
         entity_data = res.json()['entities'][entity_id]['claims']
