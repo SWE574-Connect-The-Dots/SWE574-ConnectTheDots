@@ -135,14 +135,13 @@ jobs:
               mkdir -p /app/test-reports &&
               python runtests.py
             "
-      - name: Check test-reports inside container
-        run: |
-          $COMPOSE_CMD exec -T api ls -R /app/test-reports || true
-      
       - name: Copy test reports from container
+        if: always()
         run: |
-          mkdir -p backend/api/test-reports
-          docker compose --project-directory infra -f infra/docker-compose.yaml cp api:/app/test-reports/. backend/api/test-reports/
+          mkdir -p infra/api/test-reports
+          $COMPOSE_CMD cp api:/app/test-reports/. infra/api/test-reports/
+          echo "Reports copied to workspace:"
+          ls -l infra/api/test-reports || true
 
       - name: Publish test results to GitHub summary
         uses: dorny/test-reporter@v1
