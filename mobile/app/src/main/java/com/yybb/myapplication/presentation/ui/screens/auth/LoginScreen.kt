@@ -1,6 +1,5 @@
 package com.yybb.myapplication.presentation.ui.screens.auth
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,10 +28,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,15 +70,6 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
 
     val state by viewModel.viewState.collectAsState()
-
-
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        unfocusedBorderColor = Color(0xFFB7B5B5),
-        focusedBorderColor = Color(0xFF000000),
-        cursorColor = Color(0xFF000000),
-        unfocusedPlaceholderColor = Color(0xFF9E9E9E),
-        focusedPlaceholderColor = Color(0xFFB0B0B0)
-    )
 
     viewModel.eventFlow.CollectAsEffect { event ->
         when (event) {
@@ -147,8 +135,7 @@ fun LoginScreen(
                 username,
                 { username = it },
                 "johnDoe",
-                isPassword = false,
-                textFieldColors
+                isPassword = false
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -157,8 +144,7 @@ fun LoginScreen(
                 password,
                 { password = it },
                 "********",
-                isPassword = true,
-                textFieldColors
+                isPassword = true
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -175,8 +161,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .width(200.dp)
                     .height(50.dp),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF000000))
+                shape = MaterialTheme.shapes.medium
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -211,8 +196,7 @@ private fun InputField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    isPassword: Boolean,
-    colors: TextFieldColors
+    isPassword: Boolean
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -220,7 +204,6 @@ private fun InputField(
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Black,
             modifier = Modifier.padding(bottom = 4.dp)
         )
 
@@ -228,8 +211,8 @@ private fun InputField(
             value = value,
             onValueChange = onValueChange,
             placeholder = { Text(placeholder) },
-            shape = MaterialTheme.shapes.small.copy(all = androidx.compose.foundation.shape.CornerSize(8.dp)),
-            colors = colors,
+            shape = MaterialTheme.shapes.small.copy(all = CornerSize(8.dp)),
+//            colors = colors,
             visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             trailingIcon = {
                 if (isPassword) {
