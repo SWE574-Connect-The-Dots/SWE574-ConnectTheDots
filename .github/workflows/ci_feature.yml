@@ -135,6 +135,10 @@ jobs:
               mkdir -p test-reports &&
               python runtests.py
             "
+      - name: Check test-reports inside container
+        run: |
+          $COMPOSE_CMD exec -T api ls -R /app/test-reports || true
+      
       - name: Copy test reports from container
         run: |
           mkdir -p backend/api/test-reports
@@ -142,22 +146,18 @@ jobs:
 
       - name: Publish test results to GitHub summary
         uses: dorny/test-reporter@v1
-        if: always() 
+        if: always()
         with:
           name: Backend Django Tests
-          path: backend/api/test-reports/*.xml
+          path: infra/api/test-reports/*.xml
           reporter: java-junit
 
-      
       - name: Upload test report artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-report
           path: infra/api/test-reports/
-
-
-
 
       - name: Smoke test API
         env:
