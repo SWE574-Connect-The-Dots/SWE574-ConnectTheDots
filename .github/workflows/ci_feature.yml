@@ -3,14 +3,16 @@ name: CI (Docker Compose)
 on:
   push:
     branches:
-      - "develop"
+      - "feature/*"
+      - "bugfix/*"
+      - "refactor/*"
     paths-ignore:
       - "mobile/**"           # ignore mobile changes
-  pull_request:
-    branches:
-      - develop
-    paths-ignore:
-      - "mobile/**" 
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   compose-ci:
@@ -131,7 +133,7 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-            - name: Run Django tests
+      - name: Run Django tests
         run: |
           echo "Running backend tests..."
           $COMPOSE_CMD exec -T \
@@ -165,10 +167,9 @@ jobs:
         with:
           files: infra/api/test-reports/*.xml
 
-
       - name: Smoke test API
         env:
-          # set this to your real endpoint if you have one, e.g. /api/ or /health/
+          
           SMOKE_PATH: /
         run: |
           URL="http://localhost:8000${SMOKE_PATH}"
