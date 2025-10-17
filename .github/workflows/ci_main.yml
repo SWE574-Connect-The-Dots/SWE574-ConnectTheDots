@@ -131,12 +131,39 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-      - name: Run Django tests
+            - name: Run Django tests
         run: |
           echo "Running backend tests..."
           $COMPOSE_CMD exec -T \
-            -e DJANGO_SETTINGS_MODULE=backend.settings \
-            api python manage.py test api.tests --verbosity=2
+            -e DJANGO_SETTINGS_MODULE=backend.settings_test \
+            api sh -lc "
+              python manage.py migrate --noinput &&
+              mkdir -p /app/test-reports &&
+              python runtests.py
+            "
+
+      - name: Copy test reports from container
+        if: always()
+        run: |
+          mkdir -p infra/api/test-reports
+          $COMPOSE_CMD cp api:/app/test-reports/. infra/api/test-reports/
+          echo "Reports copied to workspace:"
+          ls -l infra/api/test-reports || true
+
+      - name: Publish test results to GitHub summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend Django Tests
+          path: infra/api/test-reports/*.xml
+          reporter: java-junit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Tests tab
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: infra/api/test-reports/*.xml
 
 
       - name: Smoke test API
