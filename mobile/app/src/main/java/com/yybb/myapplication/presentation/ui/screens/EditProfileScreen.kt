@@ -39,7 +39,7 @@ import com.yybb.myapplication.presentation.ui.viewmodel.EditProfileViewModel
 fun EditProfileScreen(
     viewModel: EditProfileViewModel,
     onNavigateBack: () -> Unit,
-    onSave: (profession: String, bio: String) -> Unit
+    onSave: (profession: String, bio: String?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -71,7 +71,7 @@ fun EditProfileScreen(
 fun EditProfileContent(
     user: User,
     onNavigateBack: () -> Unit,
-    onSave: (profession: String, bio: String) -> Unit
+    onSave: (profession: String, bio: String?) -> Unit
 ) {
     var profession by remember { mutableStateOf(user.profession) }
     var bio by remember { mutableStateOf(user.bio) }
@@ -113,7 +113,7 @@ fun EditProfileContent(
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
-                value = bio,
+                value = bio ?: "",
                 onValueChange = {
                     if (it.length <= maxCharLimitForBio) {
                         bio = it
@@ -129,7 +129,7 @@ fun EditProfileContent(
                 onClick = { onSave(profession, bio) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                enabled = profession.isNotEmpty() && bio.isNotEmpty()
+                enabled = profession.isNotEmpty()
             ) {
                 Text("Save")
             }
