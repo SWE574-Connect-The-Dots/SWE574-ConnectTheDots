@@ -212,7 +212,6 @@ jobs:
   deploy-to-ec2:
     needs: compose-ci
     runs-on: ubuntu-latest
-    # feature/, refactor/, bugfix/ ve develop branch'lerinden deploy
     if: |
       startsWith(github.ref, 'refs/heads/feature/') ||
       startsWith(github.ref, 'refs/heads/refactor/') ||
@@ -221,37 +220,59 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get runner IP
+        id: ip
+        uses: haythem/public-ip@v1.2
+
+      - name: Whitelist runner IP
+        run: |
+          echo "Whitelisting GitHub runner IP: ${{ steps.ip.outputs.ipv4 }}"
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.AWS_INSTANCE_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          username: ubuntu
+          key: ${{ secrets.SSH_KEY }}
           envs: GITHUB_REF_NAME
           script: |
-            set -e
             cd /home/ubuntu
-
-            # Eğer repo varsa, sadece update et
             if [ -d "Connect-The-Dots/.git" ]; then
-              echo "📦 Repo exists, updating..."
+              echo "📦 Updating existing repo..."
               cd Connect-The-Dots
               git fetch origin
               git checkout ${GITHUB_REF_NAME}
               git pull origin ${GITHUB_REF_NAME}
             else
-              echo "🚀 Cloning fresh repository..."
+              echo "🚀 Cloning fresh repo..."
               git clone https://github.com/SWE574-Connect-The-Dots/SWE574-ConnectTheDots.git Connect-The-Dots
               cd Connect-The-Dots
               git checkout ${GITHUB_REF_NAME}
             fi
 
-            echo "✅ Checked out branch: ${GITHUB_REF_NAME}"
-
-            # Docker Compose deploy
-            echo "🧱 Rebuilding and restarting containers..."
             docker compose -f infra/docker-compose.yaml down
             docker compose -f infra/docker-compose.yaml up -d --build
 
-            echo "🚀 Deployment complete!"
+      - name: Remove runner IP from security group
+        if: always()
+        run: |
+          echo "🧹 Removing GitHub runner IP from whitelist"
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.AWS_INSTANCE_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
 
