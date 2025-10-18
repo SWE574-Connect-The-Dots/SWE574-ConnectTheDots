@@ -107,8 +107,8 @@ const Search = () => {
           onClick={() => handleSearch()}
           style={{
             padding: "10px 20px",
-            backgroundColor: "#1a73e8",
-            color: "white",
+            backgroundColor: "#0076B5",
+            color: "#FFFFFF",
             border: "none",
             borderRadius: "0 4px 4px 0",
             cursor: "pointer",
@@ -130,9 +130,10 @@ const Search = () => {
           onClick={() => setActiveTab("spaces")}
           style={{
             padding: "10px 20px",
-            backgroundColor: activeTab === "spaces" ? "#f0f0f0" : "transparent",
+            backgroundColor: activeTab === "spaces" ? "#F5F5F5" : "transparent",
             border: "none",
-            borderBottom: activeTab === "spaces" ? "2px solid #1a73e8" : "none",
+            borderBottom: activeTab === "spaces" ? "2px solid #0076B5" : "none",
+            color: activeTab === "spaces" ? "#1B1F3B" : "#4A5568",
             cursor: "pointer",
           }}
         >
@@ -142,9 +143,10 @@ const Search = () => {
           onClick={() => setActiveTab("users")}
           style={{
             padding: "10px 20px",
-            backgroundColor: activeTab === "users" ? "#f0f0f0" : "transparent",
+            backgroundColor: activeTab === "users" ? "#F5F5F5" : "transparent",
             border: "none",
-            borderBottom: activeTab === "users" ? "2px solid #1a73e8" : "none",
+            borderBottom: activeTab === "users" ? "2px solid #0076B5" : "none",
+            color: activeTab === "users" ? "#1B1F3B" : "#4A5568",
             cursor: "pointer",
           }}
         >
@@ -170,24 +172,24 @@ const Search = () => {
                       style={{
                         padding: "15px",
                         marginBottom: "10px",
-                        border: "1px solid #ddd",
+                        border: "1px solid #68686B",
                         borderRadius: "4px",
                         cursor: "pointer",
                         transition: "background-color 0.2s",
-                        backgroundColor: "#f9f9f9",
+                        backgroundColor: "#FFFFFF",
                       }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f0f0f0")
+                        (e.currentTarget.style.backgroundColor = "#F5F5F5")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f9f9f9")
+                        (e.currentTarget.style.backgroundColor = "#FFFFFF")
                       }
                     >
-                      <h3 style={{ margin: "0 0 10px 0" }}>{space.title}</h3>
-                      <p style={{ margin: "0 0 10px 0", color: "#666" }}>
+                      <h3 style={{ margin: "0 0 10px 0", color: "#1B1F3B" }}>{space.title}</h3>
+                      <p style={{ margin: "0 0 10px 0", color: "#4A5568" }}>
                         {space.description}
                       </p>
-                      <div style={{ fontSize: "14px", color: "#666" }}>
+                      <div style={{ fontSize: "14px", color: "#4A5568" }}>
                         <span>Created by: {space.creator_username}</span>
                         <span style={{ marginLeft: "15px" }}>
                           Created:{" "}
@@ -204,8 +206,9 @@ const Search = () => {
                                 backgroundColor:
                                   searchQuery &&
                                   isTagMatching(tag.name, searchQuery)
-                                    ? "#b3e6b3" // Highlight matching tags with green background
-                                    : "#e0e0e0",
+                                    ? "#2D6A4F" // Highlight matching tags with success color
+                                    : "#215D69",
+                                color: "#FFFFFF",
                                 padding: "3px 8px",
                                 borderRadius: "12px",
                                 fontSize: "12px",
@@ -239,17 +242,17 @@ const Search = () => {
                       style={{
                         padding: "15px",
                         marginBottom: "10px",
-                        border: "1px solid #ddd",
+                        border: "1px solid #68686B",
                         borderRadius: "4px",
-                        backgroundColor: "#f9f9f9",
+                        backgroundColor: "#FFFFFF",
                         cursor: "pointer",
                         transition: "background-color 0.2s",
                       }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f0f0f0")
+                        (e.currentTarget.style.backgroundColor = "#F5F5F5")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f9f9f9")
+                        (e.currentTarget.style.backgroundColor = "#FFFFFF")
                       }
                     >
                       <div
@@ -259,11 +262,11 @@ const Search = () => {
                           alignItems: "center",
                         }}
                       >
-                        <h3 style={{ margin: "0 0 5px 0" }}>{user.username}</h3>
+                        <h3 style={{ margin: "0 0 5px 0", color: "#1B1F3B" }}>{user.username}</h3>
                         <span
                           style={{
-                            backgroundColor: "#1a73e8",
-                            color: "white",
+                            backgroundColor: "#0076B5",
+                            color: "#FFFFFF",
                             padding: "3px 8px",
                             borderRadius: "4px",
                             fontSize: "12px",
@@ -273,12 +276,12 @@ const Search = () => {
                         </span>
                       </div>
                       {user.profession && (
-                        <p style={{ margin: "5px 0 0 0", color: "#666" }}>
+                        <p style={{ margin: "5px 0 0 0", color: "#4A5568" }}>
                           Profession: {user.profession}
                         </p>
                       )}
                       {(user.first_name || user.last_name) && (
-                        <p style={{ margin: "5px 0 0 0", color: "#666" }}>
+                        <p style={{ margin: "5px 0 0 0", color: "#4A5568" }}>
                           Name:{" "}
                           {[user.first_name, user.last_name]
                             .filter(Boolean)

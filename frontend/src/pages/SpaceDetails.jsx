@@ -494,7 +494,8 @@ const SpaceDetails = () => {
               key={tag.id || tag.name}
               style={{
                 display: "inline-block",
-                backgroundColor: "#b3e6b3",
+                backgroundColor: "#215D69",
+                color: "#FFFFFF",
                 padding: "3px 8px",
                 borderRadius: "12px",
                 fontSize: "12px",
@@ -505,7 +506,7 @@ const SpaceDetails = () => {
               {tag.name}
               {tag.wikidata_label && (
                 <span
-                  style={{ marginLeft: "5px", fontSize: "10px", color: "#666" }}
+                  style={{ marginLeft: "5px", fontSize: "10px", color: "#FFFFFF", opacity: 0.8 }}
                 >
                   (Wikidata label: {tag.wikidata_label})
                 </span>
@@ -658,8 +659,8 @@ const SpaceDetails = () => {
                     style={{
                       marginLeft: "10px",
                       padding: "5px 10px",
-                      backgroundColor: isNewNodeSource ? "#4CAF50" : "#f44336",
-                      color: "white",
+                      backgroundColor: isNewNodeSource ? "#2D6A4F" : "#BD4902",
+                      color: "#FFFFFF",
                       border: "none",
                       borderRadius: "4px",
                       cursor: "pointer",
@@ -669,7 +670,7 @@ const SpaceDetails = () => {
                   </button>
                 </div>
                 <div
-                  style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}
+                  style={{ marginTop: "10px", color: "#4A5568", fontSize: "14px" }}
                 >
                   {isNewNodeSource
                     ? `"${selectedEntity?.label || "New Node"}" → "${
@@ -794,7 +795,7 @@ const SpaceDetails = () => {
                   This action cannot be undone.
                 </p>
                 {deleteError && (
-                  <div style={{ color: "red" }}>{deleteError}</div>
+                  <div style={{ color: "#BD4902" }}>{deleteError}</div>
                 )}
               </div>
               <div className="modal-footer">
@@ -806,7 +807,7 @@ const SpaceDetails = () => {
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  style={{ background: "#e53935", color: "white" }}
+                  style={{ background: "#BD4902", color: "#FFFFFF" }}
                   disabled={deleting}
                 >
                   {deleting ? "Deleting..." : "Delete"}
@@ -821,19 +822,21 @@ const SpaceDetails = () => {
       <div style={{ width: "250px" }}>
         <div
           style={{
-            border: "1px solid #ddd",
+            border: "1px solid #68686B",
             borderRadius: "4px",
             overflow: "hidden",
+            backgroundColor: "#FFFFFF"
           }}
         >
           <div
             style={{
-              backgroundColor: "#f1f1f1",
+              backgroundColor: "#F5F5F5",
               padding: "10px",
               cursor: "pointer",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              color: "#1B1F3B"
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
