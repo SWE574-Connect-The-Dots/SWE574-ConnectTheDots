@@ -3,6 +3,8 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yybb.myapplication.data.network.dto.RegisterRequest
+import com.yybb.myapplication.data.repository.AuthRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -18,7 +20,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _eventChannel = Channel<AuthEvent>()
@@ -62,8 +65,21 @@ class RegisterViewModel @Inject constructor(
                     _viewState.value = ViewState.Error(context.getString(R.string.consent_error))
 
                 else -> {
-                    _viewState.value = ViewState.Success(Unit)
-                    _eventChannel.send(AuthEvent.NavigateToLogin)
+                    val registerRequest = RegisterRequest(
+                        email = email,
+                        username = username,
+                        password = password,
+                        profession = profession,
+                        dateOfBirth = dateOfBirth
+                    )
+                    authRepository.register(registerRequest)
+                        .onSuccess {
+                            _viewState.value = ViewState.Success(Unit)
+                            _eventChannel.send(AuthEvent.NavigateToLogin)
+                        }
+                        .onFailure {
+                            _viewState.value = ViewState.Error(it.message ?: "An unknown error occurred")
+                        }
                 }
             }
         }
@@ -75,7 +91,7 @@ class RegisterViewModel @Inject constructor(
 
     private fun calculateAge(dateOfBirth: String): Int? {
         return try {
-            val format = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+            val format = SimpleDateFormat("yyyy-mm-dd", Locale.getDefault())
             format.isLenient = false
             val birthDate = format.parse(dateOfBirth) ?: return null
             val today = Calendar.getInstance()

@@ -2,6 +2,7 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 
 import android.content.Context
 import com.yybb.myapplication.R
+import com.yybb.myapplication.data.repository.AuthRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
@@ -14,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -24,14 +26,15 @@ class LoginViewModelTest {
 
     private lateinit var viewModel: LoginViewModel
     private lateinit var mockContext: Context
-
+    private lateinit var mockAuthRepository: AuthRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         mockContext = mock()
+        mockAuthRepository = mock()
         whenever(mockContext.getString(R.string.fill_all_fileds_error)).thenReturn("Please fill all fields")
-        viewModel = LoginViewModel(mockContext)
+        viewModel = LoginViewModel(mockContext, mockAuthRepository)
     }
 
     @Test
@@ -53,23 +56,30 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `onLoginClicked with blank password should set ViewState_Error`() = runTest {
-        viewModel.onLoginClicked("johnDoe", "")
+    fun `onLoginClicked with valid credentials should emit NavigateToMain event on success`() = runTest {
+        whenever(mockAuthRepository.login(any())).thenReturn(Result.success(Unit))
+
+        viewModel.onLoginClicked("johnDoe", "john1234")
         advanceUntilIdle()
 
-        val state = viewModel.viewState.first()
-        assertTrue(state is ViewState.Error)
-        assertEquals("Please fill all fields", (state as ViewState.Error).message)
+        val event = viewModel.eventFlow.first()
+        assertTrue(event is AuthEvent.NavigateToMain)
+
+        val state = viewModel.viewState.value
+        assertTrue(state is ViewState.Success)
     }
 
     @Test
-    fun `onLoginClicked with blank username should set ViewState_Error`() = runTest {
-        viewModel.onLoginClicked("", "john1234")
+    fun `onLoginClicked with valid credentials should set ViewState_Error on failure`() = runTest {
+        val errorMessage = "Invalid credentials"
+        whenever(mockAuthRepository.login(any())).thenReturn(Result.failure(Exception(errorMessage)))
+
+        viewModel.onLoginClicked("johnDoe", "wrongpassword")
         advanceUntilIdle()
 
-        val state = viewModel.viewState.first()
+        val state = viewModel.viewState.value
         assertTrue(state is ViewState.Error)
-        assertEquals("Please fill all fields", (state as ViewState.Error).message)
+        assertEquals(errorMessage, (state as ViewState.Error).message)
     }
 
 
@@ -78,19 +88,8 @@ class LoginViewModelTest {
         viewModel.onLoginClicked("", "")
         advanceUntilIdle()
 
-        assertTrue(viewModel.viewState.first() is ViewState.Error)
+        assertTrue(viewModel.viewState.value is ViewState.Error)
         viewModel.clearError()
-        assertTrue(viewModel.viewState.first() is ViewState.Success)
-    }
-
-    @Test
-    fun `onLoginClicked with valid credentials should emit NavigateToMain event`() = runTest {
-        viewModel.onLoginClicked("johnDoe", "john1234")
-
-        val event = viewModel.eventFlow.first()
-        assertTrue(event is AuthEvent.NavigateToMain)
-
-        val state = viewModel.viewState.first()
-        assertTrue(state is ViewState.Success)
+        assertTrue(viewModel.viewState.value is ViewState.Success)
     }
 }

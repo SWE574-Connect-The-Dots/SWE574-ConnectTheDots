@@ -126,8 +126,8 @@ fun RegisterScreen(
                 email,
                 { email = it },
                 "example@gmail.com",
-                true,
-                false,
+                isEmail = true,
+                isProfession = false,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -136,8 +136,8 @@ fun RegisterScreen(
                 username,
                 { username = it },
                 "johnDoe",
-                false,
-                false
+                isEmail = false,
+                isProfession = false
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -146,8 +146,8 @@ fun RegisterScreen(
                 password,
                 { password = it },
                 "********",
-                false,
-                false
+                isEmail = false,
+                isProfession = false
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -158,8 +158,8 @@ fun RegisterScreen(
                     profession = input.filter { it.isLetter() || it.isWhitespace() }
                 },
                 "Teacher",
-                false,
-                true
+                isEmail = false,
+                isProfession = true
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -203,11 +203,11 @@ fun RegisterScreen(
                             val cal = Calendar.getInstance().apply { timeInMillis = it }
                             val formatted =
                                 String.format(
-                                    Locale.US,
-                                    "%02d/%02d/%04d",
+                                    Locale.getDefault(),
+                                    "%04d-%02d-%02d",
+                                    cal.get(Calendar.YEAR),
                                     cal.get(Calendar.MONTH) + 1,
-                                    cal.get(Calendar.DAY_OF_MONTH),
-                                    cal.get(Calendar.YEAR)
+                                    cal.get(Calendar.DAY_OF_MONTH)
                                 )
                             dateOfBirth = formatted
                         }

@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,6 +46,7 @@ import com.yybb.myapplication.data.enums.SpaceType
 import com.yybb.myapplication.data.model.Space
 import com.yybb.myapplication.data.model.User
 import com.yybb.myapplication.presentation.navigation.Screen
+import com.yybb.myapplication.presentation.ui.utils.formatDisplayDate
 import com.yybb.myapplication.presentation.ui.viewmodel.ProfileUiState
 import com.yybb.myapplication.presentation.ui.viewmodel.ProfileViewModel
 
@@ -54,6 +57,10 @@ fun ProfileScreen(
     navController: NavHostController,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.getProfile()
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -109,9 +116,9 @@ fun ProfileContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileInfo("Profession", user.profession)
-        ProfileInfo("Bio", user.bio)
-        ProfileInfo("Date Of Birth", user.dateOfBirth)
-        ProfileInfo("Joined", user.joinedDate)
+        ProfileInfo("Bio", user.bio ?: "-")
+        ProfileInfo("Date Of Birth", formatDisplayDate(user.dateOfBirth))
+        ProfileInfo("Joined", formatDisplayDate(user.joinedDate))
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -208,8 +215,8 @@ fun SpaceItem(space: Space, onSpaceClick: () -> Unit) {
                     )
                 }
                 Column(modifier = Modifier.padding(start = 12.dp)) {
-                    Text(text = space.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = space.ownerUsername, color = Color.Gray, fontSize = 14.sp)
+                    Text(text = space.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = space.description, color = Color.Gray, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
             Icon(

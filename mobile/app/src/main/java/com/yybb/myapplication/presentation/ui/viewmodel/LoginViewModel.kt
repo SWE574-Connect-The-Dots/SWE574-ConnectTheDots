@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.R
+import com.yybb.myapplication.data.network.dto.LoginRequest
+import com.yybb.myapplication.data.repository.AuthRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,7 +18,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _eventChannel = Channel<AuthEvent>()
@@ -40,11 +43,22 @@ class LoginViewModel @Inject constructor(
 
             when {
                 username.isBlank() || password.isBlank() ->
-                    _viewState.value = ViewState.Error(context.getString(R.string.fill_all_fileds_error))
+                    _viewState.value =
+                        ViewState.Error(context.getString(R.string.fill_all_fileds_error))
 
                 else -> {
-                    _viewState.value = ViewState.Success(Unit)
-                    _eventChannel.send(AuthEvent.NavigateToMain)
+                    val loginRequest = LoginRequest(
+                        username,
+                        password
+                    )
+                    authRepository.login(loginRequest)
+                        .onSuccess {
+                            _viewState.value = ViewState.Success(Unit)
+                            _eventChannel.send(AuthEvent.NavigateToMain)
+                        }
+                        .onFailure {
+                            _viewState.value = ViewState.Error(it.message ?: "An unknown error occurred")
+                        }
                 }
             }
         }

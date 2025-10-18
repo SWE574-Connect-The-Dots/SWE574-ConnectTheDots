@@ -3,6 +3,7 @@ package com.yybb.myapplication.presentation.navigation
 import com.yybb.myapplication.data.enums.SpaceType
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Login : Screen("login")
     object Register : Screen("register")
     object Main : Screen("main")
