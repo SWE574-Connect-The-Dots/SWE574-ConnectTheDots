@@ -246,24 +246,40 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
-          envs: GITHUB_REF_NAME
           script: |
+            set -e
+            echo "🚀 Cloning or updating repo on EC2..."
             cd /home/ubuntu
-            if [ -d "Connect-The-Dots/.git" ]; then
-              echo "📦 Updating existing repo..."
-              cd Connect-The-Dots
-              git fetch origin
-              git checkout ${GITHUB_REF_NAME}
-              git pull origin ${GITHUB_REF_NAME}
-            else
-              echo "🚀 Cloning fresh repo..."
+
+            if [ ! -d "Connect-The-Dots" ]; then
               git clone https://github.com/SWE574-Connect-The-Dots/SWE574-ConnectTheDots.git Connect-The-Dots
-              cd Connect-The-Dots
-              git checkout ${GITHUB_REF_NAME}
             fi
 
+            cd Connect-The-Dots
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            echo "🧩 Creating backend/.env file..."
+            mkdir -p backend
+            cat > backend/.env <<EOF
+            DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
+            DJANGO_DEBUG=False
+
+            POSTGRES_USER=${{ secrets.DB_USER }}
+            POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+            POSTGRES_DB=${{ secrets.DB_NAME }}
+            POSTGRES_HOST=db
+            POSTGRES_PORT=5432
+            EOF
+
+            echo "✅ .env file created at backend/.env"
+            cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
+
+            echo "🛠️ Building and starting Docker containers..."
             docker compose -f infra/docker-compose.yaml down
             docker compose -f infra/docker-compose.yaml up -d --build
+
 
       - name: Remove runner IP from security group
         if: always()
