@@ -208,3 +208,50 @@ jobs:
       - name: Tear down
         if: always()
         run: $COMPOSE_CMD down -v
+
+  deploy-to-ec2:
+    needs: compose-ci
+    runs-on: ubuntu-latest
+    # feature/, refactor/, bugfix/ ve develop branch'lerinden deploy
+    if: |
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/refactor/') ||
+      startsWith(github.ref, 'refs/heads/bugfix/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GITHUB_REF_NAME
+          script: |
+            set -e
+            cd /home/ubuntu
+
+            # Eğer repo varsa, sadece update et
+            if [ -d "Connect-The-Dots/.git" ]; then
+              echo "📦 Repo exists, updating..."
+              cd Connect-The-Dots
+              git fetch origin
+              git checkout ${GITHUB_REF_NAME}
+              git pull origin ${GITHUB_REF_NAME}
+            else
+              echo "🚀 Cloning fresh repository..."
+              git clone https://github.com/SWE574-Connect-The-Dots/SWE574-ConnectTheDots.git Connect-The-Dots
+              cd Connect-The-Dots
+              git checkout ${GITHUB_REF_NAME}
+            fi
+
+            echo "✅ Checked out branch: ${GITHUB_REF_NAME}"
+
+            # Docker Compose deploy
+            echo "🧱 Rebuilding and restarting containers..."
+            docker compose -f infra/docker-compose.yaml down
+            docker compose -f infra/docker-compose.yaml up -d --build
+
+            echo "🚀 Deployment complete!"
+
