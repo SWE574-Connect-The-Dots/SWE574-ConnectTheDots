@@ -9,9 +9,9 @@
 .header {
   display: flex;
   align-items: center;
-  background-color: #2F2F2F;
+  background-color: var(--color-header-bg);
   padding: 10px 20px;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid var(--color-border-1);
 }
 
 .logo-container {
@@ -21,7 +21,7 @@
 }
 
 .logo {
-  background-color: #fff;
+  background-color: var(--color-white);
   border-radius: 50%;
   margin-right: 10px;
 }
@@ -30,8 +30,8 @@
   font-weight: bold;
   font-size: 18px;
   white-space: nowrap;
-  color: #FFFFFF;
-  background-color: #2F2F2F;
+  color: var(--color-white);
+  background-color: var(--color-header-bg);
   padding: 10px;
 }
 
@@ -44,7 +44,7 @@
   margin: 0 15px;
   cursor: pointer;
   padding: 5px 0;
-  color: #FFFFFF;
+  color: var(--color-white);
 }
 
 .search-container {
@@ -54,15 +54,15 @@
 
 .search-container input {
   padding: 8px 30px 8px 10px;
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
   border-radius: 20px;
   width: 200px;
-  background-color: #FFFFFF;
-  color: #1B1F3B;
+  background-color: var(--color-white);
+  color: var(--color-text);
 }
 
 .search-container input::placeholder {
-  color: #646E7A;
+  color: var(--color-gray-400);
 }
 
 .clear-button {
@@ -77,8 +77,8 @@
 }
 
 .create-space-button {
-  background-color: #0076B5;
-  color: #FFFFFF;
+  background-color: var(--color-accent);
+  color: var(--color-white);
   border: none;
   padding: 8px 15px;
   border-radius: 5px;
@@ -86,13 +86,13 @@
 }
 
 .create-space-button:hover {
-  background-color: #008296;
+  background-color: var(--color-accent-hover);
 }
 
 /* Tabs Styles */
 .tabs-container {
   display: flex;
-  background-color: #F5F5F5;
+  background-color: var(--color-bg);
 }
 
 .tab {
@@ -102,12 +102,12 @@
   cursor: pointer;
   font-weight: bold;
   border-bottom: 2px solid transparent;
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }
 
 .tab.active {
-  border-bottom-color: #0076B5;
-  color: #1B1F3B;
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
 }
 
 /* Spaces Container */
@@ -117,9 +117,9 @@
 
 /* Space Card Styles */
 .space-card {
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
   margin-bottom: 20px;
-  background-color: #FFFFFF;
+  background-color: var(--color-white);
 }
 
 .space-header {
@@ -127,18 +127,18 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  border-bottom: 1px solid #68686B;
+  border-bottom: 1px solid var(--color-border-2);
 }
 
 .space-title {
   margin: 0;
   font-size: 18px;
-  color: #1B1F3B;
+  color: var(--color-text);
 }
 
 .contributors {
   font-size: 14px;
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }
 
 .space-content {
@@ -179,12 +179,12 @@
 }
 
 .comment-bubble {
-  background-color: #215D69;
+  background-color: var(--color-teal-dark);
   padding: 5px 10px;
   border-radius: 5px;
   font-size: 14px;
   font-weight: bold;
-  color: #FFFFFF;
+  color: var(--color-white);
 }
 
 .activities {
@@ -194,7 +194,7 @@
 .activity-item {
   margin-bottom: 10px;
   font-size: 14px;
-  color: #1B1F3B;
+  color: var(--color-text);
 }
 
 .space-footer {
@@ -202,7 +202,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  background-color: #F5F5F5;
+  background-color: var(--color-bg);
 }
 
 .tags {
@@ -210,12 +210,12 @@
 }
 
 .tag {
-  background-color: #215D69;
+  background-color: var(--color-teal-dark);
   padding: 5px 15px;
   border-radius: 15px;
   margin-right: 10px;
   font-size: 14px;
-  color: #FFFFFF;
+  color: var(--color-white);
 }
 
 .join-button, .leave-button {
@@ -226,8 +226,8 @@
 }
 
 .join-button {
-  background-color: #2D6A4F;
-  color: #FFFFFF;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -236,14 +236,14 @@
 }
 
 .join-button:hover {
-  background-color: #008296;
+  background-color: var(--color-accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .leave-button {
-  background-color: #BD4902;
-  color: #FFFFFF;
+  background-color: var(--color-danger);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -252,7 +252,7 @@
 }
 
 .leave-button:hover {
-  background-color: #8F6701;
+  background-color: var(--color-warning);
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
@@ -263,20 +263,20 @@
 }
 
 .collaborators-container {
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
   border-radius: 4px;
   overflow: hidden;
-  background-color: #FFFFFF;
+  background-color: var(--color-white);
 }
 
 .collaborators-header {
-  background-color: #F5F5F5;
+  background-color: var(--color-bg);
   padding: 10px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #1B1F3B;
+  color: var(--color-text);
 }
 
 .collaborators-list {
@@ -287,8 +287,8 @@
 
 .collaborator-item {
   padding: 8px 10px;
-  border-bottom: 1px solid #68686B;
-  color: #1B1F3B;
+  border-bottom: 1px solid var(--color-border-2);
+  color: var(--color-text);
 }
 
 .collaborator-item:last-child {
@@ -298,15 +298,15 @@
 .non-collaborator-box {
   margin-top: 20px;
   padding: 15px;
-  background-color: #FFFFFF;
+  background-color: var(--color-white);
   border-radius: 4px;
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
   text-align: center;
 }
 
 .non-collaborator-box p {
   margin-bottom: 15px;
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }
 
 /* Profile Page Styles */
@@ -317,24 +317,24 @@
 }
 
 .profile-header {
-  background-color: #FFFFFF;
+  background-color: var(--color-white);
   padding: 20px;
   border-radius: 5px;
   margin-bottom: 20px;
   position: relative;
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
 }
 
 .profile-header h1 {
   margin-top: 0;
   margin-bottom: 15px;
-  color: #1B1F3B;
+  color: var(--color-text);
 }
 
 .profession {
   font-weight: bold;
   margin-bottom: 10px;
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }
 
 .bio {
@@ -346,12 +346,12 @@
   word-break: break-word;
   hyphens: auto;
   padding: 5px 0;
-  color: #1B1F3B;
+  color: var(--color-text);
 }
 
 .edit-profile-button {
-  background-color: #0076B5;
-  color: #FFFFFF;
+  background-color: var(--color-accent);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -361,7 +361,7 @@
 }
 
 .edit-profile-button:hover {
-  background-color: #008296;
+  background-color: var(--color-accent-hover);
 }
 
 .profile-edit-form {
@@ -383,19 +383,19 @@
 .form-group textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #68686B;
+  border: 1px solid var(--color-border-2);
   border-radius: 4px;
-  background-color: #FFFFFF;
-  color: #1B1F3B;
+  background-color: var(--color-white);
+  color: var(--color-text);
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: #646E7A;
+  color: var(--color-gray-400);
 }
 
 .form-group input:disabled {
-  background-color: #F5F5F5;
+  background-color: var(--color-bg);
   cursor: not-allowed;
   color: #656F75;
 }
@@ -403,7 +403,7 @@
 .field-note {
   display: block;
   margin-top: 5px;
-  color: #4A5568;
+  color: var(--color-text-secondary);
   font-style: italic;
   font-size: 12px;
 }
@@ -415,8 +415,8 @@
 }
 
 .save-button {
-  background-color: #2D6A4F;
-  color: #FFFFFF;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -424,20 +424,20 @@
 }
 
 .save-button:hover {
-  background-color: #008296;
+  background-color: var(--color-accent-hover);
 }
 
 .cancel-button {
-  background-color: #FFFFFF;
-  color: #1B1F3B;
-  border: 1px solid #68686B;
+  background-color: var(--color-white);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-2);
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .cancel-button:hover {
-  background-color: #F5F5F5;
+  background-color: var(--color-bg);
 }
 
 .profile-content {
@@ -451,12 +451,12 @@
 }
 
 .owned-spaces h2 {
-  color: #1B1F3B;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
 .joined-spaces h2 {
-  color: #1B1F3B;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
@@ -467,8 +467,8 @@
 }
 
 .space-card {
-  background-color: #FFFFFF;
-  border: 1px solid #68686B;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-2);
   border-radius: 6px;
   padding: 1.5rem;
   cursor: pointer;
@@ -481,12 +481,12 @@
 }
 
 .space-card h3 {
-  color: #1B1F3B;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
 }
 
 .space-card p {
-  color: #4A5568;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
@@ -494,22 +494,22 @@
   text-align: center;
   padding: 2rem;
   font-size: 1.2rem;
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }
 
 .error {
   text-align: center;
   padding: 2rem;
-  color: #BD4902;
+  color: var(--color-danger);
   font-size: 1.2rem;
 }
 
 .error-message {
-  background-color: #FFFFFF;
-  color: #BD4902;
+  background-color: var(--color-white);
+  color: var(--color-danger);
   padding: 10px 15px;
   margin-bottom: 15px;
-  border: 2px solid #BD4902;
+  border: 2px solid var(--color-danger);
   border-radius: 4px;
   font-weight: bold;
 }
@@ -531,8 +531,8 @@
 
 .auth-button.login {
   background-color: transparent;
-  color: #FFFFFF;
-  border: 1px solid #FFFFFF;
+  color: var(--color-white);
+  border: 1px solid var(--color-white);
 }
 
 .auth-button.login:hover {
@@ -540,18 +540,18 @@
 }
 
 .auth-button.register {
-  background-color: #0076B5;
-  color: #FFFFFF;
-  border: 1px solid #0076B5;
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  border: 1px solid var(--color-accent);
 }
 
 .auth-button.register:hover {
-  background-color: #008296;
+  background-color: var(--color-accent-hover);
 }
 
 .logout-button {
-  background-color: #BD4902;
-  color: #FFFFFF;
+  background-color: var(--color-danger);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -562,7 +562,7 @@
 }
 
 .logout-button:hover {
-  background-color: #8F6701;
+  background-color: var(--color-warning);
 }
 
 .main-content {

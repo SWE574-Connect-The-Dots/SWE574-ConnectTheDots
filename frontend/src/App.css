@@ -38,5 +38,5 @@
 }
 
 .read-the-docs {
-  color: #4A5568;
+  color: var(--color-text-secondary);
 }

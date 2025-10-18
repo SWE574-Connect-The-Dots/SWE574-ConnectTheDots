@@ -463,8 +463,8 @@ const SpaceDetails = () => {
                 className="delete-button"
                 title="Delete"
                 style={{
-                  background: "#e53935",
-                  color: "white",
+                  background: 'var(--color-danger-light)',
+                  color: 'var(--color-white)',
                   border: "none",
                   borderRadius: 4,
                   fontWeight: 600,
@@ -476,10 +476,10 @@ const SpaceDetails = () => {
                 onClick={handleDeleteClick}
                 disabled={deleting}
                 onMouseOver={(e) =>
-                  (e.currentTarget.style.background = "#b71c1c")
+                  (e.currentTarget.style.background = 'var(--color-danger-dark)')
                 }
                 onMouseOut={(e) =>
-                  (e.currentTarget.style.background = "#e53935")
+                  (e.currentTarget.style.background = 'var(--color-danger-light)')
                 }
               >
                 Delete
@@ -494,8 +494,8 @@ const SpaceDetails = () => {
               key={tag.id || tag.name}
               style={{
                 display: "inline-block",
-                backgroundColor: "#215D69",
-                color: "#FFFFFF",
+                backgroundColor: 'var(--color-teal-dark)',
+                color: 'var(--color-white)',
                 padding: "3px 8px",
                 borderRadius: "12px",
                 fontSize: "12px",
@@ -506,7 +506,7 @@ const SpaceDetails = () => {
               {tag.name}
               {tag.wikidata_label && (
                 <span
-                  style={{ marginLeft: "5px", fontSize: "10px", color: "#FFFFFF", opacity: 0.8 }}
+                  style={{ marginLeft: "5px", fontSize: "10px", color: 'var(--color-white)', opacity: 0.8 }}
                 >
                   (Wikidata label: {tag.wikidata_label})
                 </span>
@@ -656,21 +656,21 @@ const SpaceDetails = () => {
                   <label>Edge Direction:</label>
                   <button
                     onClick={() => setIsNewNodeSource(!isNewNodeSource)}
-                    style={{
-                      marginLeft: "10px",
-                      padding: "5px 10px",
-                      backgroundColor: isNewNodeSource ? "#2D6A4F" : "#BD4902",
-                      color: "#FFFFFF",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                    }}
-                  >
+                  style={{
+                    marginLeft: "10px",
+                    padding: "5px 10px",
+                    backgroundColor: isNewNodeSource ? 'var(--color-success)' : 'var(--color-danger)',
+                    color: 'var(--color-white)',
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
                     {isNewNodeSource ? "New → Existing" : "Existing → New"}
                   </button>
                 </div>
                 <div
-                  style={{ marginTop: "10px", color: "#4A5568", fontSize: "14px" }}
+                  style={{ marginTop: "10px", color: 'var(--color-text-secondary)', fontSize: "14px" }}
                 >
                   {isNewNodeSource
                     ? `"${selectedEntity?.label || "New Node"}" → "${
@@ -807,7 +807,7 @@ const SpaceDetails = () => {
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  style={{ background: "#BD4902", color: "#FFFFFF" }}
+                  style={{ background: 'var(--color-danger)', color: 'var(--color-white)' }}
                   disabled={deleting}
                 >
                   {deleting ? "Deleting..." : "Delete"}
@@ -855,7 +855,7 @@ const SpaceDetails = () => {
                         padding: "8px",
                         borderBottom:
                           index < space.collaborators.length - 1
-                            ? "1px solid #eee"
+                            ? `1px solid var(--color-gray-200)`
                             : "none",
                         cursor: "pointer",
                         color: "#1a73e8",

@@ -43,8 +43,8 @@ const Register = () => {
       <input type="date" name="dob" placeholder="Date of Birth" onChange={handleChange} required />
       <button type="submit">Register</button>
       
-      {error && <p style={{ color: '#BD4902' }}>{error}</p>}
-      {message && <p style={{ color: '#2D6A4F' }}>{message}</p>}
+      {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {message && <p style={{ color: 'var(--color-success)' }}>{message}</p>}
     </form>
   );
 };
