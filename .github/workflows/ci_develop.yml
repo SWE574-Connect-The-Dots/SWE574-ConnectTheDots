@@ -217,8 +217,10 @@ jobs:
     needs: compose-ci
     runs-on: ubuntu-latest
     if: |
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request'
+      startsWith(github.ref, 'refs/heads/develop/') ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/refactor/') ||
+      startsWith(github.ref, 'refs/heads/bugfix/')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
