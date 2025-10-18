@@ -1,6 +1,8 @@
 package com.yybb.myapplication.di
 
+import com.yybb.myapplication.data.SessionManager
 import com.yybb.myapplication.data.network.ApiService
+import com.yybb.myapplication.data.network.AuthInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,11 +21,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideAuthInterceptor(sessionManager: SessionManager): AuthInterceptor {
+        return AuthInterceptor(sessionManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor()
         logging.setLevel(HttpLoggingInterceptor.Level.BODY)
         return OkHttpClient.Builder()
             .addInterceptor(logging)
+            .addInterceptor(authInterceptor)
             .build()
     }
 

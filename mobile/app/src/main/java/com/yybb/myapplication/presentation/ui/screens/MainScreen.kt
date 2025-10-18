@@ -19,13 +19,13 @@ import com.yybb.myapplication.presentation.navigation.BottomNavItem
 import com.yybb.myapplication.presentation.navigation.MainNavGraph
 
 @Composable
-fun MainScreen() {
+fun MainScreen(rootNavController: NavHostController) {
     val navController = rememberNavController()
     Scaffold(
         bottomBar = { BottomNavigationBar(navController = navController) }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            MainNavGraph(navController = navController)
+            MainNavGraph(navController = navController, rootNavController = rootNavController)
         }
     }
 }

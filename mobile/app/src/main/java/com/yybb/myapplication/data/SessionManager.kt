@@ -24,6 +24,12 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
         }
     }
 
+    suspend fun clearAuthToken() {
+        dataStore.edit { preferences ->
+            preferences.remove(AUTH_TOKEN)
+        }
+    }
+
     val authToken: Flow<String?> = dataStore.data.map { preferences ->
         preferences[AUTH_TOKEN]
     }

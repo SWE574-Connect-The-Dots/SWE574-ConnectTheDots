@@ -21,14 +21,13 @@ interface ApiService {
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
     @GET("api/profiles/me/")
-    suspend fun getProfile(@Header("Authorization") token: String): Response<ProfileResponse>
+    suspend fun getProfile(): Response<ProfileResponse>
     
     @GET("api/profiles/{username}/user_profile/")
-    suspend fun getProfileByUsername(@Header("Authorization") token: String, @Path("username") username: String): Response<ProfileResponse>
+    suspend fun getProfileByUsername(@Path("username") username: String): Response<ProfileResponse>
 
     @PUT("api/profiles/update_profile/")
     suspend fun updateProfile(
-        @Header("Authorization") token: String,
         @Body request: UpdateProfileRequest
     ): Response<ProfileResponse>
 }

@@ -116,7 +116,7 @@ fun ProfileContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileInfo("Profession", user.profession)
-        ProfileInfo("Bio", user.bio ?: "")
+        ProfileInfo("Bio", user.bio ?: "-")
         ProfileInfo("Date Of Birth", formatDisplayDate(user.dateOfBirth))
         ProfileInfo("Joined", formatDisplayDate(user.joinedDate))
 

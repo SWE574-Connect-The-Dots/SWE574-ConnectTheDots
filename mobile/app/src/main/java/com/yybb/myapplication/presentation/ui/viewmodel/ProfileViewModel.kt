@@ -32,10 +32,7 @@ class ProfileViewModel @Inject constructor(
     fun getProfile() {
         val userId: String? = savedStateHandle["userId"]
         repository.getProfile(userId).onEach { user ->
-            // Assume we have a way to get the current user's id.
-            // For now, we'll hardcode it to "1" to simulate viewing your own profile.
-            val currentUserId = "1" // This should be replaced with the actual current user's ID
-            _uiState.value = ProfileUiState.Success(user, userId == currentUserId)
+            _uiState.value = ProfileUiState.Success(user, userId == null)
         }.catch { e ->
             _uiState.value = ProfileUiState.Error(e.message ?: "An unknown error occurred")
         }.launchIn(viewModelScope)

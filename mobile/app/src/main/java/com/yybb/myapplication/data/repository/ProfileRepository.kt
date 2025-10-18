@@ -17,15 +17,15 @@ class ProfileRepository @Inject constructor(
     private val apiService: ApiService,
     private val sessionManager: SessionManager
 ) {
-    fun getProfile(userId: String?): Flow<User> = flow {
+     fun getProfile(userId: String?): Flow<User> = flow {
         val token = sessionManager.authToken.first()
         if (token == null) {
             throw Exception("Not authenticated")
         }
         val response = if (userId == null) {
-            apiService.getProfile("Bearer $token")
+            apiService.getProfile()
         } else {
-            apiService.getProfileByUsername("Bearer $token", userId)
+            apiService.getProfileByUsername(userId)
         }
         if (response.isSuccessful) {
             response.body()?.let {
@@ -44,7 +44,6 @@ class ProfileRepository @Inject constructor(
                     return@withContext Result.failure(Exception("Not authenticated"))
                 }
                 val response = apiService.updateProfile(
-                    "Bearer $token",
                     UpdateProfileRequest(bio, profession)
                 )
                 if (response.isSuccessful) {

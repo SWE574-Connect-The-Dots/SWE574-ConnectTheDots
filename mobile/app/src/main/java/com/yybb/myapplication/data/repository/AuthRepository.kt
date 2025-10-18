@@ -45,4 +45,10 @@ class AuthRepository @Inject constructor(
             }
         }
     }
+
+    suspend fun logout() {
+        withContext(Dispatchers.IO) {
+            sessionManager.clearAuthToken()
+        }
+    }
 }
