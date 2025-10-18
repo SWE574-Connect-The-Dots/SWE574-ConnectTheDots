@@ -216,6 +216,8 @@ jobs:
   deploy-to-ec2:
     needs: compose-ci
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
