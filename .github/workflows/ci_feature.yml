@@ -268,8 +268,8 @@ jobs:
             cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
 
             echo "🛠️ Building and starting Docker containers..."
-            docker compose -f infra/docker-compose.yaml down
-            docker compose -f infra/docker-compose.yaml up -d --build
+            docker compose -f infra/docker-compose.prod.yaml down
+            docker compose -f infra/docker-compose.prod.yaml up -d --build
 
 
       - name: Remove runner IP from security group
