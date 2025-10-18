@@ -12,6 +12,11 @@ on:
     paths-ignore:
       - "mobile/**" 
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   compose-ci:
     runs-on: ubuntu-latest
@@ -131,7 +136,7 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-            - name: Run Django tests
+      - name: Run Django tests
         run: |
           echo "Running backend tests..."
           $COMPOSE_CMD exec -T \
