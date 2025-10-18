@@ -257,8 +257,8 @@ jobs:
 
             cd Connect-The-Dots
             git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            git checkout develop
+            git pull origin develop
 
             echo "🧩 Copying /home/ubuntu/.env into backend/.env ..."
             mkdir -p backend
