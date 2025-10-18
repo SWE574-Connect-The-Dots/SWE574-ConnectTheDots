@@ -260,20 +260,11 @@ jobs:
             git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
 
-            echo "🧩 Creating backend/.env file..."
+            echo "🧩 Copying /home/ubuntu/.env into backend/.env ..."
             mkdir -p backend
-            cat > backend/.env <<EOF
-            DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
-            DJANGO_DEBUG=False
+            cp /home/ubuntu/.env backend/.env
 
-            POSTGRES_USER=${{ secrets.DB_USER }}
-            POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
-            POSTGRES_DB=${{ secrets.DB_NAME }}
-            POSTGRES_HOST=db
-            POSTGRES_PORT=5432
-            EOF
-
-            echo "✅ .env file created at backend/.env"
+            echo "✅ .env file copied successfully:"
             cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
 
             echo "🛠️ Building and starting Docker containers..."
