@@ -56,6 +56,24 @@ class GraphView(context: Context, attrs: AttributeSet? = null) : View(context, a
         isAntiAlias = true
     }
 
+    // Paints
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+    }
+
+    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK
+        textSize = 28f
+        textAlign = Paint.Align.CENTER
+    }
+
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+    }
+
     // Pan & Zoom
     var scaleFactor = 1f
     private var minScaleFactor = 0.5f
@@ -111,8 +129,8 @@ class GraphView(context: Context, attrs: AttributeSet? = null) : View(context, a
 
             val angle = rnd.nextFloat() * 2 * Math.PI
             val distance = clusterRadius * (0.5f + rnd.nextFloat() * 0.5f)
-            to.x = from.x + (distance * kotlin.math.cos(angle)).toFloat()
-            to.y = from.y + (distance * kotlin.math.sin(angle)).toFloat()
+            to.x = from.x + (distance * cos(angle)).toFloat()
+            to.y = from.y + (distance * sin(angle)).toFloat()
         }
 
         relaxLayout()
@@ -131,24 +149,6 @@ class GraphView(context: Context, attrs: AttributeSet? = null) : View(context, a
             val midX = (edge.from.x + edge.to.x) / 2
             val midY = (edge.from.y + edge.to.y) / 2
             canvas.drawText(edge.description, midX, midY, edgeTextPaint)
-        }
-
-        // Paints
-        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-        }
-
-        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = 28f
-            textAlign = Paint.Align.CENTER
-        }
-
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
         }
 
         // Draw nodes
@@ -183,8 +183,6 @@ class GraphView(context: Context, attrs: AttributeSet? = null) : View(context, a
 
         canvas.restore()
     }
-
-
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleDetector.onTouchEvent(event)
