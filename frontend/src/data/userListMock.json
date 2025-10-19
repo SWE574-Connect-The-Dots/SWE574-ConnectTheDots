@@ -1,0 +1,56 @@
+[
+  {
+    "username": "gamze",
+    "email": "gamzegunerig@gmail.com",
+    "createdDate": "2025-01-22",
+    "role": "Admin"
+  },
+  {
+    "username": "yasemin",
+    "email": "yasemin@gmail.com",
+    "createdDate": "2025-02-14",
+    "role": "Admin"
+  },
+  {
+    "username": "esra",
+    "email": "esra@gmail.com",
+    "createdDate": "2025-03-03",
+    "role": "Admin"
+  },
+  {
+    "username": "batuhan",
+    "email": "batuhan@example.com",
+    "createdDate": "2025-03-21",
+    "role": "Admin"
+  },
+  {
+    "username": "yusuf",
+    "email": "yusuf@example.com",
+    "createdDate": "2025-04-09",
+    "role": "Admin"
+  },
+  {
+    "username": "jasonmiller",
+    "email": "jasonmiller@example.com",
+    "createdDate": "2025-04-28",
+    "role": "User"
+  },
+  {
+    "username": "liam",
+    "email": "liam@example.com",
+    "createdDate": "2025-05-12",
+    "role": "User"
+  },
+  {
+    "username": "ethancole",
+    "email": "lina.m@example.com",
+    "createdDate": "2025-06-04",
+    "role": "User"
+  },
+  {
+    "username": "susan",
+    "email": "susan@example.com",
+    "createdDate": "2025-07-15",
+    "role": "Moderator"
+  }
+]

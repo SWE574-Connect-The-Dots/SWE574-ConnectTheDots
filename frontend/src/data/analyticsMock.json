@@ -1,0 +1,33 @@
+{
+  "users": {
+    "total": 1245,
+    "active": 789,
+    "new_this_month": 67,
+    "growth_rate": 8.5
+  },
+  "spaces": {
+    "total": 432,
+    "active": 315,
+    "new_this_month": 28,
+    "popular_tags": ["history", "science", "technology", "art", "politics"]
+  },
+  "nodes": {
+    "total": 8752,
+    "created_this_month": 463
+  },
+  "edges": {
+    "total": 12453,
+    "created_this_month": 721
+  },
+  "activity": {
+    "daily_active_users": [45, 52, 48, 61, 58, 54, 63, 59, 51, 49, 55, 67, 71, 63],
+    "new_spaces_weekly": [8, 12, 9, 15, 11, 14, 13],
+    "page_views": [1230, 1345, 1287, 1456, 1567, 1489, 1678, 1590, 1432, 1345, 1456, 1567, 1689, 1567]
+  },
+  "engagement": {
+    "avg_time_spent": "18m 32s",
+    "avg_nodes_per_space": 20.3,
+    "avg_edges_per_space": 28.8,
+    "bounce_rate": "21.5%"
+  }
+}

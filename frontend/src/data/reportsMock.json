@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "itemType": "Space",
+    "itemName": "The Silent Room",
+    "itemId": "space-001",
+    "reportedBy": "jasonMiller",
+    "reportReason": "Misinformation about locked-door evidence",
+    "dateReported": "2025-10-17",
+    "reportCount": 3,
+    "status": "Pending"
+  },
+  {
+    "id": 2,
+    "itemType": "Node",
+    "itemName": "Clue 3 — The Typewriter Ribbon",
+    "itemId": "node-014",
+    "reportedBy": "yaseminK",
+    "reportReason": "Duplicate clue already covered in another node",
+    "dateReported": "2025-10-18",
+    "reportCount": 1,
+    "status": "Pending"
+  },
+  {
+    "id": 3,
+    "itemType": "Comment",
+    "itemName": "‘Clara definitely did it!’",
+    "itemId": "comment-233",
+    "reportedBy": "gamzeG",
+    "reportReason": "Harassment / accusatory tone",
+    "dateReported": "2025-10-19",
+    "reportCount": 4,
+    "status": "Pending"
+  },
+  {
+    "id": 4,
+    "itemType": "Node",
+    "itemName": "Library Note — 'Ward’s Cave'",
+    "itemId": "node-075",
+    "reportedBy": "ethanCole",
+    "reportReason": "Possible forged evidence (unverified source)",
+    "dateReported": "2025-10-19",
+    "reportCount": 2,
+    "status": "Pending"
+  },
+  {
+    "id": 5,
+    "itemType": "Comment",
+    "itemName": "This treasure map is fake, buy my crypto instead",
+    "itemId": "comment-356",
+    "reportedBy": "mara89",
+    "reportReason": "Spam / advertisement",
+    "dateReported": "2025-10-19",
+    "reportCount": 1,
+    "status": "Pending"
+  },
+  {
+    "id": 9,
+    "itemType": "Space",
+    "itemName": "Ancient History",
+    "itemId": "space-001",
+    "reportedBy": "user123",
+    "reportReason": "Inappropriate content",
+    "dateReported": "2025-10-15",
+    "reportCount": 5,
+    "status": "Pending"
+  },
+  {
+    "id": 10,
+    "itemType": "Node",
+    "itemName": "Roman Empire",
+    "itemId": "node-057",
+    "reportedBy": "historyBuff",
+    "reportReason": "Inaccurate information",
+    "dateReported": "2025-10-14",
+    "reportCount": 2,
+    "status": "Pending"
+  },
+  {
+    "id": 11,
+    "itemType": "Discussion",
+    "itemName": "Medieval Architecture Discussion",
+    "itemId": "disc-024",
+    "reportedBy": "archStudent",
+    "reportReason": "Off-topic",
+    "dateReported": "2025-10-12",
+    "reportCount": 1,
+    "status": "Reviewed"
+  },
+  {
+    "id": 12,
+    "itemType": "Profile",
+    "itemName": "anonymous_user",
+    "itemId": "user-118",
+    "reportedBy": "moderator1",
+    "reportReason": "Spam account",
+    "dateReported": "2025-10-10",
+    "reportCount": 8,
+    "status": "Resolved"
+  },
+  {
+    "id": 13,
+    "itemType": "Comment",
+    "itemName": "Comment on Renaissance Art",
+    "itemId": "comment-332",
+    "reportedBy": "artLover",
+    "reportReason": "Harassment",
+    "dateReported": "2025-10-09",
+    "reportCount": 3,
+    "status": "Pending"
+  }
+]
