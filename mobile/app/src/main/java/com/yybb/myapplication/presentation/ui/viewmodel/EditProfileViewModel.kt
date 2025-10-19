@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -30,20 +31,27 @@ class EditProfileViewModel @Inject constructor(
     val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
     init {
-        // TODO Update when backend is deployed
-        getProfile("1")
+        getProfile()
     }
 
-    private fun getProfile(userId: String) {
-        repository.getProfile(userId).onEach { user ->
+    private fun getProfile() {
+        repository.getProfile(null).onEach { user ->
             _uiState.value = EditProfileUiState.Success(user)
+        }.catch { e ->
+            _uiState.value = EditProfileUiState.Error(e.message ?: "An unknown error occurred")
         }.launchIn(viewModelScope)
     }
 
 
-    fun saveProfile(profession: String, bio: String) {
+    fun saveProfile(profession: String, bio: String?) {
         viewModelScope.launch {
-            // repository.updateProfile("1", profession, bio)
+            repository.updateProfile(profession, bio)
+                .onSuccess {
+                    _uiState.value = EditProfileUiState.Success(it)
+                }
+                .onFailure {
+                    _uiState.value = EditProfileUiState.Error(it.message ?: "An unknown error occurred")
+                }
         }
     }
 }

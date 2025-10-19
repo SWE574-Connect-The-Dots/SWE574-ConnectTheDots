@@ -3,9 +3,11 @@ package com.yybb.myapplication.presentation.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -19,12 +21,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.yybb.myapplication.R
+import com.yybb.myapplication.presentation.navigation.Screen
+import com.yybb.myapplication.presentation.ui.utils.CollectAsEffect
 import com.yybb.myapplication.presentation.ui.viewmodel.SettingsViewModel
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    navController: NavController,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val isColorBlindTheme by viewModel.isColorBlindTheme.collectAsState()
+
+    viewModel.logoutEvent.CollectAsEffect {
+        navController.navigate(Screen.AuthGraph.route) {
+            popUpTo(Screen.MainGraph.route) { inclusive = true }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,6 +75,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 checked = isColorBlindTheme,
                 onCheckedChange = { viewModel.setColorBlindTheme(it) }
             )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = { viewModel.logout() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Logout")
         }
     }
 }

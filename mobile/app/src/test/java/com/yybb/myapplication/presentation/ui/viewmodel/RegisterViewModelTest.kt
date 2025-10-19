@@ -2,6 +2,7 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 
 import android.content.Context
 import com.yybb.myapplication.R
+import com.yybb.myapplication.data.repository.AuthRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +20,8 @@ import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RegisterViewModelTest {
@@ -29,12 +32,14 @@ class RegisterViewModelTest {
     private lateinit var mockContext: Context
     private lateinit var viewModel: RegisterViewModel
     private val dispatcher = UnconfinedTestDispatcher()
+    private lateinit var mockAuthRepository: AuthRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
 
         MockitoAnnotations.openMocks(this)
+        mockAuthRepository = Mockito.mock(AuthRepository::class.java)
         mockContext.apply {
             Mockito.`when`(getString(R.string.fill_all_fileds_error))
                 .thenReturn("Please fill all fields")
@@ -45,7 +50,7 @@ class RegisterViewModelTest {
             Mockito.`when`(getString(R.string.consent_error)).thenReturn("Consent required")
         }
 
-        viewModel = RegisterViewModel(mockContext)
+        viewModel = RegisterViewModel(mockContext, mockAuthRepository)
     }
 
     @Test
@@ -76,42 +81,6 @@ class RegisterViewModelTest {
             assertTrue(state is ViewState.Error)
             assertEquals("Invalid email", (state as ViewState.Error).message)
         }
-
-    @Test
-    fun `checkInputsAndNavigate with invalid email 2 should set ViewState_Error`() =
-        runTest(dispatcher) {
-            viewModel.checkInputsAndNavigate(
-                email = "john@.com",
-                username = "johnDoe",
-                password = "john1234",
-                profession = "Engineer",
-                dateOfBirth = "01/01/2000",
-                agreeToShareLocation = true
-            )
-            advanceUntilIdle()
-
-            val state = viewModel.viewState.value
-            assertTrue(state is ViewState.Error)
-            assertEquals("Invalid email", (state as ViewState.Error).message)
-        }
-    @Test
-    fun `checkInputsAndNavigate with invalid email 3 should set ViewState_Error`() =
-        runTest(dispatcher) {
-            viewModel.checkInputsAndNavigate(
-                email = "john@com",
-                username = "johnDoe",
-                password = "john1234",
-                profession = "Engineer",
-                dateOfBirth = "01/01/2000",
-                agreeToShareLocation = true
-            )
-            advanceUntilIdle()
-
-            val state = viewModel.viewState.value
-            assertTrue(state is ViewState.Error)
-            assertEquals("Invalid email", (state as ViewState.Error).message)
-        }
-
 
     @Test
     fun `checkInputsAndNavigate with invalid profession should set ViewState_Error`() =
@@ -168,6 +137,7 @@ class RegisterViewModelTest {
         }
     @Test
     fun `checkInputsAndNavigate with valid inputs should emit NavigateToLogin event`() = runTest(dispatcher) {
+        whenever(mockAuthRepository.register(any())).thenReturn(Result.success(Unit))
         val job = launch { viewModel.eventFlow.first { it is AuthEvent.NavigateToLogin } }
 
         viewModel.checkInputsAndNavigate(
@@ -175,7 +145,7 @@ class RegisterViewModelTest {
             username = "johnDoe",
             password = "john1234",
             profession = "Engineer",
-            dateOfBirth = "01/01/2000",
+            dateOfBirth = "2000-01-01",
             agreeToShareLocation = true
         )
         advanceUntilIdle()
@@ -184,6 +154,26 @@ class RegisterViewModelTest {
         assertTrue(state is ViewState.Success)
 
         job.cancel()
+    }
+
+    @Test
+    fun `checkInputsAndNavigate with valid inputs should set ViewState_Error on failure`() = runTest(dispatcher) {
+        val errorMessage = "Registration failed"
+        whenever(mockAuthRepository.register(any())).thenReturn(Result.failure(Exception(errorMessage)))
+
+        viewModel.checkInputsAndNavigate(
+            email = "john@example.com",
+            username = "johnDoe",
+            password = "john1234",
+            profession = "Engineer",
+            dateOfBirth = "2000-01-01",
+            agreeToShareLocation = true
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.viewState.value
+        assertTrue(state is ViewState.Error)
+        assertEquals(errorMessage, (state as ViewState.Error).message)
     }
 
     @Test

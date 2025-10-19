@@ -8,9 +8,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
+import androidx.lifecycle.SavedStateHandle
 
 sealed interface ProfileUiState {
     object Loading : ProfileUiState
@@ -20,23 +22,19 @@ sealed interface ProfileUiState {
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val repository: ProfileRepository
+    private val repository: ProfileRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    init {
-        // We'll get the userId from navigation arguments in a real app
-        getProfile("1")
-    }
-
-    private fun getProfile(userId: String) {
+    fun getProfile() {
+        val userId: String? = savedStateHandle["userId"]
         repository.getProfile(userId).onEach { user ->
-            // Assume we have a way to get the current user's id.
-            // For now, we'll hardcode it to "1" to simulate viewing your own profile.
-            val currentUserId = "1"
-            _uiState.value = ProfileUiState.Success(user, userId == currentUserId)
+            _uiState.value = ProfileUiState.Success(user, userId == null)
+        }.catch { e ->
+            _uiState.value = ProfileUiState.Error(e.message ?: "An unknown error occurred")
         }.launchIn(viewModelScope)
     }
 }

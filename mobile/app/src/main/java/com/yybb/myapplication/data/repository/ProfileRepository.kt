@@ -1,42 +1,86 @@
 package com.yybb.myapplication.data.repository
 
+import com.yybb.myapplication.data.SessionManager
 import com.yybb.myapplication.data.model.Space
 import com.yybb.myapplication.data.model.User
-import kotlinx.coroutines.delay
+import com.yybb.myapplication.data.network.ApiService
+import com.yybb.myapplication.data.network.dto.ProfileResponse
+import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class ProfileRepository @Inject constructor() {
-    // Mock data
-    private var user = User(
-        id = "1",
-        username = "Michael",
-        profession = "Basketball Player",
-        bio = "Passionate about building efficient and user-friendly digital solutions, Esra enjoys tackling technical challenges that combine creativity and problem-solving. In addition to her technical skills, she values teamwork, continuous learning, and contributing to innovative projects that make a real-world impact.",
-        dateOfBirth = "05.06.1975",
-        joinedDate = "18.05.2025",
-        ownedSpaces = listOf(
-            Space("1", "Are We Losing the Art of Genuin...", "michael"),
-            Space("2", "Are We Losing the Art of Genuin...", "michael"),
-            Space("3", "Are We Losing the Art of Genuin...", "michael"),
-            Space("4", "Are We Losing the Art of Genuin...", "michael")
-        ),
-        joinedSpaces = listOf(
-            Space("5", "Are We Losing the Art of Genuin...", "someone"),
-            Space("6", "Are We Losing the Art of Genuin...", "someone"),
-            Space("7", "Are We Losing the Art of Genuin...", "someone"),
-            Space("8", "Are We Losing the Art of Genuin...", "someone")
-        )
-    )
-
-    fun getProfile(userId: String): Flow<User> = flow {
-        // TODO In a real app, we would fetch this from a data source and handle userIds.
-        emit(user)
+class ProfileRepository @Inject constructor(
+    private val apiService: ApiService,
+    private val sessionManager: SessionManager
+) {
+     fun getProfile(userId: String?): Flow<User> = flow {
+        val token = sessionManager.authToken.first()
+        if (token == null) {
+            throw Exception("Not authenticated")
+        }
+        val response = if (userId == null) {
+            apiService.getProfile()
+        } else {
+            apiService.getProfileByUsername(userId)
+        }
+        if (response.isSuccessful) {
+            response.body()?.let {
+                emit(it.toUser())
+            } ?: throw Exception("Failed to get profile")
+        } else {
+            throw Exception("Failed to get profile: ${response.errorBody()?.string()}")
+        }
     }
 
-    suspend fun updateProfile(userId: String, profession: String, bio: String) {
-        delay(1000)
-        user = user.copy(profession = profession, bio = bio)
+    suspend fun updateProfile(profession: String, bio: String?): Result<User> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    return@withContext Result.failure(Exception("Not authenticated"))
+                }
+                val response = apiService.updateProfile(
+                    UpdateProfileRequest(bio, profession)
+                )
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        Result.success(it.toUser())
+                    } ?: Result.failure(Exception("Update failed"))
+                } else {
+                    Result.failure(Exception("Update failed: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun ProfileResponse.toUser(): User {
+        return User(
+            id = this.user.id.toString(),
+            username = this.user.username,
+            profession = this.profession,
+            bio = this.bio ?: "",
+            dateOfBirth = this.dateOfBirth,
+            joinedDate = this.joinedDate,
+            ownedSpaces = this.ownedSpaces.map {
+                Space(
+                    id = it.id.toString(),
+                    name = it.name,
+                    description = it.description
+                )
+            },
+            joinedSpaces = this.joinedSpaces.map {
+                Space(
+                    id = it.id.toString(),
+                    name = it.name,
+                    description = it.description
+                )
+            }
+        )
     }
 }

@@ -18,10 +18,10 @@ import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
 import com.yybb.myapplication.presentation.ui.viewmodel.EditProfileViewModel
 
 @Composable
-fun MainNavGraph(navController: NavHostController) {
+fun MainNavGraph(navController: NavHostController, rootNavController: NavHostController) {
     NavHost(navController, startDestination = BottomNavItem.Spaces.route) {
         composable(BottomNavItem.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(navController = rootNavController)
         }
         composable(BottomNavItem.Spaces.route) {
             SpacesScreen(navController = navController)
@@ -30,9 +30,7 @@ fun MainNavGraph(navController: NavHostController) {
             ActivityStreamScreen()
         }
         composable(BottomNavItem.Profile.route) {
-            ProfileScreen(
-                navController = navController
-            )
+            ProfileScreen(navController = navController)
         }
         composable(
             route = Screen.SpaceDetails.route,
