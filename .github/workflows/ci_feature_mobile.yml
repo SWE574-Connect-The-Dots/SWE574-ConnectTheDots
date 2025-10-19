@@ -34,11 +34,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+        run: ./gradlew :app:assembleDevelopDebug --stacktrace --no-daemon
         # ":" prefix ensures gradle builds the app module specifically
       
       - name: Run unit tests #mobile unit test
-        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+        run: ./gradlew :app:testDevelopDebugUnitTest --stacktrace --no-daemon
 
       # set a custom artifact name
       # Extract branch number & commit SHA, build artifact name
@@ -67,7 +67,7 @@ jobs:
       #Rename the built APK file
       - name: Rename APK
         run: |
-          cd app/build/outputs/apk/debug
+          cd app/build/outputs/apk/develop/debug
           ORIGINAL_APK=$(ls *.apk | head -n 1)
           mv "$ORIGINAL_APK" "${{ steps.vars.outputs.artifact_name }}"
       
@@ -76,4 +76,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.vars.outputs.artifact_name }}
-          path: mobile/app/build/outputs/apk/debug/${{ steps.vars.outputs.artifact_name }}
+          path: mobile/app/build/outputs/apk/develop/debug/${{ steps.vars.outputs.artifact_name }}
