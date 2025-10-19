@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { API_ENDPOINTS } from "../constants/config";
+import "./Header.css";
 
 const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -22,6 +24,22 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
     navigate("/login");
   };
 
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
+
   return (
     <header className="header">
       <div className="logo-container">
@@ -36,14 +54,6 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
             <Link to="/" className="nav-item">
               Discover
             </Link>
-            {currentUser && (
-              <Link
-                to={`/profile/${currentUser.username}`}
-                className="nav-item"
-              >
-                Profile ({currentUser.username})
-              </Link>
-            )}
           </div>
 
           <div className="search-container">
@@ -70,9 +80,32 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
             Create Space
           </Link>
 
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
+          {currentUser && (
+            <div className="nav-item profile-dropdown" ref={dropdownRef}>
+              <div onClick={toggleDropdown} className="profile-toggle">
+                {currentUser.username} ▼
+              </div>
+              {dropdownOpen && (
+                <div className="dropdown-menu">
+                  <Link
+                    to={`/profile/${currentUser.username}`}
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  {(currentUser.is_staff || currentUser.is_superuser) && (
+                    <Link
+                      to="/backoffice"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  <button onClick={handleLogout}>Logout</button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 

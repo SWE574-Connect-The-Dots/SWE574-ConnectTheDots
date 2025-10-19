@@ -266,9 +266,6 @@ export default function Home({ setIsAuthenticated, currentUser }) {
           </div>
         ))}
       </div>
-      <div>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="modal-backdrop">

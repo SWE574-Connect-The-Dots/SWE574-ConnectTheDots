@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "type": "Space",
+    "name": "The Silent Room",
+    "archivedBy": "gamze",
+    "archivedDate": "2025-10-12",
+    "originalId": "space-001",
+    "reason": "Case closed – final report published"
+  },
+  {
+    "id": 4,
+    "type": "Space",
+    "name": "The Whispering Tides",
+    "archivedBy": "admin02",
+    "archivedDate": "2025-10-15",
+    "originalId": "space-002",
+    "reason": "Inactive for over 6 months – moved to historical archive"
+  },
+  {
+    "id": 6,
+    "type": "Space",
+    "name": "Ancient Greek Philosophy",
+    "archivedBy": "yasemin",
+    "archivedDate": "2025-10-12",
+    "originalId": "space-078",
+    "reason": "Inappropriate content"
+  },
+  {
+    "id": 7,
+    "type": "Space",
+    "name": "Controversial Physics Theories",
+    "archivedBy": "moderator1",
+    "archivedDate": "2025-10-10",
+    "originalId": "space-045",
+    "reason": "Multiple reports"
+  },
+  {
+    "id": 8,
+    "type": "Profile",
+    "name": "user456",
+    "archivedBy": "yusuf",
+    "archivedDate": "2025-10-08",
+    "originalId": "user-456",
+    "reason": "Spam activity"
+  },
+  {
+    "id": 9,
+    "type": "Profile",
+    "name": "historybuff99",
+    "archivedBy": "admin123",
+    "archivedDate": "2025-10-05",
+    "originalId": "user-789",
+    "reason": "Harassment"
+  },
+  {
+    "id": 10,
+    "type": "Space",
+    "name": "Quantum Computing Basics",
+    "archivedBy": "batuhan",
+    "archivedDate": "2025-09-28",
+    "originalId": "space-112",
+    "reason": "Owner request"
+  }
+]
