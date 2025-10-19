@@ -9,9 +9,9 @@
 .header {
   display: flex;
   align-items: center;
-  background-color: white;
+  background-color: var(--color-header-bg);
   padding: 10px 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border-1);
 }
 
 .logo-container {
@@ -21,7 +21,7 @@
 }
 
 .logo {
-  background-color: #fff;
+  background-color: var(--color-white);
   border-radius: 50%;
   margin-right: 10px;
 }
@@ -30,8 +30,8 @@
   font-weight: bold;
   font-size: 18px;
   white-space: nowrap;
-  color: white;
-  background-color: black;
+  color: var(--color-white);
+  background-color: var(--color-header-bg);
   padding: 10px;
 }
 
@@ -44,7 +44,7 @@
   margin: 0 15px;
   cursor: pointer;
   padding: 5px 0;
-  color: #000000;
+  color: var(--color-white);
 }
 
 .search-container {
@@ -54,9 +54,15 @@
 
 .search-container input {
   padding: 8px 30px 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-2);
   border-radius: 20px;
   width: 200px;
+  background-color: var(--color-white);
+  color: var(--color-text);
+}
+
+.search-container input::placeholder {
+  color: var(--color-gray-400);
 }
 
 .clear-button {
@@ -71,18 +77,22 @@
 }
 
 .create-space-button {
-  background-color: #333;
-  color: white;
+  background-color: var(--color-accent);
+  color: var(--color-white);
   border: none;
   padding: 8px 15px;
   border-radius: 5px;
   cursor: pointer;
 }
 
+.create-space-button:hover {
+  background-color: var(--color-accent-hover);
+}
+
 /* Tabs Styles */
 .tabs-container {
   display: flex;
-  background-color: #f0f0f0;
+  background-color: var(--color-bg);
 }
 
 .tab {
@@ -92,11 +102,12 @@
   cursor: pointer;
   font-weight: bold;
   border-bottom: 2px solid transparent;
-  color: #000000;
+  color: var(--color-text-secondary);
 }
 
 .tab.active {
-  border-bottom-color: #333;
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
 }
 
 /* Spaces Container */
@@ -106,9 +117,9 @@
 
 /* Space Card Styles */
 .space-card {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-2);
   margin-bottom: 20px;
-  background-color: white;
+  background-color: var(--color-white);
 }
 
 .space-header {
@@ -116,17 +127,18 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border-2);
 }
 
 .space-title {
   margin: 0;
   font-size: 18px;
+  color: var(--color-text);
 }
 
 .contributors {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .space-content {
@@ -167,12 +179,12 @@
 }
 
 .comment-bubble {
-  background-color: #000000;
+  background-color: var(--color-teal-dark);
   padding: 5px 10px;
   border-radius: 5px;
   font-size: 14px;
   font-weight: bold;
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .activities {
@@ -182,7 +194,7 @@
 .activity-item {
   margin-bottom: 10px;
   font-size: 14px;
-  color: #333;
+  color: var(--color-text);
 }
 
 .space-footer {
@@ -190,7 +202,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  background-color: #f7f7f7;
+  background-color: var(--color-bg);
 }
 
 .tags {
@@ -198,12 +210,12 @@
 }
 
 .tag {
-  background-color: #000000;
+  background-color: var(--color-teal-dark);
   padding: 5px 15px;
   border-radius: 15px;
   margin-right: 10px;
   font-size: 14px;
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .join-button, .leave-button {
@@ -214,8 +226,8 @@
 }
 
 .join-button {
-  background-color: #000000;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -224,14 +236,14 @@
 }
 
 .join-button:hover {
-  background-color: #000000;
+  background-color: var(--color-accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .leave-button {
-  background-color: #a00b00;
-  color: white;
+  background-color: var(--color-danger);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -240,7 +252,7 @@
 }
 
 .leave-button:hover {
-  background-color: #a00b00;
+  background-color: var(--color-warning);
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
@@ -251,18 +263,20 @@
 }
 
 .collaborators-container {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-2);
   border-radius: 4px;
   overflow: hidden;
+  background-color: var(--color-white);
 }
 
 .collaborators-header {
-  background-color: #f1f1f1;
+  background-color: var(--color-bg);
   padding: 10px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: var(--color-text);
 }
 
 .collaborators-list {
@@ -273,7 +287,8 @@
 
 .collaborator-item {
   padding: 8px 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border-2);
+  color: var(--color-text);
 }
 
 .collaborator-item:last-child {
@@ -283,15 +298,15 @@
 .non-collaborator-box {
   margin-top: 20px;
   padding: 15px;
-  background-color: #f8f9fa;
+  background-color: var(--color-white);
   border-radius: 4px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-2);
   text-align: center;
 }
 
 .non-collaborator-box p {
   margin-bottom: 15px;
-  color: #555;
+  color: var(--color-text-secondary);
 }
 
 /* Profile Page Styles */
@@ -302,21 +317,24 @@
 }
 
 .profile-header {
-  background-color: #f5f5f5;
+  background-color: var(--color-white);
   padding: 20px;
   border-radius: 5px;
   margin-bottom: 20px;
   position: relative;
+  border: 1px solid var(--color-border-2);
 }
 
 .profile-header h1 {
   margin-top: 0;
   margin-bottom: 15px;
+  color: var(--color-text);
 }
 
 .profession {
   font-weight: bold;
   margin-bottom: 10px;
+  color: var(--color-text-secondary);
 }
 
 .bio {
@@ -328,11 +346,12 @@
   word-break: break-word;
   hyphens: auto;
   padding: 5px 0;
+  color: var(--color-text);
 }
 
 .edit-profile-button {
-  background-color: #333;
-  color: white;
+  background-color: var(--color-accent);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -342,7 +361,7 @@
 }
 
 .edit-profile-button:hover {
-  background-color: #555;
+  background-color: var(--color-accent-hover);
 }
 
 .profile-edit-form {
@@ -357,25 +376,34 @@
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
+  color: #1B1F3B;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-2);
   border-radius: 4px;
+  background-color: var(--color-white);
+  color: var(--color-text);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--color-gray-400);
 }
 
 .form-group input:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--color-bg);
   cursor: not-allowed;
+  color: #656F75;
 }
 
 .field-note {
   display: block;
   margin-top: 5px;
-  color: #666;
+  color: var(--color-text-secondary);
   font-style: italic;
   font-size: 12px;
 }
@@ -387,21 +415,29 @@
 }
 
 .save-button {
-  background-color: #333;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
 }
 
+.save-button:hover {
+  background-color: var(--color-accent-hover);
+}
+
 .cancel-button {
-  background-color: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background-color: var(--color-white);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-2);
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.cancel-button:hover {
+  background-color: var(--color-bg);
 }
 
 .profile-content {
@@ -415,12 +451,12 @@
 }
 
 .owned-spaces h2 {
-  color: #333;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
 .joined-spaces h2 {
-  color: #333;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
@@ -431,7 +467,8 @@
 }
 
 .space-card {
-  background-color: #f8f9fa;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-2);
   border-radius: 6px;
   padding: 1.5rem;
   cursor: pointer;
@@ -440,16 +477,16 @@
 
 .space-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(58, 12, 163, 0.2);
 }
 
 .space-card h3 {
-  color: #333;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
 }
 
 .space-card p {
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
@@ -457,22 +494,22 @@
   text-align: center;
   padding: 2rem;
   font-size: 1.2rem;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .error {
   text-align: center;
   padding: 2rem;
-  color: #dc3545;
+  color: var(--color-danger);
   font-size: 1.2rem;
 }
 
 .error-message {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: var(--color-white);
+  color: var(--color-danger);
   padding: 10px 15px;
   margin-bottom: 15px;
-  border: 1px solid #f5c6cb;
+  border: 2px solid var(--color-danger);
   border-radius: 4px;
   font-weight: bold;
 }
@@ -494,27 +531,27 @@
 
 .auth-button.login {
   background-color: transparent;
-  color: #333;
-  border: 1px solid #333;
+  color: var(--color-white);
+  border: 1px solid var(--color-white);
 }
 
 .auth-button.login:hover {
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .auth-button.register {
-  background-color: #333;
-  color: white;
-  border: 1px solid #333;
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  border: 1px solid var(--color-accent);
 }
 
 .auth-button.register:hover {
-  background-color: #555;
+  background-color: var(--color-accent-hover);
 }
 
 .logout-button {
-  background-color: #a00b00;
-  color: white;
+  background-color: var(--color-danger);
+  color: var(--color-white);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
@@ -525,7 +562,7 @@
 }
 
 .logout-button:hover {
-  background-color: #c00;
+  background-color: var(--color-warning);
 }
 
 .main-content {

@@ -463,8 +463,8 @@ const SpaceDetails = () => {
                 className="delete-button"
                 title="Delete"
                 style={{
-                  background: "#e53935",
-                  color: "white",
+                  background: 'var(--color-danger-light)',
+                  color: 'var(--color-white)',
                   border: "none",
                   borderRadius: 4,
                   fontWeight: 600,
@@ -476,10 +476,10 @@ const SpaceDetails = () => {
                 onClick={handleDeleteClick}
                 disabled={deleting}
                 onMouseOver={(e) =>
-                  (e.currentTarget.style.background = "#b71c1c")
+                  (e.currentTarget.style.background = 'var(--color-danger-dark)')
                 }
                 onMouseOut={(e) =>
-                  (e.currentTarget.style.background = "#e53935")
+                  (e.currentTarget.style.background = 'var(--color-danger-light)')
                 }
               >
                 Delete
@@ -494,7 +494,8 @@ const SpaceDetails = () => {
               key={tag.id || tag.name}
               style={{
                 display: "inline-block",
-                backgroundColor: "#b3e6b3",
+                backgroundColor: 'var(--color-teal-dark)',
+                color: 'var(--color-white)',
                 padding: "3px 8px",
                 borderRadius: "12px",
                 fontSize: "12px",
@@ -505,7 +506,7 @@ const SpaceDetails = () => {
               {tag.name}
               {tag.wikidata_label && (
                 <span
-                  style={{ marginLeft: "5px", fontSize: "10px", color: "#666" }}
+                  style={{ marginLeft: "5px", fontSize: "10px", color: 'var(--color-white)', opacity: 0.8 }}
                 >
                   (Wikidata label: {tag.wikidata_label})
                 </span>
@@ -655,21 +656,21 @@ const SpaceDetails = () => {
                   <label>Edge Direction:</label>
                   <button
                     onClick={() => setIsNewNodeSource(!isNewNodeSource)}
-                    style={{
-                      marginLeft: "10px",
-                      padding: "5px 10px",
-                      backgroundColor: isNewNodeSource ? "#4CAF50" : "#f44336",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                    }}
-                  >
+                  style={{
+                    marginLeft: "10px",
+                    padding: "5px 10px",
+                    backgroundColor: isNewNodeSource ? 'var(--color-success)' : 'var(--color-danger)',
+                    color: 'var(--color-white)',
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
                     {isNewNodeSource ? "New → Existing" : "Existing → New"}
                   </button>
                 </div>
                 <div
-                  style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}
+                  style={{ marginTop: "10px", color: 'var(--color-text-secondary)', fontSize: "14px" }}
                 >
                   {isNewNodeSource
                     ? `"${selectedEntity?.label || "New Node"}" → "${
@@ -794,7 +795,7 @@ const SpaceDetails = () => {
                   This action cannot be undone.
                 </p>
                 {deleteError && (
-                  <div style={{ color: "red" }}>{deleteError}</div>
+                  <div style={{ color: "#BD4902" }}>{deleteError}</div>
                 )}
               </div>
               <div className="modal-footer">
@@ -806,7 +807,7 @@ const SpaceDetails = () => {
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  style={{ background: "#e53935", color: "white" }}
+                  style={{ background: 'var(--color-danger)', color: 'var(--color-white)' }}
                   disabled={deleting}
                 >
                   {deleting ? "Deleting..." : "Delete"}
@@ -821,19 +822,21 @@ const SpaceDetails = () => {
       <div style={{ width: "250px" }}>
         <div
           style={{
-            border: "1px solid #ddd",
+            border: "1px solid #68686B",
             borderRadius: "4px",
             overflow: "hidden",
+            backgroundColor: "#FFFFFF"
           }}
         >
           <div
             style={{
-              backgroundColor: "#f1f1f1",
+              backgroundColor: "#F5F5F5",
               padding: "10px",
               cursor: "pointer",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              color: "#1B1F3B"
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
@@ -852,7 +855,7 @@ const SpaceDetails = () => {
                         padding: "8px",
                         borderBottom:
                           index < space.collaborators.length - 1
-                            ? "1px solid #eee"
+                            ? `1px solid var(--color-gray-200)`
                             : "none",
                         cursor: "pointer",
                         color: "#1a73e8",

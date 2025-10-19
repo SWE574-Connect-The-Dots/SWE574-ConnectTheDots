@@ -1,10 +1,17 @@
 package com.yybb.myapplication.di
 
-import com.yybb.myapplication.data.api.ApiService
+import android.content.Context
+import com.yybb.myapplication.R
+import com.yybb.myapplication.data.SessionManager
+import com.yybb.myapplication.data.network.ApiService
+import com.yybb.myapplication.data.network.AuthInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
@@ -15,9 +22,27 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit {
+    fun provideAuthInterceptor(sessionManager: SessionManager): AuthInterceptor {
+        return AuthInterceptor(sessionManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+        val logging = HttpLoggingInterceptor()
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .addInterceptor(authInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient, @ApplicationContext context: Context): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.example.com/") // TODO Replace with actual base URL once deployed
+            .baseUrl(context.getString(R.string.base_url))
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }

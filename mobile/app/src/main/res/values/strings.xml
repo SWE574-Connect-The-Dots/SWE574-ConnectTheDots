@@ -1,4 +1,26 @@
 <resources>
-    <string name="app_name">Connect-The-Dots</string>
+    <string name="headline">Connect The Dots</string>
     <string name="hello_world">Hello!</string>
+    <string name="email_title">Email</string>
+    <string name="username_title">Username</string>
+    <string name="password_title">Password</string>
+    <string name="profession_title">Profession</string>
+    <string name="date_of_birth_title">Date Of Birth</string>
+    <string name="location_consent_text">I agree to share my location for registration and personalized service purposes.</string>
+    <string name="have_account_text">Already have an account?</string>
+    <string name="dont_have_account">Don\'t you have an account?</string>
+    <string name="sign_in_option">Sign In</string>
+    <string name="sign_up_option">Sign Up!</string>
+    <string name="register_button">Register</string>
+    <string name="login_button">Login</string>
+    <string name="ok_button">Ok</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="error">Error</string>
+    <string name="fill_all_fileds_error">Please fill in all fields.</string>
+    <string name="invalid_email_error">Please enter a valid email address.</string>
+    <string name="invalid_profession_error">Profession must contain only letters.</string>
+    <string name="age_error">You must be at least 18 years old to register.</string>
+    <string name="consent_error">You must agree to share your location.</string>
+    <string name="settings_page_title">Settings Page</string>
+    <string name="settings_color_blind_theme_label">Color-Blind Friendly Theme</string>
 </resources>

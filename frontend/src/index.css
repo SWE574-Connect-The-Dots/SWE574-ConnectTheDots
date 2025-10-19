@@ -1,11 +1,34 @@
 :root {
+  /* Theme: Color variables */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+  --color-bg: #F5F5F5;
+  --color-text: #1B1F3B;
+  --color-text-secondary: #4A5568;
+  --color-border-1: #374151;
+  --color-border-2: #68686B;
+  --color-gray-200: #eee;
+  --color-gray-300: #ddd;
+  --color-gray-400: #646E7A;
+  --color-accent: #0076B5;
+  --color-accent-hover: #008296;
+  --color-success: #2D6A4F;
+  --color-danger: #BD4902;
+  --color-danger-light: #e53935;
+  --color-danger-dark: #b71c1c;
+  --color-warning: #8F6701;
+  --color-purple: #3A0CA3;
+  --color-purple-selected: #7209B7;
+  --color-teal-dark: #215D69;
+  --color-header-bg: #2F2F2F;
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #dcdcdc;
+  color: var(--color-text);
+  background-color: var(--color-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,11 +38,11 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-accent);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-accent-hover);
 }
 
 body {
@@ -27,7 +50,7 @@ body {
   place-items: top;
   min-width: 320px;
   min-height: 100vh;
-  color: #000000
+  color: var(--color-text)
 }
 
 h1 {
@@ -42,12 +65,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-accent);
+  color: var(--color-white);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-accent-hover);
 }
 button:focus,
 button:focus-visible {
@@ -56,13 +80,14 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: var(--color-text);
+    background-color: var(--color-bg);
   }
   a:hover {
-    color: #747bff;
+    color: var(--color-accent-hover);
   }
   button {
-    background-color: #f9f9f9;
+    background-color: var(--color-accent);
+    color: var(--color-white);
   }
 }

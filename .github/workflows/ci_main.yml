@@ -1,0 +1,285 @@
+name: CI (Docker Compose)
+
+on:
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "mobile/**"           # ignore mobile changes
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "mobile/**" 
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  compose-ci:
+    runs-on: ubuntu-latest
+
+    env:
+      COMPOSE_CMD: docker compose --project-directory infra -f infra/docker-compose.yaml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create backend/.env
+        working-directory: backend
+        run: |
+          cat > .env <<EOF
+          DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DJANGO_DEBUG=False
+
+          POSTGRES_USER=${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB=${{ secrets.DB_NAME }}
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+          EOF
+              echo "✅ Created backend/.env"
+              echo "---- backend/.env preview ----"
+              cat .env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
+
+
+      - name: Build & start stack
+        run: $COMPOSE_CMD up -d --build
+
+      - name: Debug env inside api
+        env:
+          COMPOSE_FILE: ${{ steps.composefile.outputs.file }}
+        run: |
+          docker compose --project-directory . -f "$COMPOSE_FILE" exec -T api sh -lc '
+            echo "===== /app/.env exists? ====="
+            [ -f /app/.env ] && ls -l /app/.env || echo "nope"
+            echo "===== print relevant env ====="
+            env | egrep "DB_|POSTGRES_|DATABASE_URL" | sed -e "s/\(PASSWORD=\).*/\1***redacted***/"
+          ' || true
+
+      - name: Check DB reachability from api (optional)
+      
+        run: |
+          $COMPOSE_CMD exec -T api sh -lc '
+            command -v python >/dev/null 2>&1 || exit 0
+            python - <<PY
+          import os, sys, time
+          try:
+              import psycopg
+          except Exception as e:
+              print("psycopg not available in api image; skipping DB probe.")
+              sys.exit(0)
+
+          dsn = os.getenv("DATABASE_URL") or f"postgresql://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}"
+          for i in range(30):
+              try:
+                  with psycopg.connect(dsn, connect_timeout=3) as conn:
+                      with conn.cursor() as cur:
+                          cur.execute("SELECT 1")
+                          print("DB reachable via", dsn.split("@")[-1])
+                          sys.exit(0)
+              except Exception:
+                  time.sleep(1)
+          print("DB NOT reachable")
+          sys.exit(1)
+          PY
+              ' || true
+                      
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..60}; do
+            if $COMPOSE_CMD exec -T db sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1; then
+              echo "Postgres is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          $COMPOSE_CMD logs db
+          exit 1
+
+      - name: Django migrate & collectstatic
+        run: |
+          # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
+          $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py migrate --noinput
+
+          $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py collectstatic --noinput || true
+      
+      - name: Run Django tests
+        run: |
+          echo "Running backend tests..."
+          $COMPOSE_CMD exec -T \
+            -e DJANGO_SETTINGS_MODULE=backend.settings_test \
+            api sh -lc "
+              python manage.py migrate --noinput &&
+              mkdir -p /app/test-reports &&
+              python runtests.py
+            "
+
+      - name: Copy test reports from container
+        if: always()
+        run: |
+          mkdir -p infra/api/test-reports
+          $COMPOSE_CMD cp api:/app/test-reports/. infra/api/test-reports/
+          echo "Reports copied to workspace:"
+          ls -l infra/api/test-reports || true
+
+      - name: Publish test results to GitHub summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend Django Tests
+          path: infra/api/test-reports/*.xml
+          reporter: java-junit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Tests tab
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: infra/api/test-reports/*.xml
+
+
+      - name: Smoke test API
+        env:
+          # set this to your real endpoint if you have one, e.g. /api/ or /health/
+          SMOKE_PATH: /
+        run: |
+          URL="http://localhost:8000${SMOKE_PATH}"
+          echo "Probing $URL ..."
+          for i in {1..60}; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$URL" || echo 000)
+            echo "Attempt $i: HTTP $code"
+            # Treat common codes as "service is up" (200/2xx/3xx/401/403/404 are fine)
+            if [[ "$code" =~ ^(200|201|204|301|302|401|403|404)$ ]]; then
+              echo "API up at $URL (HTTP $code)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become ready. Last code: $code"
+          $COMPOSE_CMD logs api || true
+          exit 1
+
+      - name: Save logs
+        if: always()
+        run: |
+          $COMPOSE_CMD logs api > django_logs.txt || true
+          $COMPOSE_CMD logs db > postgres_logs.txt || true
+          $COMPOSE_CMD logs frontend > frontend_logs.txt || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs
+          path: |
+            django_logs.txt
+            postgres_logs.txt
+            frontend_logs.txt
+
+      - name: Tear down
+        if: always()
+        run: $COMPOSE_CMD down -v
+
+  deploy-to-ec2:
+    needs: compose-ci
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get runner IP
+        id: ip
+        uses: haythem/public-ip@v1.2
+
+      - name: Whitelist runner IP
+        run: |
+          echo "Whitelisting GitHub runner IP: ${{ steps.ip.outputs.ipv4 }}"
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.AWS_INSTANCE_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+      - name: Deploy to EC2 PROD
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST_PROD }}
+          username: ubuntu
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            echo "🚀 Cloning or updating repo on EC2 PROD..."
+            cd /home/ubuntu
+
+            if [ ! -d "Connect-The-Dots" ]; then
+              git clone https://github.com/SWE574-Connect-The-Dots/SWE574-ConnectTheDots.git Connect-The-Dots
+            fi
+
+            cd Connect-The-Dots
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            echo "🧩 Copying /home/ubuntu/.env into backend/.env ..."
+            mkdir -p backend
+            cp /home/ubuntu/.env backend/.env
+
+            echo "✅ .env file copied successfully:"
+            cat backend/.env | sed -E 's/(POSTGRES_PASSWORD=).*/\1***redacted***/'
+
+            echo "🛠️ Building and starting Docker containers..."
+            docker compose -f infra/docker-compose.mainprod.yaml down
+            docker compose -f infra/docker-compose.mainprod.yaml up -d --build
+
+
+      - name: Remove runner IP from security group
+        if: always()
+        run: |
+          echo "🧹 Removing GitHub runner IP from whitelist"
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.AWS_INSTANCE_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32

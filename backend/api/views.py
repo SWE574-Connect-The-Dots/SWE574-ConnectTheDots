@@ -105,7 +105,10 @@ class TagViewSet(viewsets.ModelViewSet):
         }
         
         try:
-            response = requests.get(url, params=params)
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
             data = response.json()
             
             results = []
@@ -146,11 +149,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """
         Custom permissions based on action:
-        - discussions endpoint is open to all (no permission required)
+        - discussions and wikidata_search endpoints are open to all (no permission required)
         - join/leave/check-collaborator/add_discussion endpoints need only IsAuthenticated
         - other write operations require IsCollaboratorOrReadOnly
         """
-        if self.action == 'discussions':
+        if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
         elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion']:
             permission_classes = [permissions.IsAuthenticated]
@@ -364,7 +367,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
         }
 
         try:
-            response = requests.get(url, params=params)
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
             data = response.json()
 
             results = [{
