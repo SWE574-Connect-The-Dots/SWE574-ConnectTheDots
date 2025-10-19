@@ -20,6 +20,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "environment"
+    productFlavors {
+        create("develop") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "base_url", "http://16.171.162.104:8000/")
+            resValue("string", "app_name", "(Dev) Connect-The-Dots")
+        }
+        create("production") {
+            dimension = "environment"
+            // TODO: Change this to the production URL
+            resValue("string", "base_url", "http://16.171.162.104:8000/")
+            resValue("string", "app_name", "(Prod) Connect-The-Dots")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
