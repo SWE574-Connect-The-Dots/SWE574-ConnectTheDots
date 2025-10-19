@@ -31,8 +31,7 @@ android {
         }
         create("production") {
             dimension = "environment"
-            // TODO: Change this to the production URL
-            resValue("string", "base_url", "http://16.171.162.104:8000/")
+            resValue("string", "base_url", "http://13.53.174.44:8000/")
             resValue("string", "app_name", "(Prod) Connect-The-Dots")
         }
     }
