@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">Connect-The-Dots</string>
     <string name="headline">Connect The Dots</string>
     <string name="hello_world">Merhaba!</string>
     <string name="email_title">E-posta</string>

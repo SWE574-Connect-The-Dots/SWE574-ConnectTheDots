@@ -1,11 +1,14 @@
 package com.yybb.myapplication.di
 
+import android.content.Context
+import com.yybb.myapplication.R
 import com.yybb.myapplication.data.SessionManager
 import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.AuthInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -16,8 +19,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
-    private const val BASE_URL = "http://16.171.162.104:8000/"
 
     @Provides
     @Singleton
@@ -38,9 +39,9 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideRetrofit(okHttpClient: OkHttpClient, @ApplicationContext context: Context): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(context.getString(R.string.base_url))
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
