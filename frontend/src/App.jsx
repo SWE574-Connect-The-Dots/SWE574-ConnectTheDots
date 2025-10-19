@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import CreateSpace from "./pages/CreateSpace";
 import SpaceDetail from "./pages/SpaceDetails";
+import BackOffice from "./pages/BackOffice";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
 import Header from "./components/Header";
@@ -22,6 +23,7 @@ function App() {
     !!localStorage.getItem("token")
   );
   const [currentUser, setCurrentUser] = useState(null);
+  // const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -131,6 +133,12 @@ function App() {
             <Route
               path="/profile/:username"
               element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/backoffice/*"
+              element={
+                isAuthenticated ? <BackOffice /> : <Navigate to="/login" />
+              }
             />
           </Routes>
         </main>
