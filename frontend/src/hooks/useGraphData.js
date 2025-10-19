@@ -76,21 +76,21 @@ const useGraphData = (spaceId) => {
         label: edge.label,
         animated: false,
         style: {
-          stroke: '#374151',
+          stroke: 'var(--color-border-1)',
           strokeWidth: 2,
         },
         markerEnd: {
           type: "arrowclosed",
-          color: '#374151',
+          color: 'var(--color-border-1)',
         },
         labelStyle: {
-          background: '#FFFFFF',
-          color: '#1B1F3B',
+          background: 'var(--color-white)',
+          color: 'var(--color-text)',
           padding: 4,
           fontWeight: 600,
           fontSize: 12,
           borderRadius: 4,
-          border: '1px solid #68686B',
+          border: '1px solid var(--color-border-2)',
           zIndex: 10,
         },
       }));
