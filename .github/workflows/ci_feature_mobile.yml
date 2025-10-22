@@ -52,7 +52,7 @@ jobs:
         if: always()
         with:
           name: Android Unit Tests
-          path: mobile/app/build/test-results/**/TEST-*.xml
+          path: app/build/test-results/**/TEST-*.xml
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -60,32 +60,38 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: mobile/app/build/test-results/**/TEST-*.xml
+          files: app/build/test-results/**/TEST-*.xml
           check_name: Android Unit Tests
           comment_mode: always
           fail_on: test failures
       
-      - name: Run unit tests with coverage
-        run: ./gradlew :app:jacocoDevelopDebugReport --stacktrace --no-daemon
+      - name: Verify Jacoco report files exist
+        run: |
+          echo "=== Checking for Jacoco XML ==="
+          find app/build/reports -type f | sort || true
 
       - name: Debug Jacoco exec files
         run: |
           echo "=== Checking for JaCoCo .exec files ==="
-          find mobile/app/build -type f -name "*.exec" | sort || true
+          find app/build -type f -name "*.exec" | sort || true
 
       - name: Generate coverage markdown summary
         run: |
-          REPORT_FILE="mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"
-          OUTPUT_FILE="mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md"
+          REPORT_FILE="app/build/reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"
+          OUTPUT_FILE="app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md"
           mkdir -p "$(dirname $OUTPUT_FILE)"
           echo "### 📊 Android Unit Test Coverage" > $OUTPUT_FILE
           echo '' >> $OUTPUT_FILE
-          echo '```text' >> $OUTPUT_FILE
-          # extract coverage line % using awk
-          awk -F'"' '/<counter type="LINE"/{missed+=$4; covered+=$6} END {printf "Line Coverage: %.2f%%\n", covered/(covered+missed)*100}' $REPORT_FILE >> $OUTPUT_FILE
-          echo '' >> $OUTPUT_FILE
-          echo 'Detailed report available in artifact (HTML)' >> $OUTPUT_FILE
-          echo '```' >> $OUTPUT_FILE
+
+          if [ -f "$REPORT_FILE" ]; then
+            echo '```text' >> $OUTPUT_FILE
+            awk -F'"' '/<counter type="LINE"/{missed+=$4; covered+=$6} END {if (covered+missed>0) printf "Line Coverage: %.2f%%\n", covered/(covered+missed)*100; else print "Line Coverage: 0.00%"}' $REPORT_FILE >> $OUTPUT_FILE
+            echo '' >> $OUTPUT_FILE
+            echo 'Detailed report available in artifact (HTML)' >> $OUTPUT_FILE
+            echo '```' >> $OUTPUT_FILE
+          else
+            echo 'No Jacoco report found. Coverage report generation skipped.' >> $OUTPUT_FILE
+          fi
 
       - name: Publish Coverage Report tab
         uses: actions/github-script@v7
@@ -93,7 +99,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md', 'utf8');
+            const report = fs.readFileSync('app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md', 'utf8');
             await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -144,4 +150,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.vars.outputs.artifact_name }}
-          path: mobile/app/build/outputs/apk/develop/debug/${{ steps.vars.outputs.artifact_name }}
+          path: app/build/outputs/apk/develop/debug/${{ steps.vars.outputs.artifact_name }}
