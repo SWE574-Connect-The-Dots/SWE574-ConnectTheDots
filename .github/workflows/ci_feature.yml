@@ -8,9 +8,6 @@ on:
       - "refactor/*"
     paths-ignore:
       - "mobile/**"           
-      - "ci_feature_mobile.yml"
-      - "ci_develop_mobile.yml"
-      - "ci_main_mobile.yml"
 
 permissions:
   contents: read
