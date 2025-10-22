@@ -1,4 +1,4 @@
-name: CI (Docker Compose)
+name: Web App CI - Feature/Bugfix/Refactor
 
 on:
   push:
@@ -182,15 +182,11 @@ jobs:
           echo "Coverage markdown generated at infra/api/test-reports/coverage_report.md"
 
       
-      - name: Publish Coverage Report tab
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Append coverage to job summary
         if: always()
-        with:
-          files: infra/api/test-reports/coverage_report.md
-          check_name: Coverage Report
-          comment_mode: off
-          fail_on: nothing
-          job_summary: true
+        run: |
+          echo "### 📊 Coverage Report" >> $GITHUB_STEP_SUMMARY
+          cat infra/api/test-reports/coverage_report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Smoke test API
         env:
