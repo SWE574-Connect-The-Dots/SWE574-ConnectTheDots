@@ -7,7 +7,11 @@ on:
       - "bugfix/*"
       - "refactor/*"     
     paths:
-      - "mobile/**"            
+      - "mobile/**"
+    paths-ignore:
+      - "ci_develop.yml"  
+      - "ci_feature.yml"     
+      - "ci_main.yml"
 
 permissions:
   contents: read
