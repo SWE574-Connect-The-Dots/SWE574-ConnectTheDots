@@ -1,3 +1,5 @@
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -65,12 +67,12 @@ android {
     }
 }
 
-jacoco {
+extensions.configure<JacocoPluginExtension> {
     toolVersion = "0.8.10"
 }
 
 tasks.register<JacocoReport>("jacocoTestDevelopDebugUnitTestReport") {
-    dependsOn("testDevelopDebugUnitTest") // run unit tests before coverage
+    dependsOn("testDevelopDebugUnitTest")
     group = "verification"
     description = "Generates JaCoCo coverage reports for developDebug unit tests"
 
@@ -82,11 +84,11 @@ tasks.register<JacocoReport>("jacocoTestDevelopDebugUnitTestReport") {
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoTestDevelopDebugUnitTestReport/html"))
     }
 
-    val debugTree = fileTree("${buildDir}/intermediates/javac/developDebug") {
+    val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/developDebug")) {
         exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
     }
 
-    val kotlinDebugTree = fileTree("${buildDir}/tmp/kotlin-classes/developDebug") {
+    val kotlinDebugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/developDebug")) {
         exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
     }
 
@@ -94,12 +96,11 @@ tasks.register<JacocoReport>("jacocoTestDevelopDebugUnitTestReport") {
 
     classDirectories.setFrom(files(debugTree, kotlinDebugTree))
     sourceDirectories.setFrom(files(mainSrc))
-    executionData.setFrom(fileTree(buildDir).include(
+    executionData.setFrom(fileTree(layout.buildDirectory.get().asFile).include(
         "outputs/unit_test_code_coverage/developDebugUnitTest/testDevelopDebugUnitTest.exec",
         "jacoco/testDevelopDebugUnitTest.exec"
     ))
 }
-
 
 dependencies {
 
