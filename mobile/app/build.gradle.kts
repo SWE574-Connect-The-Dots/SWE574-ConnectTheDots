@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.kapt)
+    id("jacoco")
 }
 
 android {
@@ -56,6 +57,40 @@ android {
         compose = true
     }
 }
+
+jacoco {
+    toolVersion = "0.8.10" // or newer
+}
+
+tasks.withType<Test> {
+    jacoco.includeNoLocationClasses = true
+    jacoco.excludes = listOf("jdk.internal.*")
+}
+
+tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
+    dependsOn("testDevelopDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    val debugTree = fileTree("${buildDir}/intermediates/javac/developDebug/classes") {
+        exclude(
+            "**/R.class",
+            "**/R$*.class",
+            "**/BuildConfig.*",
+            "**/Manifest*.*"
+        )
+    }
+
+    sourceDirectories.setFrom(files("src/main/java"))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(buildDir) {
+        include("jacoco/testDevelopDebugUnitTest.exec")
+    })
+}
+
 
 dependencies {
 
