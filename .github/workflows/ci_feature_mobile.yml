@@ -64,6 +64,10 @@ jobs:
           comment_mode: always
           fail_on: test failures
       
+      - name: Run unit tests with coverage
+        run: ./gradlew :app:jacocoDevelopDebugReport --stacktrace --no-daemon
+
+
       - name: Generate coverage markdown summary
         run: |
           REPORT_FILE="mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"
