@@ -68,10 +68,10 @@ jobs:
       - name: Run unit tests with coverage
         run: ./gradlew :app:jacocoDevelopDebugReport --stacktrace --no-daemon
 
-      - name: Debug JaCoCo output files
+      - name: Debug Jacoco exec files
         run: |
-          echo "=== Checking all files under build/reports ==="
-          find mobile/app/build/reports -type f | sort || true
+          echo "=== Checking for JaCoCo .exec files ==="
+          find mobile/app/build -type f -name "*.exec" | sort || true
 
       - name: Generate coverage markdown summary
         run: |
