@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.kapt)
-    id("jacoco")
 }
 
 android {
@@ -57,51 +56,6 @@ android {
         compose = true
     }
 }
-
-jacoco {
-    toolVersion = "0.8.10"
-}
-
-tasks.withType<Test>().configureEach {
-    
-    extensions.configure(JacocoTaskExtension::class) {
-        isIncludeNoLocationClasses = true
-        excludes = listOf("jdk.internal.*")
-    }
-}
-
-tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
-    dependsOn("testDevelopDebugUnitTest")
-
-    reports {
-        xml.required.set(true)
-        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"))
-        html.required.set(true)
-        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoDevelopDebugReport/html"))
-    }
-
-    val buildDir = layout.buildDirectory.asFile.get()
-    val debugTree = fileTree("$buildDir/intermediates/javac/developDebug/classes") {
-        exclude(
-            "**/R.class",
-            "**/R$*.class",
-            "**/BuildConfig.*",
-            "**/Manifest*.*"
-        )
-    }
-
-    sourceDirectories.setFrom(files("src/main/java"))
-    classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(
-    fileTree(buildDir) {
-        include(
-            "jacoco/testDevelopDebugUnitTest.exec",
-            "outputs/unit_test_code_coverage/developDebugUnitTest/testDevelopDebugUnitTest.exec"
-        )
-    }
-)
-}
-
 
 dependencies {
 
