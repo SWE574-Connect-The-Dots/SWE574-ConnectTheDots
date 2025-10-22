@@ -181,7 +181,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: infra/api/test-reports/*.xml
+          files: infra/api/test-reports/TEST-*.xml
 
       - name: Smoke test API
         env:
