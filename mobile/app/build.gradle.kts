@@ -1,12 +1,9 @@
-import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.kapt)
-    id("jacoco")
 }
 
 android {
@@ -58,49 +55,6 @@ android {
     buildFeatures {
         compose = true
     }
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            all {
-                it.useJUnitPlatform()
-            }
-        }
-    }
-}
-
-extensions.configure<JacocoPluginExtension> {
-    toolVersion = "0.8.10"
-}
-
-tasks.register<JacocoReport>("jacocoTestDevelopDebugUnitTestReport") {
-    dependsOn("testDevelopDebugUnitTest")
-    group = "verification"
-    description = "Generates JaCoCo coverage reports for developDebug unit tests"
-
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-        csv.required.set(false)
-        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacocoTestDevelopDebugUnitTestReport/jacocoTestDevelopDebugUnitTestReport.xml"))
-        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoTestDevelopDebugUnitTestReport/html"))
-    }
-
-    val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/developDebug")) {
-        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
-    }
-
-    val kotlinDebugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/developDebug")) {
-        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
-    }
-
-    val mainSrc = "$projectDir/src/main/java"
-
-    classDirectories.setFrom(files(debugTree, kotlinDebugTree))
-    sourceDirectories.setFrom(files(mainSrc))
-    executionData.setFrom(fileTree(layout.buildDirectory.get().asFile).include(
-        "outputs/unit_test_code_coverage/developDebugUnitTest/testDevelopDebugUnitTest.exec",
-        "jacoco/testDevelopDebugUnitTest.exec"
-    ))
 }
 
 dependencies {
