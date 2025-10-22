@@ -8,10 +8,10 @@ on:
       - "refactor/*"     
     paths:
       - "mobile/**"
-    paths-ignore:
-      - "ci_develop.yml"  
-      - "ci_feature.yml"     
-      - "ci_main.yml"
+      - "ci_develop_mobile.yml"
+      - "ci_feature_mobile.yml"     
+      - "ci_main_mobile.yml"
+  
 
 permissions:
   contents: read
