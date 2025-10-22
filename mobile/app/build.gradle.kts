@@ -59,12 +59,15 @@ android {
 }
 
 jacoco {
-    toolVersion = "0.8.10" // or newer
+    toolVersion = "0.8.10"
 }
 
-tasks.withType<Test> {
-    jacoco.includeNoLocationClasses = true
-    jacoco.excludes = listOf("jdk.internal.*")
+tasks.withType<Test>().configureEach {
+    
+    extensions.configure(JacocoTaskExtension::class) {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
 }
 
 tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
@@ -75,7 +78,9 @@ tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
         html.required.set(true)
     }
 
-    val debugTree = fileTree("${buildDir}/intermediates/javac/developDebug/classes") {
+    
+    val buildDir = layout.buildDirectory.asFile.get()
+    val debugTree = fileTree("$buildDir/intermediates/javac/developDebug/classes") {
         exclude(
             "**/R.class",
             "**/R$*.class",
@@ -86,7 +91,7 @@ tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
 
     sourceDirectories.setFrom(files("src/main/java"))
     classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(fileTree(buildDir) {
+    executionData.setFrom(fileTree("$buildDir") {
         include("jacoco/testDevelopDebugUnitTest.exec")
     })
 }
