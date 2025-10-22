@@ -165,23 +165,16 @@ jobs:
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish coverage summary
-        uses: irongut/CodeCoverageSummary@v1.3.0
-        if: always()
-        with:
-          filename: infra/api/test-reports/coverage.xml
-          badge: true
-          format: markdown
-          output: both
-          fail_below_min: true
-          thresholds: '60 80'
-
-
       - name: Publish to Tests tab
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: infra/api/test-reports/TEST-*.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: infra/api/test-reports/coverage.xml
 
       - name: Smoke test API
         env:
