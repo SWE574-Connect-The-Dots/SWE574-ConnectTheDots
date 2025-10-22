@@ -133,15 +133,19 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-      - name: Run Django tests
+      - name: Run Django tests with coverage
         run: |
-          echo "Running backend tests..."
+          echo "Running backend tests with coverage..."
           $COMPOSE_CMD exec -T \
             -e DJANGO_SETTINGS_MODULE=backend.settings_test \
             api sh -lc "
               python manage.py migrate --noinput &&
               mkdir -p /app/test-reports &&
-              python runtests.py
+              pip install coverage >/dev/null 2>&1 || true &&
+              coverage run --source='api' runtests.py &&
+              coverage xml -o /app/test-reports/coverage.xml &&
+              coverage html -d /app/test-reports/htmlcov &&
+              coverage report -m
             "
 
       - name: Copy test reports from container
@@ -151,6 +155,17 @@ jobs:
           $COMPOSE_CMD cp api:/app/test-reports/. infra/api/test-reports/
           echo "Reports copied to workspace:"
           ls -l infra/api/test-reports || true
+
+      - name: Publish coverage summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        if: always()
+        with:
+          filename: infra/api/test-reports/coverage.xml
+          badge: true
+          format: markdown
+          output: both
+          fail_below_min: true
+          thresholds: '60 80'
 
       - name: Publish test results to GitHub summary
         uses: dorny/test-reporter@v1
