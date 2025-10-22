@@ -171,10 +171,26 @@ jobs:
         with:
           files: infra/api/test-reports/TEST-*.xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Generate coverage report markdown
+        run: |
+          mkdir -p infra/api/test-reports
+          echo "### Coverage Report" > infra/api/test-reports/coverage_report.md
+          echo '' >> infra/api/test-reports/coverage_report.md
+          echo '```text' >> infra/api/test-reports/coverage_report.md
+          $COMPOSE_CMD exec -T api sh -lc "coverage report -m" >> infra/api/test-reports/coverage_report.md
+          echo '```' >> infra/api/test-reports/coverage_report.md
+          echo "Coverage markdown generated at infra/api/test-reports/coverage_report.md"
+
+      
+      - name: Publish Coverage Report tab
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
         with:
-          files: infra/api/test-reports/coverage.xml
+          files: infra/api/test-reports/coverage_report.md
+          check_name: Coverage Report
+          comment_mode: off
+          fail_on: nothing
+          job_summary: true
 
       - name: Smoke test API
         env:
