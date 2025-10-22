@@ -156,6 +156,15 @@ jobs:
           echo "Reports copied to workspace:"
           ls -l infra/api/test-reports || true
 
+      - name: Publish test results to GitHub summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend Django Tests
+          path: infra/api/test-reports/TEST-*.xml
+          reporter: java-junit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish coverage summary
         uses: irongut/CodeCoverageSummary@v1.3.0
         if: always()
@@ -167,14 +176,6 @@ jobs:
           fail_below_min: true
           thresholds: '60 80'
 
-      - name: Publish test results to GitHub summary
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Backend Django Tests
-          path: infra/api/test-reports/*.xml
-          reporter: java-junit
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Tests tab
         uses: EnricoMi/publish-unit-test-result-action@v2
