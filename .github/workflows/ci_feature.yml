@@ -185,7 +185,6 @@ jobs:
       - name: Append coverage to job summary
         if: always()
         run: |
-          echo "### 📊 Coverage Report" >> $GITHUB_STEP_SUMMARY
           cat infra/api/test-reports/coverage_report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Smoke test API
