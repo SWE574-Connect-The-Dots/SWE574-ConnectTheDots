@@ -75,10 +75,11 @@ tasks.register<JacocoReport>("jacocoDevelopDebugReport") {
 
     reports {
         xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"))
         html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoDevelopDebugReport/html"))
     }
 
-    
     val buildDir = layout.buildDirectory.asFile.get()
     val debugTree = fileTree("$buildDir/intermediates/javac/developDebug/classes") {
         exclude(
