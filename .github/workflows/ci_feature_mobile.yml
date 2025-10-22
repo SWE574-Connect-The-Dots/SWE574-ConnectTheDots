@@ -66,27 +66,23 @@ jobs:
           fail_on: test failures
       
       - name: Run unit tests with coverage
-        # Generates the JaCoCo XML + HTML reports for debug unit tests
-        run: ./gradlew :app:jacocoTestDebugUnitTestReport --stacktrace --no-daemon
+        run: ./gradlew :app:jacocoTestDevelopDebugUnitTestReport --stacktrace --no-daemon
 
-      - name: Debug Jacoco exec files
+      # Debug coverage artifacts if missing
+      - name: Debug JaCoCo files
+        if: always()
         run: |
-          echo "=== Checking for JaCoCo .exec files ==="
-          find mobile/app/build -type f -name "*.exec" | sort || true
+          echo "=== Checking for JaCoCo .exec and report files ==="
+          find mobile/app/build -type f \( -name "*.exec" -o -name "*.xml" \) | sort || true
 
-      - name: Verify Jacoco report files
-        run: |
-          echo "=== Checking for JaCoCo XML/HTML reports ==="
-          find mobile/app/build/reports/jacoco -type f | sort || true
-
+      # ✅ Generate coverage markdown summary
       - name: Generate coverage markdown summary
         run: |
-          REPORT_FILE="mobile/app/build/reports/jacoco/jacocoTestDebugUnitTestReport/jacocoTestDebugUnitTestReport.xml"
-          OUTPUT_FILE="mobile/app/build/reports/jacoco/jacocoTestDebugUnitTestReport/coverage_summary.md"
+          REPORT_FILE="mobile/app/build/reports/jacoco/jacocoTestDevelopDebugUnitTestReport/jacocoTestDevelopDebugUnitTestReport.xml"
+          OUTPUT_FILE="mobile/app/build/reports/jacoco/jacocoTestDevelopDebugUnitTestReport/coverage_summary.md"
           mkdir -p "$(dirname $OUTPUT_FILE)"
           echo "### 📊 Android Unit Test Coverage" > $OUTPUT_FILE
           echo '' >> $OUTPUT_FILE
-
           if [ -f "$REPORT_FILE" ]; then
             echo '```text' >> $OUTPUT_FILE
             awk -F'"' '/<counter type="LINE"/{missed+=$4; covered+=$6} \
@@ -100,13 +96,14 @@ jobs:
             echo '⚠️ No JaCoCo XML report found — skipping coverage summary.' >> $OUTPUT_FILE
           fi
 
+      # ✅ Publish coverage summary to GitHub Checks tab
       - name: Publish Coverage Report tab
         uses: actions/github-script@v7
         if: always()
         with:
           script: |
             const fs = require('fs');
-            const reportPath = 'mobile/app/build/reports/jacoco/jacocoTestDebugUnitTestReport/coverage_summary.md';
+            const reportPath = 'mobile/app/build/reports/jacoco/jacocoTestDevelopDebugUnitTestReport/coverage_summary.md';
             const report = fs.existsSync(reportPath)
               ? fs.readFileSync(reportPath, 'utf8')
               : 'No JaCoCo coverage report found.';
@@ -123,7 +120,6 @@ jobs:
                 text: report.substring(0, 65000)
               }
             });
-
       # set a custom artifact name
       # Extract branch number & commit SHA, build artifact name
       - name: Set artifact name

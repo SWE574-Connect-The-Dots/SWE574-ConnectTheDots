@@ -55,7 +55,51 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                it.useJUnitPlatform()
+            }
+        }
+    }
 }
+
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+tasks.register<JacocoReport>("jacocoTestDevelopDebugUnitTestReport") {
+    dependsOn("testDevelopDebugUnitTest") // run unit tests before coverage
+    group = "verification"
+    description = "Generates JaCoCo coverage reports for developDebug unit tests"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacocoTestDevelopDebugUnitTestReport/jacocoTestDevelopDebugUnitTestReport.xml"))
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoTestDevelopDebugUnitTestReport/html"))
+    }
+
+    val debugTree = fileTree("${buildDir}/intermediates/javac/developDebug") {
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
+    }
+
+    val kotlinDebugTree = fileTree("${buildDir}/tmp/kotlin-classes/developDebug") {
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*")
+    }
+
+    val mainSrc = "$projectDir/src/main/java"
+
+    classDirectories.setFrom(files(debugTree, kotlinDebugTree))
+    sourceDirectories.setFrom(files(mainSrc))
+    executionData.setFrom(fileTree(buildDir).include(
+        "outputs/unit_test_code_coverage/developDebugUnitTest/testDevelopDebugUnitTest.exec",
+        "jacoco/testDevelopDebugUnitTest.exec"
+    ))
+}
+
 
 dependencies {
 
