@@ -63,6 +63,41 @@ jobs:
           check_name: Android Unit Tests
           comment_mode: always
           fail_on: test failures
+      
+      - name: Generate coverage markdown summary
+        run: |
+          REPORT_FILE="mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/jacocoDevelopDebugReport.xml"
+          OUTPUT_FILE="mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md"
+          mkdir -p "$(dirname $OUTPUT_FILE)"
+          echo "### 📊 Android Unit Test Coverage" > $OUTPUT_FILE
+          echo '' >> $OUTPUT_FILE
+          echo '```text' >> $OUTPUT_FILE
+          # extract coverage line % using awk
+          awk -F'"' '/<counter type="LINE"/{missed+=$4; covered+=$6} END {printf "Line Coverage: %.2f%%\n", covered/(covered+missed)*100}' $REPORT_FILE >> $OUTPUT_FILE
+          echo '' >> $OUTPUT_FILE
+          echo 'Detailed report available in artifact (HTML)' >> $OUTPUT_FILE
+          echo '```' >> $OUTPUT_FILE
+
+      - name: Publish Coverage Report tab
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('mobile/app/build/reports/jacoco/jacocoDevelopDebugReport/coverage_summary.md', 'utf8');
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Coverage Report',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: '📊 Android Unit Test Coverage',
+                summary: 'JaCoCo coverage summary for Android unit tests',
+                text: report.substring(0, 65000)
+              }
+            });
 
       # set a custom artifact name
       # Extract branch number & commit SHA, build artifact name
