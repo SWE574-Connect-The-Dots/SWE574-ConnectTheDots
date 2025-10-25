@@ -1,4 +1,4 @@
-name: Android APK (Debug)
+name: Android APK Develop CI
 
 on:         
   pull_request:
@@ -6,6 +6,11 @@ on:
       - develop
     paths:
       - "mobile/**"
+
+permissions:
+  contents: read
+  checks: write      
+  pull-requests: write
 
 jobs:
   build:
@@ -37,6 +42,24 @@ jobs:
       
       - name: Run unit tests #mobile unit test
         run: ./gradlew :app:testDevelopDebugUnitTest --stacktrace --no-daemon
+
+      - name: Publish test results to GitHub summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Android Unit Tests
+          path: mobile/app/build/test-results/**/TEST-*.xml
+          reporter: java-junit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Tests tab
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: mobile/app/build/test-results/**/TEST-*.xml
+          check_name: Android Unit Tests
+          comment_mode: always
+          fail_on: test failures
 
       # set a custom artifact name
       # Extract branch number & commit SHA, build artifact name
