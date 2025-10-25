@@ -23,4 +23,16 @@
     <string name="consent_error">You must agree to share your location.</string>
     <string name="settings_page_title">Settings Page</string>
     <string name="settings_color_blind_theme_label">Color-Blind Friendly Theme</string>
+    <string name="comment_added_msg">Comment added successfully!</string>
+    <string name="space_details">Space Details</string>
+    <string name="see_collab">See Collaborators %1d</string>
+    <string name="see_space_graph">See Space Graph</string>
+    <string name="discussion_title">Discussion:</string>
+    <string name="join_discussion_title">Join discussion:</string>
+    <string name="write_comment_hint_msg">Write your comment here...</string>
+    <string name="share_button">Share</string>
+    <string name="close_button">Close</string>
+    <string name="search_button">Search</string>
+    <string name="search_space_hint_msg">Search space</string>
+    <string name="space_collaborators_title">Space Collaborators</string>
 </resources>

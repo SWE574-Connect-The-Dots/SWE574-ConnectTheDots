@@ -36,7 +36,7 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             route = Screen.SpaceDetails.route,
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
         ) {
-            SpaceDetailsScreen()
+            SpaceDetailsScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.EditProfile.route) {
             val viewModel: EditProfileViewModel = hiltViewModel()
