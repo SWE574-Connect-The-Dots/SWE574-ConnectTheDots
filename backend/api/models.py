@@ -82,3 +82,24 @@ class Discussion(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+class DiscussionReaction(models.Model):
+    UPVOTE = 1
+    DOWNVOTE = -1
+    REACTION_CHOICES = (
+        (UPVOTE, 'upvote'),
+        (DOWNVOTE, 'downvote'),
+    )
+
+    discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    value = models.SmallIntegerField(choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('discussion', 'user')
+
+    def __str__(self):
+        label = '👍' if self.value == self.UPVOTE else '👎'
+        return f"{self.user.username} {label} discussion {self.discussion_id}"
+

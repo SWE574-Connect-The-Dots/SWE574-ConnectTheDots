@@ -21,6 +21,9 @@
   --color-purple-selected: #7209B7;
   --color-teal-dark: #215D69;
   --color-header-bg: #2F2F2F;
+  --color-panel-bg: #f1f1f1;
+  --color-item-bg: #f9f9f9;
+  --color-item-own-bg: #e6f4ff;
 
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

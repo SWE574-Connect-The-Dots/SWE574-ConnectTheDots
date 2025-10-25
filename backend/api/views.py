@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction
 from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
 from .wikidata import get_wikidata_properties
@@ -214,7 +214,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         # Anyone can view discussions, no collaborator check needed
         discussions = Discussion.objects.filter(space=space)
-        serializer = DiscussionSerializer(discussions, many=True)
+        serializer = DiscussionSerializer(discussions, many=True, context={'request': request})
         return Response(serializer.data)
         
     @action(detail=True, methods=['post'], url_path='discussions/add')
@@ -237,8 +237,49 @@ class SpaceViewSet(viewsets.ModelViewSet):
             text=text
         )
         
-        serializer = DiscussionSerializer(discussion)
+        serializer = DiscussionSerializer(discussion, context={'request': request})
         return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=['post', 'delete'], url_path='discussions/(?P<discussion_id>[^/.]+)/react', permission_classes=[IsAuthenticated])
+    def react_discussion(self, request, pk=None, discussion_id=None):
+        """Upvote or downvote a discussion. Auth required, anyone can react."""
+        space = self.get_object()
+        try:
+            discussion = Discussion.objects.get(id=discussion_id, space=space)
+        except Discussion.DoesNotExist:
+            return Response({'message': 'Discussion not found'}, status=404)
+        
+        if request.method == 'DELETE':
+            DiscussionReaction.objects.filter(discussion=discussion, user=request.user).delete()
+            serializer = DiscussionSerializer(discussion, context={'request': request})
+            return Response({'discussion': serializer.data}, status=200)
+
+        raw_value = str(request.data.get('value', '')).strip().lower()
+        if raw_value in ('up', '1', 'true', 'upvote', '👍'):
+            value = DiscussionReaction.UPVOTE
+        elif raw_value in ('down', '-1', 'false', 'downvote', '👎'):
+            value = DiscussionReaction.DOWNVOTE
+        else:
+            return Response({'message': "Invalid value. Use 'up' or 'down'."}, status=400)
+
+        reaction, created = DiscussionReaction.objects.get_or_create(
+            discussion=discussion,
+            user=request.user,
+            defaults={'value': value}
+        )
+        if not created:
+            if reaction.value == value:
+                reaction.delete()
+                toggled = True
+            else:
+                reaction.value = value
+                reaction.save()
+                toggled = False
+        else:
+            toggled = False
+
+        serializer = DiscussionSerializer(discussion, context={'request': request})
+        return Response({'toggled_off': toggled, 'discussion': serializer.data}, status=200)
 
     @action(detail=False, methods=['get'])
     def trending(self, request):
