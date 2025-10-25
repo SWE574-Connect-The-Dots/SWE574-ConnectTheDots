@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Profile, Space, Tag, Discussion
+from .models import Profile, Space, Tag, Discussion, DiscussionReaction
 from datetime import date
 from rest_framework import serializers
 
@@ -111,8 +111,26 @@ class SpaceSerializer(serializers.ModelSerializer):
 
 class DiscussionSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
-    
+    upvotes = serializers.SerializerMethodField()
+    downvotes = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()
+
     class Meta:
         model = Discussion
-        fields = ['id', 'text', 'created_at', 'username']
-        read_only_fields = ['created_at', 'username']
+        fields = ['id', 'text', 'created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
+        read_only_fields = ['created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
+
+    def get_upvotes(self, obj):
+        return obj.reactions.filter(value=DiscussionReaction.UPVOTE).count()
+
+    def get_downvotes(self, obj):
+        return obj.reactions.filter(value=DiscussionReaction.DOWNVOTE).count()
+
+    def get_user_reaction(self, obj):
+        request = self.context.get('request')
+        if not request or not getattr(request, 'user', None) or request.user.is_anonymous:
+            return None
+        reaction = obj.reactions.filter(user=request.user).first()
+        if not reaction:
+            return None
+        return 'up' if reaction.value == DiscussionReaction.UPVOTE else 'down'
