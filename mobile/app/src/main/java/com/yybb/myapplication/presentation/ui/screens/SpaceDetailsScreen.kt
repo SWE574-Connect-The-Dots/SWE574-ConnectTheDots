@@ -61,10 +61,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-
-private const val COMMENTS_PER_PAGE = 3
-private const val DISCUSSION_SECTION_HEIGHT = 400
-private const val MAX_COMMENT_LENGTH = 300
+import com.yybb.myapplication.data.Constants.COMMENTS_PER_PAGE
+import com.yybb.myapplication.data.Constants.DISCUSSION_SECTION_HEIGHT
+import com.yybb.myapplication.data.Constants.MAX_COMMENT_LENGTH
 
 
 data class Collaborator(
