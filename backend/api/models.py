@@ -49,6 +49,7 @@ class Space(models.Model):
 class Property(models.Model):
     node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')
     property_id = models.CharField(max_length=255)
+    statement_id = models.CharField(max_length=255, unique=True, null=True, default=None)
     
 class Node(models.Model):
     label = models.CharField(max_length=255)

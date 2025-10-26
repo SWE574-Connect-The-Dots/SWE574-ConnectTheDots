@@ -113,7 +113,7 @@ const NodeDetailModal = ({
           setAvailableProperties(properties);
 
           const selectedPropertyIds = response.data.map(
-            (prop) => prop.property_id
+            (prop) => prop.statement_id
           );
           setSelectedProperties(selectedPropertyIds);
         }
@@ -167,10 +167,13 @@ const NodeDetailModal = ({
 
   const handleSaveChanges = async () => {
     try {
+      const fullSelectedProperties = selectedProperties.map((statementId) =>
+        availableProperties.find((p) => p.statement_id === statementId)
+      );
       await api.put(
         `/spaces/${spaceId}/nodes/${node.id}/update-properties/`,
         {
-          selected_properties: selectedProperties,
+          selected_properties: fullSelectedProperties,
         },
         {
           headers: {
@@ -215,10 +218,10 @@ const NodeDetailModal = ({
     }
   };
 
-  const handleDeleteProperty = async (propertyId) => {
+  const handleDeleteProperty = async (statementId) => {
     try {
       await api.delete(
-        `/spaces/${spaceId}/nodes/${node.id}/properties/${propertyId}/`,
+        `/spaces/${spaceId}/nodes/${node.id}/properties/${statementId}/`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -227,7 +230,7 @@ const NodeDetailModal = ({
       );
 
       setSelectedProperties(
-        selectedProperties.filter((id) => id !== propertyId)
+        selectedProperties.filter((id) => id !== statementId)
       );
 
       const response = await api.get(
@@ -292,16 +295,16 @@ const NodeDetailModal = ({
     selectedProperties,
     onChange,
   }) => {
-    const handleItemClick = (property, e) => {
+    const handleItemClick = (statementId, e) => {
       const container = e.currentTarget.parentNode;
       const scrollPos = container.scrollTop;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const newSelection = selectedProperties.includes(property)
-        ? selectedProperties.filter((id) => id !== property)
-        : [...selectedProperties, property];
+      const newSelection = selectedProperties.includes(statementId)
+        ? selectedProperties.filter((id) => id !== statementId)
+        : [...selectedProperties, statementId];
 
       onChange(newSelection);
 
@@ -344,25 +347,25 @@ const NodeDetailModal = ({
         <div className="property-selection-list">
           {properties.map((prop) => (
             <div
-              key={prop.property}
+              key={prop.statement_id}
               className={`property-selection-item ${
-                selectedProperties.includes(prop.property) ? "selected" : ""
+                selectedProperties.includes(prop.statement_id) ? "selected" : ""
               }`}
-              onClick={(e) => handleItemClick(prop.property, e)}
+              onClick={(e) => handleItemClick(prop.statement_id, e)}
             >
               <input
                 type="checkbox"
-                id={`prop-${prop.property}`}
-                checked={selectedProperties.includes(prop.property)}
+                id={`prop-${prop.statement_id}`}
+                checked={selectedProperties.includes(prop.statement_id)}
                 onChange={(e) => {
                   e.stopPropagation();
-                  handleItemClick(prop.property, e);
+                  handleItemClick(prop.statement_id, e);
                 }}
                 className="property-checkbox"
                 onClick={(e) => e.stopPropagation()}
               />
               <label
-                htmlFor={`prop-${prop.property}`}
+                htmlFor={`prop-${prop.statement_id}`}
                 className="property-selection-label"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -451,7 +454,10 @@ const NodeDetailModal = ({
                 <div className="current-properties">
                   <ul>
                     {nodeProperties.map((prop) => (
-                      <li key={prop.property_id} className="property-item">
+                      <li
+                        key={prop.statement_id}
+                        className="property-item"
+                      >
                         <span className="property-content">
                           <span className="property-label">
                             {getPropertyLabelWithId(prop)}:
@@ -460,7 +466,9 @@ const NodeDetailModal = ({
                         </span>
                         <button
                           className="delete-property-button"
-                          onClick={() => handleDeleteProperty(prop.property_id)}
+                          onClick={() =>
+                            handleDeleteProperty(prop.statement_id)
+                          }
                           title="Delete property"
                         >
                           ×

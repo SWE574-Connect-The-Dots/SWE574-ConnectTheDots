@@ -1,9 +1,9 @@
 import requests
 from django.core.cache import cache
 
-MAX_PROPERTIES = 50
 ENTITY_CACHE_TIME = 86400
 LABEL_CACHE_TIME = 604800
+SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
 def get_property_labels(property_ids):
     """Fetch labels for multiple properties in a single API call"""
@@ -66,54 +66,82 @@ def format_property_value(value):
     
     return str(value)
 
+def execute_sparql_query(query):
+    """Executes a SPARQL query against the Wikidata endpoint."""
+    headers = {
+        'Accept': 'application/sparql-json',
+        'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+    }
+    params = {'query': query, 'format': 'json'}
+    try:
+        response = requests.post(SPARQL_ENDPOINT, headers=headers, data=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"SPARQL query failed: {e}")
+        return None
+
 def get_wikidata_properties(entity_id):
     """
-    Fetch properties for a Wikidata entity with basic caching.
-    Returns property data with human-readable labels.
+    Fetch properties for a Wikidata entity using a single SPARQL query.
+    Returns property data with human-readable labels for properties and their values.
     """
-    cache_key = f"wikidata_props_{entity_id}"
+    cache_key = f"wikidata_props_sparql_v2_{entity_id}"
     cached_props = cache.get(cache_key)
-    
     if cached_props is not None:
         return cached_props
+
+    query = f"""
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX bd: <http://www.bigdata.com/rdf#>
+    SELECT ?statement ?property ?propertyLabel ?value ?valueLabel WHERE {{
+      BIND(wd:{entity_id} AS ?entity)
+      ?entity ?p ?statement .
+      ?property wikibase:claim ?p .
+      ?statement ?ps ?value .
+      ?property wikibase:statementProperty ?ps .
+      FILTER(!isBLANK(?value))
+      SERVICE wikibase:label {{ 
+        bd:serviceParam wikibase:language "en" . 
+        ?property rdfs:label ?propertyLabel .
+        ?value rdfs:label ?valueLabel .
+      }}
+    }}
+    """
+
+    data = execute_sparql_query(query)
     
-    try:
-        endpoint = f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}.json"
-        headers = {
-            'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-        }
-        res = requests.get(endpoint, headers=headers, timeout=5)
-        res.raise_for_status()
-        
-        entity_data = res.json()['entities'][entity_id]['claims']
-        property_ids = list(entity_data.keys())[:MAX_PROPERTIES]
-        
-        property_labels = get_property_labels(property_ids)
-        
-        properties = []
-        for prop in property_ids:
-            if 'datavalue' in entity_data[prop][0]['mainsnak']:
-                raw_value = entity_data[prop][0]['mainsnak']['datavalue']['value']
-                formatted_value = format_property_value(raw_value)
-                
-                property_label = property_labels.get(prop, prop.replace('P', 'Property '))
-                
-                display_value = ""
-                if isinstance(formatted_value, dict) and formatted_value.get('type') == 'entity':
-                    display_value = formatted_value.get('text', '')
-                else:
-                    display_value = str(formatted_value)
-                    
-                properties.append({
-                    "property": prop,
-                    "property_label": property_label,
-                    "value": formatted_value,
-                    "display": f"{property_label}: {display_value}"
-                })
-        
-        cache.set(cache_key, properties, ENTITY_CACHE_TIME)
-        return properties
-        
-    except Exception as e:
-        print(f"Error fetching properties for {entity_id}: {str(e)}")
+    if not data or 'results' not in data or 'bindings' not in data['results']:
         return []
+
+    properties = []
+    for item in data['results']['bindings']:
+        prop_id = item.get('property', {}).get('value', '').split('/')[-1]
+        statement_uri = item.get('statement', {}).get('value', '')
+        statement_id = statement_uri.split('/')[-1] if statement_uri else None
+
+        prop_label = item.get('propertyLabel', {}).get('value', prop_id)
+        value_node = item.get('value', {})
+        value_type = value_node.get('type')
+        raw_value = value_node.get('value')
+        display_value = item.get('valueLabel', {}).get('value', raw_value)
+
+        value = display_value
+        if value_type == 'uri':
+            value = {'type': 'entity', 'id': raw_value.split('/')[-1], 'text': display_value}
+        elif value_type == 'literal' and 'datatype' in value_node and 'xmls#dateTime' in value_node['datatype']:
+            display_value = raw_value.split('T')[0]
+            value = display_value
+        
+        properties.append({
+            "statement_id": statement_id,
+            "property": prop_id,
+            "property_label": prop_label,
+            "value": value,
+            "display": f"{prop_label}: {display_value}"
+        })
+
+    cache.set(cache_key, properties, ENTITY_CACHE_TIME)
+    return properties

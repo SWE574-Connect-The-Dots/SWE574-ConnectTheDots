@@ -299,16 +299,16 @@ const SpaceDetails = () => {
     selectedProperties,
     onChange,
   }) => {
-    const handleItemClick = (property, e) => {
+    const handleItemClick = (statementId, e) => {
       const container = e.currentTarget.parentNode;
       const scrollPos = container.scrollTop;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const newSelection = selectedProperties.includes(property)
-        ? selectedProperties.filter((id) => id !== property)
-        : [...selectedProperties, property];
+      const newSelection = selectedProperties.includes(statementId)
+        ? selectedProperties.filter((id) => id !== statementId)
+        : [...selectedProperties, statementId];
 
       onChange(newSelection);
 
@@ -351,24 +351,24 @@ const SpaceDetails = () => {
         <div className="property-selection-list">
           {properties.map((prop) => (
             <div
-              key={prop.property}
+              key={prop.statement_id}
               className={`property-selection-item ${
-                selectedProperties.includes(prop.property) ? "selected" : ""
+                selectedProperties.includes(prop.statement_id) ? "selected" : ""
               }`}
-              onClick={(e) => handleItemClick(prop.property, e)}
+              onClick={(e) => handleItemClick(prop.statement_id, e)}
             >
               <input
                 type="checkbox"
-                id={`prop-${prop.property}`}
-                checked={selectedProperties.includes(prop.property)}
+                id={`prop-${prop.statement_id}`}
+                checked={selectedProperties.includes(prop.statement_id)}
                 onChange={(e) => {
                   e.stopPropagation();
-                  handleItemClick(prop.property, e);
+                  handleItemClick(prop.statement_id, e);
                 }}
                 className="property-checkbox"
               />
               <label
-                htmlFor={`prop-${prop.property}`}
+                htmlFor={`prop-${prop.statement_id}`}
                 className="property-selection-label"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -713,13 +713,19 @@ const SpaceDetails = () => {
                   style={{ marginTop: "20px" }}
                   disabled={!selectedEntity}
                   onClick={() => {
+                    const fullSelectedProperties = selectedProperties.map(
+                      (statementId) =>
+                        entityProperties.find(
+                          (p) => p.statement_id === statementId
+                        )
+                    );
                     api
                       .post(
                         `/spaces/${id}/add-node/`,
                         {
                           related_node_id: relatedNodeId,
                           wikidata_entity: selectedEntity,
-                          selected_properties: selectedProperties,
+                          selected_properties: fullSelectedProperties,
                           edge_label: edgeLabel,
                           is_new_node_source: isNewNodeSource,
                         },
