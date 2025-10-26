@@ -23,4 +23,16 @@
     <string name="consent_error">Devam etmek için konumunuzu paylaşmayı kabul etmelisiniz.</string>
     <string name="settings_page_title">Ayarlar Sayfası</string>
     <string name="settings_color_blind_theme_label">Renk Körü Dostu Tema</string>
+    <string name="comment_added_msg">Yorumunuz başarıyla eklendi!</string>
+    <string name="space_details">Space Detayları</string>
+    <string name="see_collab">Space üyelerini görüntüle %1d</string>
+    <string name="see_space_graph">Space ağını görüntüle</string>
+    <string name="discussion_title">Yorumlar:</string>
+    <string name="join_discussion_title">Yorumla:</string>
+    <string name="write_comment_hint_msg">Yorumunuzu buraya yazınız...</string>
+    <string name="share_button">Paylaş</string>
+    <string name="close_button">Kapat</string>
+    <string name="search_button">Ara</string>
+    <string name="search_space_hint_msg">Space ara</string>
+    <string name="space_collaborators_title">Space Katılımcıları</string>
 </resources>
