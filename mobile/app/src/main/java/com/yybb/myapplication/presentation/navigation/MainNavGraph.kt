@@ -10,11 +10,13 @@ import androidx.navigation.navArgument
 import com.yybb.myapplication.data.enums.SpaceType
 import com.yybb.myapplication.presentation.ui.screens.ActivityStreamScreen
 import com.yybb.myapplication.presentation.ui.screens.AllSpacesScreen
+import com.yybb.myapplication.presentation.ui.screens.CreateSpaceScreen
 import com.yybb.myapplication.presentation.ui.screens.EditProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
+import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.EditProfileViewModel
 
 @Composable
@@ -47,6 +49,13 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                     viewModel.saveProfile(profession, bio)
                     navController.popBackStack()
                 }
+            )
+        }
+        composable(Screen.CreateSpace.route) {
+            val viewModel: CreateSpaceViewModel = hiltViewModel()
+            CreateSpaceScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(

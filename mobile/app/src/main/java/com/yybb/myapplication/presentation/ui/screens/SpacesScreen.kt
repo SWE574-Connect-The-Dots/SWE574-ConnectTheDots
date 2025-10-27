@@ -70,5 +70,8 @@ fun SpacesScreen(
         Button(onClick = { viewModel.onGoToDetailsClicked(1) }) {
             Text(text = "Go to Space Details (ID: 1)")
         }
+        Button(onClick = { navController.navigate(Screen.CreateSpace.route) }) {
+            Text(text = "Create Space")
+        }
     }
 }

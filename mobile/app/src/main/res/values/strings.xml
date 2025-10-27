@@ -35,4 +35,15 @@
     <string name="search_button">Search</string>
     <string name="search_space_hint_msg">Search space</string>
     <string name="space_collaborators_title">Space Collaborators</string>
+    <string name="create_space_title">Create Space</string>
+    <string name="space_title">Space Title</string>
+    <string name="space_description_title">Space Description</string>
+    <string name="tags_title">Tags</string>
+    <string name="no_tags">No tags selected yet</string>
+    <string name="hide_tags_button"># Hide Tag Search</string>
+    <string name="add_tags_button"># Add Tags from wikidata</string>
+    <string name="fill_inputs_error_msg">Please fill in both title and description</string>
+    <string name="create_space_button">+ Create Space</string>
+    <string name="add_button">Add</string>
+    <string name="selected_tags_title">Selected tags %1d</string>
 </resources>
