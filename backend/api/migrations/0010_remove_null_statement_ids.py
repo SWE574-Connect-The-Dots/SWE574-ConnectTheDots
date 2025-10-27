@@ -21,7 +21,7 @@ def remove_properties_with_null_statement_id(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0008_property_statement_id'),
+        ('api', '0009_property_statement_id'),
     ]
 
     operations = [
