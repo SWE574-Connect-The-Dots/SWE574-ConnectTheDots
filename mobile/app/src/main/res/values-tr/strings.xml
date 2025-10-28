@@ -35,4 +35,17 @@
     <string name="search_button">Ara</string>
     <string name="search_space_hint_msg">Space ara</string>
     <string name="space_collaborators_title">Space Katılımcıları</string>
+    <string name="create_space_title">Space Oluştur</string>
+    <string name="space_title">Space Başlığı</string>
+    <string name="space_description_title">Space Açıklaması</string>
+    <string name="tags_title">Etiketler</string>
+    <string name="no_tags">Henüz etiket seçilmedi</string>
+    <string name="hide_tags_button"># Etiket Aramayı Gizle</string>
+    <string name="add_tags_button"># Wikidata\'dan Etiket Ekle</string>
+    <string name="fill_inputs_error_msg">Lütfen başlık ve açıklama alanlarını doldurun</string>
+    <string name="create_space_button">+ Space Oluştur</string>
+    <string name="add_button">Ekle</string>
+    <string name="selected_tags_title">Seçili etiketler %1d</string>
+    <string name="loading_tags_message">Etiketler aranıyor...</string>
+    <string name="creating_space_message">Space oluşturuluyor...</string>
 </resources>

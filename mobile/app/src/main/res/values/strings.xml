@@ -46,4 +46,6 @@
     <string name="create_space_button">+ Create Space</string>
     <string name="add_button">Add</string>
     <string name="selected_tags_title">Selected tags %1d</string>
+    <string name="loading_tags_message">Searching tags...</string>
+    <string name="creating_space_message">Creating space...</string>
 </resources>

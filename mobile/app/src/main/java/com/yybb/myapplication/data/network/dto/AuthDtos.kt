@@ -41,13 +41,6 @@ data class ProfileResponse(
     val joinedSpaces: List<SpaceDto>
 )
 
-data class SpaceDto(
-    val id: Int,
-    @SerializedName("title")
-    val name: String,
-    val description: String
-)
-
 data class UpdateProfileRequest(
     val bio: String?,
     val profession: String

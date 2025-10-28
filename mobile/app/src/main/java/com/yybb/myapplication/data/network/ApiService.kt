@@ -1,9 +1,14 @@
 package com.yybb.myapplication.data.network
 
+import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
+import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.LoginResponse
 import com.yybb.myapplication.data.network.dto.ProfileResponse
 import com.yybb.myapplication.data.network.dto.RegisterRequest
+import com.yybb.myapplication.data.network.dto.TagDto
+import com.yybb.myapplication.data.network.dto.TagRequest
+import com.yybb.myapplication.data.network.dto.TagResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
 import retrofit2.Response
 import retrofit2.http.Body
@@ -11,6 +16,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("api/register/")
@@ -29,4 +35,13 @@ interface ApiService {
     suspend fun updateProfile(
         @Body request: UpdateProfileRequest
     ): Response<ProfileResponse>
+
+    @GET("api/tags/search_wikidata/")
+    suspend fun getTagWikidata(@Query("query") tagQuery: String): Response<List<TagDto>>
+
+    @POST("api/tags/")
+    suspend fun createTag(@Body request: TagRequest): Response<TagResponse>
+
+    @POST("api/spaces/")
+    suspend fun createSpace(@Body request: CreateSpaceRequest): Response<CreateSpaceResponse>
 }
