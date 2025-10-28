@@ -3,9 +3,8 @@ import React, { useState, useEffect } from "react";
 import api from "../axiosConfig";
 import "../ConnectTheDots.css";
 
-export default function Home({ setIsAuthenticated, currentUser }) {
+export default function Home({ currentUser }) {
   const navigate = useNavigate();
-  const [searchValue, setSearchValue] = useState("");
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "trending";
@@ -17,28 +16,6 @@ export default function Home({ setIsAuthenticated, currentUser }) {
   const [spaceToDelete, setSpaceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsAuthenticated(false);
-    navigate("/login");
-  };
-
-  const handleOnCreateSpace = () => {
-    navigate("/create-space");
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
-
-  const handleSearchButtonClick = () => {
-    if (searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
 
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
@@ -169,6 +146,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
             key={space.id}
             className="space-card"
             style={{ position: "relative" }}
+            onClick={() => navigateToSpace(space)}
           >
             <div
               className="space-header"
@@ -182,7 +160,6 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                 <h2
                   className="space-title"
                   style={{ cursor: "pointer", margin: 0 }}
-                  onClick={() => navigateToSpace(space)}
                 >
                   {space.title}
                 </h2>
@@ -278,7 +255,9 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                 Are you sure you want to delete the space "
                 {spaceToDelete?.title}"? This action cannot be undone.
               </p>
-              {deleteError && <div style={{ color: "#BD4902" }}>{deleteError}</div>}
+              {deleteError && (
+                <div style={{ color: "#BD4902" }}>{deleteError}</div>
+              )}
             </div>
             <div className="modal-footer">
               <button
