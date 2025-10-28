@@ -5,6 +5,7 @@ export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState("monthly");
+  const [activeTab, setActiveTab] = useState("users");
 
   useEffect(() => {
     setData(analyticsData);
@@ -219,14 +220,71 @@ export default function Analytics() {
         <div
           style={{
             display: "flex",
+            borderBottom: "1px solid #eaeaea",
+            marginBottom: "20px",
+          }}
+        >
+          <div
+            onClick={() => setActiveTab("users")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom: activeTab === "users" ? "2px solid black" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "users" ? "bold" : "normal",
+            }}
+          >
+            Users
+          </div>
+          <div
+            onClick={() => setActiveTab("nodes")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom: activeTab === "nodes" ? "2px solid black" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "nodes" ? "bold" : "normal",
+            }}
+          >
+            Nodes
+          </div>
+          <div
+            onClick={() => setActiveTab("spaces")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom: activeTab === "spaces" ? "2px solid black" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "spaces" ? "bold" : "normal",
+            }}
+          >
+            Spaces
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
             justifyContent: "center",
             alignItems: "center",
             height: "300px",
           }}
         >
-          <div style={{ textAlign: "center", color: "#666" }}>
-            <p>Graph visualization would be displayed here</p>
-          </div>
+          {activeTab === "users" && (
+            <div style={{ textAlign: "center", color: "#666" }}>
+              <p>User graph will be here.</p>
+            </div>
+          )}
+          {activeTab === "nodes" && (
+            <div style={{ textAlign: "center", color: "#666" }}>
+              <p>Node graph will be here.</p>
+            </div>
+          )}
+          {activeTab === "spaces" && (
+            <div style={{ textAlign: "center", color: "#666" }}>
+              <p>Space graph will be here.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
