@@ -45,7 +45,23 @@
     <string name="fill_inputs_error_msg">Lütfen başlık ve açıklama alanlarını doldurun</string>
     <string name="create_space_button">+ Space Oluştur</string>
     <string name="add_button">Ekle</string>
-    <string name="selected_tags_title">Seçili etiketler %1d</string>
-    <string name="loading_tags_message">Etiketler aranıyor...</string>
+    <string name="selected_tags_title">Seçili tag\'ler %1d</string>
+    <string name="loading_tags_message">Tag\'ler aranıyor...</string>
     <string name="creating_space_message">Space oluşturuluyor...</string>
+    <string name="adding_discussions_message">Yorum ekleniyor...</string>
+    <string name="leaving_space_message">Space\'ten çıkılıyor...</string>
+    <string name="joining_space_message">Space\'e katılınıyor...</string>
+    <string name="loading_message">Yükleniyor...</string>
+    <string name="leave_space_button">Space\'ten Çık</string>
+    <string name="join_space_button">Space\'e Katıl</string>
+    <string name="delete_space_button">Space\'i Sil</string>
+    <string name="join_collaborator_message">Yorum ekleyebilmek için space\'e katılın</string>
+    <string name="failed_add_disc_message">Yorum eklenemedi</string>
+    <string name="failed_join_space_message">Space\'e katılma başarısız</string>
+    <string name="failed_leave_space_message">Space\'ten ayrılma başarısız</string>
+    <string name="failed_create_tag_message">Tag oluşturulamadı</string>
+    <string name="failed_create_space_message">Space oluşturulamadı</string>
+    <string name="failed_get_disc_message">Yorumlar alınamadı</string>
+    <string name="failed_get_space_det_message">Space detayları alınamadı</string>
+
 </resources>

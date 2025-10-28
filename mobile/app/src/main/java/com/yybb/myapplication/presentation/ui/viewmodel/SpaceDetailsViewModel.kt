@@ -1,30 +1,155 @@
 package com.yybb.myapplication.presentation.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yybb.myapplication.data.UserPreferencesRepository
+import com.yybb.myapplication.data.model.Discussion
+import com.yybb.myapplication.data.model.SpaceDetails
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.yybb.myapplication.R
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @HiltViewModel
 class SpaceDetailsViewModel @Inject constructor(
-    spaceRepository: SpacesRepository,
+    @ApplicationContext private val context: Context,
+    private val spaceRepository: SpacesRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val _isColorBlindTheme = MutableStateFlow(false)
     val isColorBlindTheme: StateFlow<Boolean> = _isColorBlindTheme.asStateFlow()
+    
+    private val _spaceDetails = MutableStateFlow<SpaceDetails?>(null)
+    val spaceDetails: StateFlow<SpaceDetails?> = _spaceDetails.asStateFlow()
+    
+    private val _discussions = MutableStateFlow<List<Discussion>>(emptyList())
+    val discussions: StateFlow<List<Discussion>> = _discussions.asStateFlow()
+    
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    
+    private val _isLoadingDiscussions = MutableStateFlow(false)
+    val isLoadingDiscussions: StateFlow<Boolean> = _isLoadingDiscussions.asStateFlow()
+    
+    private val _isAddingDiscussion = MutableStateFlow(false)
+    val isAddingDiscussion: StateFlow<Boolean> = _isAddingDiscussion.asStateFlow()
+    
+    private val _isJoiningLeavingSpace = MutableStateFlow(false)
+    val isJoiningLeavingSpace: StateFlow<Boolean> = _isJoiningLeavingSpace.asStateFlow()
+    
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
 
     init {
         spaceRepository.isColorBlindTheme
             .onEach { _isColorBlindTheme.value = it }
             .launchIn(viewModelScope)
+        
+        fetchSpaceDetails()
+        fetchDiscussions()
     }
 
-    val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
+    private fun fetchSpaceDetails() {
+        _isLoading.value = true
+        _error.value = null
+        
+        spaceRepository.getSpaceDetails(spaceId)
+            .catch { exception ->
+                _error.value = exception.message
+                _isLoading.value = false
+            }
+            .onEach { space ->
+                _spaceDetails.value = space
+                _isLoading.value = false
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun fetchDiscussions() {
+        _isLoadingDiscussions.value = true
+        
+        spaceRepository.getSpaceDiscussions(spaceId)
+            .catch { exception ->
+                _isLoadingDiscussions.value = false
+            }
+            .onEach { discussions ->
+                _discussions.value = discussions
+                _isLoadingDiscussions.value = false
+            }
+            .launchIn(viewModelScope)
+    }
+
+    fun addDiscussion(text: String) {
+        viewModelScope.launch {
+            _isAddingDiscussion.value = true
+            _error.value = null
+            
+            val result = spaceRepository.addDiscussion(spaceId, text)
+            if (result.isSuccess) {
+                fetchDiscussions()
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_add_disc_message)
+            }
+            _isAddingDiscussion.value = false
+        }
+    }
+
+    fun isUserCollaborator(): Boolean {
+        val currentSpace = _spaceDetails.value
+        val currentUser = userPreferencesRepository.getCurrentUsernameSync()
+        return currentSpace?.collaborators?.contains(currentUser) == true
+    }
+
+    fun isUserCreator(): Boolean {
+        val currentSpace = _spaceDetails.value
+        val currentUser = userPreferencesRepository.getCurrentUsernameSync()
+        return currentSpace?.creatorUsername == currentUser
+    }
+
+    fun joinSpace() {
+        viewModelScope.launch {
+            _isJoiningLeavingSpace.value = true
+            _error.value = null
+            
+            val result = spaceRepository.joinSpace(spaceId)
+            if (result.isSuccess) {
+                fetchSpaceDetails()
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_join_space_message)
+            }
+            _isJoiningLeavingSpace.value = false
+        }
+    }
+
+    fun leaveSpace() {
+        viewModelScope.launch {
+            _isJoiningLeavingSpace.value = true
+            _error.value = null
+            
+            val result = spaceRepository.leaveSpace(spaceId)
+            if (result.isSuccess) {
+                fetchSpaceDetails()
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_leave_space_message)
+            }
+            _isJoiningLeavingSpace.value = false
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
 }

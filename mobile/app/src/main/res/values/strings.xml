@@ -48,4 +48,19 @@
     <string name="selected_tags_title">Selected tags %1d</string>
     <string name="loading_tags_message">Searching tags...</string>
     <string name="creating_space_message">Creating space...</string>
+    <string name="adding_discussions_message">Adding discussion...</string>
+    <string name="leaving_space_message">Leaving space...</string>
+    <string name="joining_space_message">Joining space...</string>
+    <string name="loading_message">Loading...</string>
+    <string name="leave_space_button">Leave Space</string>
+    <string name="join_space_button">Join Space</string>
+    <string name="delete_space_button">Delete Space</string>
+    <string name="join_collaborator_message">Join as a collaborator to participate in discussions</string>
+    <string name="failed_add_disc_message">Failed to add discussion</string>
+    <string name="failed_join_space_message">Failed to join space</string>
+    <string name="failed_leave_space_message">Failed to leave space</string>
+    <string name="failed_create_tag_message">Failed to create tag</string>
+    <string name="failed_create_space_message">Failed to create space</string>
+    <string name="failed_get_disc_message">Failed to get discussions</string>
+    <string name="failed_get_space_det_message">Failed to get space details</string>
 </resources>

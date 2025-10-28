@@ -1,11 +1,15 @@
 package com.yybb.myapplication.data.network
 
+import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
+import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.LoginResponse
 import com.yybb.myapplication.data.network.dto.ProfileResponse
 import com.yybb.myapplication.data.network.dto.RegisterRequest
+import com.yybb.myapplication.data.network.dto.SpaceDetailsResponse
+import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.TagResponse
@@ -44,4 +48,19 @@ interface ApiService {
 
     @POST("api/spaces/")
     suspend fun createSpace(@Body request: CreateSpaceRequest): Response<CreateSpaceResponse>
+
+    @GET("api/spaces/{id}/")
+    suspend fun getSpaceById(@Path("id") id: String): Response<SpaceDetailsResponse>
+
+    @GET("api/spaces/{id}/discussions/")
+    suspend fun getSpaceDiscussions(@Path("id") id: String): Response<List<DiscussionDto>>
+
+    @POST("api/spaces/{id}/discussions/add/")
+    suspend fun addDiscussion(@Path("id") id: String, @Body request: AddDiscussionRequest): Response<DiscussionDto>
+
+    @POST("api/spaces/{id}/leave/")
+    suspend fun leaveSpace(@Path("id") id: String): Response<SpaceMembershipResponse>
+
+    @POST("api/spaces/{id}/join/")
+    suspend fun joinSpace(@Path("id") id: String): Response<SpaceMembershipResponse>
 }
