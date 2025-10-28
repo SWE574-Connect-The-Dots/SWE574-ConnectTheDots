@@ -131,17 +131,27 @@ class TagViewSet(viewsets.ModelViewSet):
         wikidata_id = request.data.get('wikidata_id')
         wikidata_label = request.data.get('wikidata_label')
         
-        data = {
-            'name': name,
-            'wikidata_id': wikidata_id,
-            'wikidata_label': wikidata_label
-        }
-        
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=201, headers=headers)
+        try:
+            existing_tag = Tag.objects.get(name=name)
+            if wikidata_id and not existing_tag.wikidata_id:
+                existing_tag.wikidata_id = wikidata_id
+            if wikidata_label and not existing_tag.wikidata_label:
+                existing_tag.wikidata_label = wikidata_label
+            existing_tag.save()
+            serializer = self.get_serializer(existing_tag)
+            return Response(serializer.data, status=200)
+        except Tag.DoesNotExist:
+            data = {
+                'name': name,
+                'wikidata_id': wikidata_id,
+                'wikidata_label': wikidata_label
+            }
+            
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=201, headers=headers)
 
 class SpaceViewSet(viewsets.ModelViewSet):
     queryset = Space.objects.all()
