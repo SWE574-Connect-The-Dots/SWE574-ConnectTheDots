@@ -16,6 +16,7 @@ from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, Use
 from .wikidata import get_wikidata_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
 from django.core.cache import cache
+from django.http import JsonResponse
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -320,8 +321,12 @@ class SpaceViewSet(viewsets.ModelViewSet):
             space = space
         )
         
-        for property_id in selected_properties:
-            Property.objects.create(node=new_node, property_id=property_id)
+        for prop in selected_properties:
+            Property.objects.create(
+                node=new_node, 
+                property_id=prop['property'],
+                statement_id=prop['statement_id']
+            )
 
         if related_node_id:
             related_node = Node.objects.get(id=related_node_id)
@@ -469,14 +474,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
             if node.wikidata_id:
                 try:
                     wikidata_props_list = get_wikidata_properties(node.wikidata_id)
-                    wikidata_props = {prop["property"]: prop for prop in wikidata_props_list}
+                    wikidata_props = {prop["statement_id"]: prop for prop in wikidata_props_list}
                 except Exception as e:
                     print(f"Error fetching Wikidata properties: {str(e)}")
             
             result = []
             for prop in properties:
-                prop_data = wikidata_props.get(prop.property_id, {})
+                prop_data = wikidata_props.get(prop.statement_id, {})
                 result.append({
+                    'statement_id': prop.statement_id,
                     'property_id': prop.property_id,
                     'property_label': prop_data.get('property_label', prop.property_id.replace('P', 'Property ')),
                     'property_value': prop_data.get('value', None),
@@ -520,8 +526,14 @@ class SpaceViewSet(viewsets.ModelViewSet):
             selected_properties = request.data.get('selected_properties', [])
             Property.objects.filter(node=node).delete()
 
-            for property_id in selected_properties:
-                Property.objects.create(node=node, property_id=property_id)
+            for prop in selected_properties:
+                if not prop:
+                    continue
+                Property.objects.create(
+                    node=node,
+                    property_id=prop['property'],
+                    statement_id=prop['statement_id']
+                )
                 
             return Response({'message': 'Node properties updated'}, status=200)
         except Node.DoesNotExist:
@@ -529,23 +541,23 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
-    @action(detail=True, methods=['delete'], url_path='nodes/(?P<node_id>[^/.]+)/properties/(?P<property_id>[^/.]+)')
-    def delete_node_property(self, request, pk=None, node_id=None, property_id=None):
-        """Delete a single property from a node"""
+    @action(detail=True, methods=['delete'], url_path='nodes/(?P<node_id>[^/.]+)/properties/(?P<statement_id>[^/.]+)')
+    def delete_node_property(self, request, pk=None, node_id=None, statement_id=None):
+        """Delete a single property from a node by its statement_id"""
         space = self.get_object()
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can update nodes'}, status=403)
         
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
-            property_count = Property.objects.filter(node=node, property_id=property_id).delete()[0]
-            
-            if property_count == 0:
-                return Response({'error': 'Property not found'}, status=404)
+            property_to_delete = Property.objects.get(node=node, statement_id=statement_id)
+            property_to_delete.delete()
             
             return Response({'message': 'Property deleted successfully'}, status=200)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=404)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 

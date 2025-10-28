@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import api from "../axiosConfig";
 import useWikidataSearch from "../hooks/useWikidataSearch";
@@ -71,6 +71,117 @@ const propertySelectionStyles = `
 }
 `;
 
+const getPropertyLabelWithId = (prop) => {
+  const label =
+    prop.property_label ||
+    (prop.display && prop.display.includes(":")
+      ? prop.display.split(":")[0].trim()
+      : null);
+
+  const propId = prop.property || prop.property_id;
+
+  if (!label) {
+    return propId || "Unknown Property";
+  }
+
+  if (label.includes(propId)) {
+    return label;
+  }
+
+  return propId ? `${label} (${propId})` : label;
+};
+
+const PropertySelectionList = ({
+  properties,
+  selectedProperties,
+  onChange,
+}) => {
+  const scrollContainerRef = useRef(null);
+
+  const handleItemClick = (statementId) => {
+    let scrollPos = 0;
+    if (scrollContainerRef.current) {
+      scrollPos = scrollContainerRef.current.scrollTop;
+    }
+
+    const newSelection = selectedProperties.includes(statementId)
+      ? selectedProperties.filter((id) => id !== statementId)
+      : [...selectedProperties, statementId];
+
+    onChange(newSelection);
+
+    if (scrollContainerRef.current) {
+      setTimeout(() => {
+        scrollContainerRef.current.scrollTop = scrollPos;
+      }, 0);
+    }
+  };
+
+  const renderSelectionPropertyValue = (prop) => {
+    if (
+      prop.value &&
+      typeof prop.value === "object" &&
+      prop.value.type === "entity"
+    ) {
+      return (
+        <a
+          href={`https://www.wikidata.org/wiki/${prop.value.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="entity-link"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            window.open(
+              `https://www.wikidata.org/wiki/${prop.value.id}`,
+              "_blank"
+            );
+          }}
+        >
+          {prop.value.text}
+        </a>
+      );
+    }
+
+    return prop.value ? String(prop.value) : "No value available";
+  };
+
+  return (
+    <div className="property-selection-container">
+      <div className="property-selection-list" ref={scrollContainerRef}>
+        {properties.map((prop) => (
+          <div
+            key={prop.statement_id}
+            className={`property-selection-item ${
+              selectedProperties.includes(prop.statement_id) ? "selected" : ""
+            }`}
+            onClick={() => handleItemClick(prop.statement_id)}
+          >
+            <input
+              type="checkbox"
+              id={`prop-${prop.statement_id}`}
+              checked={selectedProperties.includes(prop.statement_id)}
+              onChange={() => handleItemClick(prop.statement_id)}
+              className="property-checkbox"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <label
+              htmlFor={`prop-${prop.statement_id}`}
+              className="property-selection-label"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="property-label">
+                {getPropertyLabelWithId(prop)}:
+              </span>{" "}
+              {renderSelectionPropertyValue(prop)}
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const NodeDetailModal = ({
   node,
   onClose,
@@ -91,8 +202,22 @@ const NodeDetailModal = ({
   const [addEdgeError, setAddEdgeError] = useState(null);
   const [addEdgeLoading, setAddEdgeLoading] = useState(false);
   const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
+  const [propertySearch, setPropertySearch] = useState("");
 
   const { fetchProperties } = useWikidataSearch();
+
+  const filteredAndSortedProperties = useMemo(() => {
+    if (!availableProperties) return [];
+    return availableProperties
+      .filter((prop) =>
+        prop.display.toLowerCase().includes(propertySearch.toLowerCase())
+      )
+      .sort((a, b) => {
+        const numA = parseInt(a.property.substring(1), 10);
+        const numB = parseInt(b.property.substring(1), 10);
+        return numA - numB;
+      });
+  }, [availableProperties, propertySearch]);
 
   useEffect(() => {
     const fetchNodeProperties = async () => {
@@ -113,7 +238,7 @@ const NodeDetailModal = ({
           setAvailableProperties(properties);
 
           const selectedPropertyIds = response.data.map(
-            (prop) => prop.property_id
+            (prop) => prop.statement_id
           );
           setSelectedProperties(selectedPropertyIds);
         }
@@ -167,10 +292,13 @@ const NodeDetailModal = ({
 
   const handleSaveChanges = async () => {
     try {
+      const fullSelectedProperties = selectedProperties.map((statementId) =>
+        availableProperties.find((p) => p.statement_id === statementId)
+      );
       await api.put(
         `/spaces/${spaceId}/nodes/${node.id}/update-properties/`,
         {
-          selected_properties: selectedProperties,
+          selected_properties: fullSelectedProperties,
         },
         {
           headers: {
@@ -215,10 +343,10 @@ const NodeDetailModal = ({
     }
   };
 
-  const handleDeleteProperty = async (propertyId) => {
+  const handleDeleteProperty = async (statementId) => {
     try {
       await api.delete(
-        `/spaces/${spaceId}/nodes/${node.id}/properties/${propertyId}/`,
+        `/spaces/${spaceId}/nodes/${node.id}/properties/${statementId}/`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -227,7 +355,7 @@ const NodeDetailModal = ({
       );
 
       setSelectedProperties(
-        selectedProperties.filter((id) => id !== propertyId)
+        selectedProperties.filter((id) => id !== statementId)
       );
 
       const response = await api.get(
@@ -244,26 +372,6 @@ const NodeDetailModal = ({
     } catch (err) {
       alert("Failed to delete property");
     }
-  };
-
-  const getPropertyLabelWithId = (prop) => {
-    const label =
-      prop.property_label ||
-      (prop.display && prop.display.includes(":")
-        ? prop.display.split(":")[0].trim()
-        : null);
-
-    const propId = prop.property || prop.property_id;
-
-    if (!label) {
-      return propId || "Unknown Property";
-    }
-
-    if (label.includes(propId)) {
-      return label;
-    }
-
-    return propId ? `${label} (${propId})` : label;
   };
 
   const renderPropertyValue = (prop) => {
@@ -285,97 +393,6 @@ const NodeDetailModal = ({
     }
 
     return prop.property_value || "No value available";
-  };
-
-  const PropertySelectionList = ({
-    properties,
-    selectedProperties,
-    onChange,
-  }) => {
-    const handleItemClick = (property, e) => {
-      const container = e.currentTarget.parentNode;
-      const scrollPos = container.scrollTop;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const newSelection = selectedProperties.includes(property)
-        ? selectedProperties.filter((id) => id !== property)
-        : [...selectedProperties, property];
-
-      onChange(newSelection);
-
-      setTimeout(() => {
-        if (container) container.scrollTop = scrollPos;
-      }, 0);
-    };
-
-    const renderSelectionPropertyValue = (prop) => {
-      if (
-        prop.value &&
-        typeof prop.value === "object" &&
-        prop.value.type === "entity"
-      ) {
-        return (
-          <a
-            href={`https://www.wikidata.org/wiki/${prop.value.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="entity-link"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              window.open(
-                `https://www.wikidata.org/wiki/${prop.value.id}`,
-                "_blank"
-              );
-            }}
-          >
-            {prop.value.text}
-          </a>
-        );
-      }
-
-      return prop.value ? String(prop.value) : "No value available";
-    };
-
-    return (
-      <div className="property-selection-container">
-        <div className="property-selection-list">
-          {properties.map((prop) => (
-            <div
-              key={prop.property}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.property) ? "selected" : ""
-              }`}
-              onClick={(e) => handleItemClick(prop.property, e)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.property}`}
-                checked={selectedProperties.includes(prop.property)}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleItemClick(prop.property, e);
-                }}
-                className="property-checkbox"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <label
-                htmlFor={`prop-${prop.property}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="property-label">
-                  {getPropertyLabelWithId(prop)}:
-                </span>{" "}
-                {renderSelectionPropertyValue(prop)}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   const handleAddEdge = async () => {
@@ -451,7 +468,10 @@ const NodeDetailModal = ({
                 <div className="current-properties">
                   <ul>
                     {nodeProperties.map((prop) => (
-                      <li key={prop.property_id} className="property-item">
+                      <li
+                        key={prop.statement_id}
+                        className="property-item"
+                      >
                         <span className="property-content">
                           <span className="property-label">
                             {getPropertyLabelWithId(prop)}:
@@ -460,7 +480,9 @@ const NodeDetailModal = ({
                         </span>
                         <button
                           className="delete-property-button"
-                          onClick={() => handleDeleteProperty(prop.property_id)}
+                          onClick={() =>
+                            handleDeleteProperty(prop.statement_id)
+                          }
                           title="Delete property"
                         >
                           ×
@@ -481,8 +503,20 @@ const NodeDetailModal = ({
                 <p className="selection-help-text">
                   Click on a property to select/deselect it
                 </p>
+                <input
+                  type="text"
+                  placeholder="Search properties..."
+                  value={propertySearch}
+                  onChange={(e) => setPropertySearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    marginBottom: "10px",
+                    boxSizing: "border-box",
+                  }}
+                />
                 <PropertySelectionList
-                  properties={availableProperties}
+                  properties={filteredAndSortedProperties}
                   selectedProperties={selectedProperties}
                   onChange={handlePropertySelection}
                 />

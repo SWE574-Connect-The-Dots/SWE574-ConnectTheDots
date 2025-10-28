@@ -1,5 +1,5 @@
 import { useLocation, useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
 import api from "../axiosConfig";
@@ -89,6 +89,112 @@ const nodeTypes = {
   circular: CircularNode,
 };
 
+const getPropertyLabelWithId = (prop) => {
+  const label =
+    prop.property_label ||
+    (prop.display && prop.display.includes(":")
+      ? prop.display.split(":")[0].trim()
+      : null);
+  const propId = prop.property || prop.property_id;
+  if (!label) {
+    return propId || "Unknown Property";
+  }
+  if (label.includes(propId)) {
+    return label;
+  }
+  return propId ? `${label} (${propId})` : label;
+};
+
+const PropertySelectionList = ({
+  properties,
+  selectedProperties,
+  onChange,
+}) => {
+  const scrollContainerRef = useRef(null);
+
+  const handleItemClick = (statementId) => {
+    let scrollPos = 0;
+    if (scrollContainerRef.current) {
+      scrollPos = scrollContainerRef.current.scrollTop;
+    }
+
+    const newSelection = selectedProperties.includes(statementId)
+      ? selectedProperties.filter((id) => id !== statementId)
+      : [...selectedProperties, statementId];
+
+    onChange(newSelection);
+
+    if (scrollContainerRef.current) {
+      setTimeout(() => {
+        scrollContainerRef.current.scrollTop = scrollPos;
+      }, 0);
+    }
+  };
+
+  const renderPropertyValue = (prop) => {
+    if (
+      prop.value &&
+      typeof prop.value === "object" &&
+      prop.value.type === "entity"
+    ) {
+      return (
+        <a
+          href={`https://www.wikidata.org/wiki/${prop.value.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="entity-link"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            window.open(
+              `https://www.wikidata.org/wiki/${prop.value.id}`,
+              "_blank"
+            );
+          }}
+        >
+          {prop.value.text}
+        </a>
+      );
+    }
+
+    return prop.value ? String(prop.value) : "No value available";
+  };
+
+  return (
+    <div className="property-selection-container">
+      <div className="property-selection-list" ref={scrollContainerRef}>
+        {properties.map((prop) => (
+          <div
+            key={prop.statement_id}
+            className={`property-selection-item ${
+              selectedProperties.includes(prop.statement_id) ? "selected" : ""
+            }`}
+            onClick={() => handleItemClick(prop.statement_id)}
+          >
+            <input
+              type="checkbox"
+              id={`prop-${prop.statement_id}`}
+              checked={selectedProperties.includes(prop.statement_id)}
+              onChange={() => handleItemClick(prop.statement_id)}
+              className="property-checkbox"
+            />
+            <label
+              htmlFor={`prop-${prop.statement_id}`}
+              className="property-selection-label"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="property-label">
+                {getPropertyLabelWithId(prop)}:
+              </span>{" "}
+              {renderPropertyValue(prop)}
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const SpaceDetails = () => {
   const location = useLocation();
   const { id } = useParams();
@@ -117,6 +223,7 @@ const SpaceDetails = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [propertySearch, setPropertySearch] = useState("");
 
   const {
     nodes,
@@ -132,6 +239,19 @@ const SpaceDetails = () => {
     search,
     fetchProperties,
   } = useWikidataSearch();
+
+  const filteredAndSortedProperties = useMemo(() => {
+    if (!entityProperties) return [];
+    return entityProperties
+      .filter((prop) =>
+        prop.display.toLowerCase().includes(propertySearch.toLowerCase())
+      )
+      .sort((a, b) => {
+        const numA = parseInt(a.property.substring(1), 10);
+        const numB = parseInt(b.property.substring(1), 10);
+        return numA - numB;
+      });
+  }, [entityProperties, propertySearch]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -293,96 +413,6 @@ const SpaceDetails = () => {
   const handleEdgeClick = useCallback((event, edge) => {
     setSelectedEdge(edge);
   }, []);
-
-  const PropertySelectionList = ({
-    properties,
-    selectedProperties,
-    onChange,
-  }) => {
-    const handleItemClick = (property, e) => {
-      const container = e.currentTarget.parentNode;
-      const scrollPos = container.scrollTop;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const newSelection = selectedProperties.includes(property)
-        ? selectedProperties.filter((id) => id !== property)
-        : [...selectedProperties, property];
-
-      onChange(newSelection);
-
-      setTimeout(() => {
-        if (container) container.scrollTop = scrollPos;
-      }, 0);
-    };
-
-    const renderPropertyValue = (prop) => {
-      if (
-        prop.value &&
-        typeof prop.value === "object" &&
-        prop.value.type === "entity"
-      ) {
-        return (
-          <a
-            href={`https://www.wikidata.org/wiki/${prop.value.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="entity-link"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              window.open(
-                `https://www.wikidata.org/wiki/${prop.value.id}`,
-                "_blank"
-              );
-            }}
-          >
-            {prop.value.text}
-          </a>
-        );
-      }
-
-      return prop.value ? String(prop.value) : "No value available";
-    };
-
-    return (
-      <div className="property-selection-container">
-        <div className="property-selection-list">
-          {properties.map((prop) => (
-            <div
-              key={prop.property}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.property) ? "selected" : ""
-              }`}
-              onClick={(e) => handleItemClick(prop.property, e)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.property}`}
-                checked={selectedProperties.includes(prop.property)}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleItemClick(prop.property, e);
-                }}
-                className="property-checkbox"
-              />
-              <label
-                htmlFor={`prop-${prop.property}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="property-label">
-                  {prop.property_label || prop.property}:
-                </span>{" "}
-                {renderPropertyValue(prop)}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const canDeleteSpace = () => {
     const username = localStorage.getItem("username");
@@ -646,8 +676,20 @@ const SpaceDetails = () => {
                   <p className="selection-help-text">
                     Click on a property to select/deselect it
                   </p>
+                  <input
+                    type="text"
+                    placeholder="Search properties..."
+                    value={propertySearch}
+                    onChange={(e) => setPropertySearch(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      marginBottom: "10px",
+                      boxSizing: "border-box",
+                    }}
+                  />
                   <PropertySelectionList
-                    properties={entityProperties}
+                    properties={filteredAndSortedProperties}
                     selectedProperties={selectedProperties}
                     onChange={handlePropertySelection}
                   />
@@ -713,13 +755,19 @@ const SpaceDetails = () => {
                   style={{ marginTop: "20px" }}
                   disabled={!selectedEntity}
                   onClick={() => {
+                    const fullSelectedProperties = selectedProperties.map(
+                      (statementId) =>
+                        entityProperties.find(
+                          (p) => p.statement_id === statementId
+                        )
+                    );
                     api
                       .post(
                         `/spaces/${id}/add-node/`,
                         {
                           related_node_id: relatedNodeId,
                           wikidata_entity: selectedEntity,
-                          selected_properties: selectedProperties,
+                          selected_properties: fullSelectedProperties,
                           edge_label: edgeLabel,
                           is_new_node_source: isNewNodeSource,
                         },
