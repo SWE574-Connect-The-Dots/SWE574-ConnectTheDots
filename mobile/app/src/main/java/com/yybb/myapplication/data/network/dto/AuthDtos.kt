@@ -52,3 +52,11 @@ data class UpdateProfileRequest(
     val bio: String?,
     val profession: String
 )
+
+
+data class TagDto(
+    val id: String,
+    val label: String,
+    val description: String,
+    val url: String
+)

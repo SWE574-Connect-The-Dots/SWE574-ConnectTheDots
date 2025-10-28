@@ -2,10 +2,10 @@ package com.yybb.myapplication.presentation.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,12 +31,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,90 +46,105 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yybb.myapplication.R
-import com.yybb.myapplication.data.Constants
 import com.yybb.myapplication.data.Constants.DESCRIPTION_FIELD_HEIGHT
 import com.yybb.myapplication.data.Constants.MAX_TITLE_LENGTH
 import com.yybb.myapplication.data.Constants.TAG_CARD_HEIGHT
 import com.yybb.myapplication.data.Constants.TAG_CARD_PADDING
 import com.yybb.myapplication.data.Constants.TAG_ICON_SIZE
+import com.yybb.myapplication.data.network.dto.TagDto
+import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceFormState
+import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceUiState
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
 
-
 // Data class for form state
-@Stable
-private data class CreateSpaceFormState(
-    val spaceTitle: String = "",
-    val spaceDescription: String = "",
-    val selectedTags: List<String> = emptyList(),
-    val showTagSearch: Boolean = false,
-    val tagSearchQuery: String = "",
-    val showSearchResults: Boolean = false
-) {
-    val isFormValid: Boolean
-        get() = spaceTitle.isNotBlank() && spaceDescription.isNotBlank()
 
-    val isSearchEnabled: Boolean
-        get() = tagSearchQuery.isNotBlank()
-}
 
 @Composable
 fun CreateSpaceScreen(
     viewModel: CreateSpaceViewModel,
     onNavigateBack: () -> Unit
 ) {
-
     val uiState by viewModel.uiState.collectAsState()
+    val formState by viewModel.formState.collectAsState()
 
-    CreateSpaceContent(
-        onNavigateBack = onNavigateBack
-    )
+    when (val state = uiState) {
+        is CreateSpaceUiState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
 
+        is CreateSpaceUiState.Success -> {
+            CreateSpaceContent(
+                formState = formState,
+                onFormStateChange = { newState -> viewModel.updateFormState(newState) },
+                onNavigateBack = onNavigateBack,
+                onGetWikiTags = { query -> viewModel.getTags(query) },
+                searchResults = state.tags
+            )
+        }
+
+        is CreateSpaceUiState.Error -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = state.message)
+            }
+        }
+
+        is CreateSpaceUiState.Initial -> {
+            CreateSpaceContent(
+                formState = formState,
+                onFormStateChange = { newState -> viewModel.updateFormState(newState) },
+                onNavigateBack = onNavigateBack,
+                onGetWikiTags = { query -> viewModel.getTags(query) },
+                searchResults = emptyList()
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSpaceContent(
-    onNavigateBack: () -> Unit
+    formState: CreateSpaceFormState,
+    onFormStateChange: (CreateSpaceFormState) -> Unit,
+    onNavigateBack: () -> Unit,
+    onGetWikiTags: (tagQuery: String) -> Unit,
+    searchResults: List<TagDto> = emptyList()
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
-    var formState by remember {
-        mutableStateOf(CreateSpaceFormState())
-    }
-
-    // Memoized search results to prevent recreation
-    val searchResults = remember { getDummySearchResults() }
 
     // Reset form function
     val resetForm = {
-        formState = CreateSpaceFormState()
+        onFormStateChange(CreateSpaceFormState())
     }
 
     // Add tag function
-    val addTag = { tag: String ->
-        if (!formState.selectedTags.contains(tag)) {
-            formState = formState.copy(
+    val addTag = { tag: TagDto ->
+        val exists = formState.selectedTags.any { it.id == tag.id  && it.url == tag.url}
+        if (!exists) {
+            onFormStateChange(formState.copy(
                 selectedTags = formState.selectedTags + tag,
                 tagSearchQuery = "",
-                showSearchResults = false
-            )
+                showSearchResults = false,
+                showTagSearch = true,
+            ))
         }
     }
 
     // Remove tag function
-    val removeTag = { tag: String ->
-        formState = formState.copy(
-            selectedTags = formState.selectedTags.filter { it != tag }
-        )
+    val removeTag = { tag: TagDto ->
+        onFormStateChange(formState.copy(
+            selectedTags = formState.selectedTags.filter { it.id != tag.id && it.url != tag.url }
+        ))
     }
 
     // Toggle tag search function
     val toggleTagSearch = {
-        formState = formState.copy(
-            showTagSearch = !formState.showTagSearch,
-            showSearchResults = false,
-            tagSearchQuery = ""
-        )
+        val showSearch = if (formState.showTagSearch == false) true else false
+        onFormStateChange(formState.copy(
+            showTagSearch = showSearch
+        ))
     }
 
     // Create space function
@@ -142,6 +154,17 @@ fun CreateSpaceContent(
             resetForm()
         } else {
             Toast.makeText(context, context.getString(R.string.fill_inputs_error_msg), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Handle search click with service call
+    val handleSearchClick = {
+        if (formState.isSearchEnabled) {
+            onFormStateChange(formState.copy(
+                showTagSearch = true,
+                showSearchResults = true
+            ))
+            onGetWikiTags(formState.tagSearchQuery)
         }
     }
 
@@ -170,7 +193,7 @@ fun CreateSpaceContent(
                 title = formState.spaceTitle,
                 onTitleChange = { newTitle ->
                     if (newTitle.length <= MAX_TITLE_LENGTH) {
-                        formState = formState.copy(spaceTitle = newTitle)
+                        onFormStateChange(formState.copy(spaceTitle = newTitle))
                     }
                 }
             )
@@ -179,28 +202,25 @@ fun CreateSpaceContent(
             SpaceDescriptionSection(
                 description = formState.spaceDescription,
                 onDescriptionChange = { newDescription ->
-                    formState = formState.copy(spaceDescription = newDescription)
+                    onFormStateChange(formState.copy(spaceDescription = newDescription))
                 }
             )
 
             // Tags Section
             TagsSection(
                 formState = formState,
-                searchResults = searchResults,
+                searchResults = searchResults,  // ✅ Pass the parameter
                 onAddTag = addTag,
                 onRemoveTag = removeTag,
                 onToggleTagSearch = toggleTagSearch,
+
                 onSearchQueryChange = { newQuery ->
-                    formState = formState.copy(
+                    onFormStateChange(formState.copy(
                         tagSearchQuery = newQuery,
                         showSearchResults = false
-                    )
+                    ))
                 },
-                onSearchClick = {
-                    if (formState.isSearchEnabled) {
-                        formState = formState.copy(showSearchResults = true)
-                    }
-                }
+                onSearchClick = handleSearchClick
             )
 
             // Create Space Button
@@ -303,9 +323,9 @@ private fun SpaceDescriptionSection(
 @Composable
 private fun TagsSection(
     formState: CreateSpaceFormState,
-    searchResults: List<String>,
-    onAddTag: (String) -> Unit,
-    onRemoveTag: (String) -> Unit,
+    searchResults: List<TagDto>,
+    onAddTag: (TagDto) -> Unit,
+    onRemoveTag: (TagDto) -> Unit,
     onToggleTagSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchClick: () -> Unit
@@ -340,7 +360,7 @@ private fun TagsSection(
                 ) {
                     formState.selectedTags.forEach { tag ->
                         SelectedTagCard(
-                            tag = tag,
+                            tag = tag.description,
                             onRemoveClick = { onRemoveTag(tag) }
                         )
                     }
@@ -401,32 +421,32 @@ private fun TagsSection(
                     fontWeight = FontWeight.Medium
                 )
             }
+        }
 
-            // Search Results (shown when showSearchResults is true)
-            if (formState.showSearchResults) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        // Search Results (shown when showSearchResults is true)
+        if (formState.showSearchResults && searchResults.isNotEmpty()) {  // ✅ Use the parameter instead of formState
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Select from results:",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Black
-                        )
+                    Text(
+                        text = "Select from results:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
 
-                        searchResults.forEach { result ->
-                            SearchResultItem(
-                                result = result,
-                                onAddClick = { onAddTag(result) }
-                            )
-                        }
+                    searchResults.forEach { result ->
+                        SearchResultItem(
+                            result = result.description,
+                            onAddClick = { onAddTag(result) }
+                        )
                     }
                 }
             }
@@ -516,21 +536,3 @@ private fun SearchResultItem(
         }
     }
 }
-
-// Dummy search results for demonstration
-private fun getDummySearchResults(): List<String> {
-    return listOf(
-        "Ural Mountains",
-        "mountain range in Russia",
-        "ID: Q35600",
-        "History of human settlement in the Ural Mountains",
-        "chronology of creation of settles by humans in the region from the Arctic Ocean in the north to the Ural River and northwestern modern Kazakhstan",
-        "ID: Q23136011",
-        "Ural Mountains in Nazi planning",
-        "aspect of Nazi geopolitical planning",
-        "ID: Q5170733",
-        "Ural Mountain Review",
-        "ID: Q107327317"
-    )
-}
-
