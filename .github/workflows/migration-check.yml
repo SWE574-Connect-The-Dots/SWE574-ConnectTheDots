@@ -1,0 +1,66 @@
+name: Migration Conflict Check
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - "backend/api/migrations/**"
+      - "backend/api/models.py"
+
+jobs:
+  # Quick conflict check without database
+  quick-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      
+      - name: Install Django
+        run: |
+          pip install Django==5.1.7
+      
+      - name: Quick migration conflict check
+        run: |
+          echo "Quick migration conflict check..."
+          cd backend/
+          
+          # Check if there are migration files in this PR
+          MIGRATION_FILES=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep "migrations/.*\.py$" | grep -v "__init__.py" || true)
+          
+          if [ -z "$MIGRATION_FILES" ]; then
+            echo "No migration files changed in this PR"
+            exit 0
+          fi
+          
+          echo "Migration files found in PR:"
+          echo "$MIGRATION_FILES"
+          
+          # Check for duplicate migration numbers
+          MIGRATION_NUMBERS=$(ls api/migrations/[0-9]*.py | sed -E 's/.*\/([0-9]+)_.*/\1/' | sort)
+          DUPLICATE_NUMBERS=$(echo "$MIGRATION_NUMBERS" | uniq -d)
+          
+          if [ -n "$DUPLICATE_NUMBERS" ]; then
+            echo "Duplicate migration numbers found: $DUPLICATE_NUMBERS"
+            exit 1
+          fi
+          
+          echo "Quick check passed"
+
+  # Full validation with database
+  full-validation:
+    needs: quick-check
+    uses: ./.github/workflows/migration-validator.yml
+    with:
+      django_settings: 'backend.settings'
+      python_version: '3.8'
+      requirements_file: 'backend/requirements.txt'
