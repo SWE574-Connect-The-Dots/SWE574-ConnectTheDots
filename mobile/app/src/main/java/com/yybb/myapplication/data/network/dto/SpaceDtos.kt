@@ -2,6 +2,13 @@ package com.yybb.myapplication.data.network.dto
 
 import com.google.gson.annotations.SerializedName
 
+data class SpaceDto(
+    val id: Int,
+    @SerializedName("title")
+    val name: String,
+    val description: String
+)
+
 // Tag Creation Request
 data class TagRequest(
     val name: String,
@@ -21,13 +28,6 @@ data class TagResponse(
     val wikidataLabel: String?
 )
 
-// Wikidata Search Result
-data class WikidataEntity(
-    val id: String,
-    val label: String,
-    val description: String?
-)
-
 // Create Space Request
 data class CreateSpaceRequest(
     val title: String,
@@ -45,9 +45,9 @@ data class CreateSpaceResponse(
     val createdAt: String?
 )
 
-// Selected Tag (UI model)
-data class SelectedTag(
-    val name: String,
-    val wikidataId: String,
-    val wikidataLabel: String
+data class TagDto(
+    val id: String,
+    val label: String,
+    val description: String,
+    val url: String
 )

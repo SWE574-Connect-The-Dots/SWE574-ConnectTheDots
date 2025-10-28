@@ -5,7 +5,6 @@ import com.yybb.myapplication.data.UserPreferencesRepository
 import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
-import com.yybb.myapplication.data.network.dto.SelectedTag
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import kotlinx.coroutines.Dispatchers
@@ -50,22 +49,21 @@ class SpacesRepository @Inject constructor(
     }
 
     // Create or get existing tag
-    private suspend fun createOrGetTag(tag: SelectedTag): Result<String> {
+    private suspend fun createOrGetTag(tag: TagDto): Result<String> {
         return try {
             val request = TagRequest(
-                name = tag.name,
-                wikidataId = tag.wikidataId,
-                wikidataLabel = tag.wikidataLabel
+                name = tag.label,
+                wikidataId = tag.id,
+                wikidataLabel = tag.label
             )
             val response = apiService.createTag(request)
 
             when {
                 response.isSuccessful && response.body() != null -> {
-                    Result.success(response.body()!!.name)
+                    Result.success(response.body()!!.wikidataLabel ?: response.body()!!.name)
                 }
                 response.code() == 409 -> {
-                    // Tag already exists, use the tag name
-                    Result.success(tag.name)
+                    Result.success(tag.label)
                 }
                 else -> {
                     Result.failure(Exception("Failed to create tag: ${response.message()}"))
@@ -80,29 +78,24 @@ class SpacesRepository @Inject constructor(
     suspend fun createSpace(
         title: String,
         description: String,
-        selectedTags: List<SelectedTag>
+        selectedTags: List<TagDto>
     ): Result<CreateSpaceResponse> {
         return try {
-            // Step 1: Create/get all tags
             val tagNames = mutableListOf<String>()
             for (tag in selectedTags) {
                 val tagResult = createOrGetTag(tag)
                 if (tagResult.isSuccess) {
                     tagNames.add(tagResult.getOrThrow())
                 } else {
-                    // If any tag fails, return the error
                     return Result.failure(tagResult.exceptionOrNull()
                         ?: Exception("Failed to create tag"))
                 }
             }
-
-            // Step 2: Create the space with tag names
             val createSpaceRequest = CreateSpaceRequest(
                 title = title,
                 description = description,
                 tags = tagNames
             )
-
             val response = apiService.createSpace(createSpaceRequest)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)

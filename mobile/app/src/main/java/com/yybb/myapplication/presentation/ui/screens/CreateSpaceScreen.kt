@@ -2,7 +2,6 @@ package com.yybb.myapplication.presentation.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -55,51 +56,98 @@ import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceFormState
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceUiState
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
-
-// Data class for form state
-
+import com.yybb.myapplication.presentation.ui.viewmodel.RetrieveTagWikidataUiState
 
 @Composable
 fun CreateSpaceScreen(
     viewModel: CreateSpaceViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val tagWikidataUiState by viewModel.tagWikidataUiState.collectAsState()
+    val createSpaceUiState by viewModel.createSpaceUiState.collectAsState()
     val formState by viewModel.formState.collectAsState()
 
-    when (val state = uiState) {
-        is CreateSpaceUiState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
+    val searchResults = when (val tagState = tagWikidataUiState) {
+        is RetrieveTagWikidataUiState.Success -> tagState.tags
+        else -> emptyList()
+    }
 
-        is CreateSpaceUiState.Success -> {
-            CreateSpaceContent(
-                formState = formState,
-                onFormStateChange = { newState -> viewModel.updateFormState(newState) },
-                onNavigateBack = onNavigateBack,
-                onGetWikiTags = { query -> viewModel.getTags(query) },
-                searchResults = state.tags
-            )
-        }
+    if (tagWikidataUiState is RetrieveTagWikidataUiState.Loading) {
+        LoadingDialog(message = stringResource(R.string.loading_tags_message))
+    }
 
-        is CreateSpaceUiState.Error -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = state.message)
-            }
-        }
+    if (createSpaceUiState is CreateSpaceUiState.Loading) {
+        LoadingDialog(message = stringResource(R.string.creating_space_message))
+    }
 
-        is CreateSpaceUiState.Initial -> {
-            CreateSpaceContent(
-                formState = formState,
-                onFormStateChange = { newState -> viewModel.updateFormState(newState) },
-                onNavigateBack = onNavigateBack,
-                onGetWikiTags = { query -> viewModel.getTags(query) },
-                searchResults = emptyList()
-            )
+    // Handle space creation success - navigate back
+    if (createSpaceUiState is CreateSpaceUiState.Success) {
+        LaunchedEffect(Unit) {
+            onNavigateBack()
+            viewModel.resetCreateSpaceState()
         }
     }
+
+    // Handle errors
+    when (val state = createSpaceUiState) {
+        is CreateSpaceUiState.Error -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetCreateSpaceState() },
+                title = { Text(text = stringResource(R.string.error)) },
+                text = { Text(text = state.message) },
+                confirmButton = {
+                    Button(onClick = { viewModel.resetCreateSpaceState() }) {
+                        Text(stringResource(R.string.ok_button))
+                    }
+                }
+            )
+        }
+        else -> { /* Nothing to do */ }
+    }
+
+    when (val tagState = tagWikidataUiState) {
+        is RetrieveTagWikidataUiState.Error -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetTagWikidataState() },
+                title = { Text(text = stringResource(R.string.error)) },
+                text = { Text(text = tagState.message) },
+                confirmButton = {
+                    Button(onClick = { viewModel.resetTagWikidataState() }) {
+                        Text(stringResource(R.string.ok_button))
+                    }
+                }
+            )
+        }
+        else -> { /* Nothing to do */ }
+    }
+
+    CreateSpaceContent(
+        formState = formState,
+        onFormStateChange = { newState -> viewModel.updateFormState(newState) },
+        onNavigateBack = onNavigateBack,
+        onGetWikiTags = { query -> viewModel.getTags(query) },
+        onCreateClicked = { form -> viewModel.createSpace(formState) },
+        searchResults = searchResults
+    )
+}
+
+@Composable
+fun LoadingDialog(message: String) {
+    AlertDialog(
+        onDismissRequest = { },
+        title = {},
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = message)
+            }
+        },
+        confirmButton = {}
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,12 +157,12 @@ fun CreateSpaceContent(
     onFormStateChange: (CreateSpaceFormState) -> Unit,
     onNavigateBack: () -> Unit,
     onGetWikiTags: (tagQuery: String) -> Unit,
+    onCreateClicked: (CreateSpaceFormState) -> Unit,
     searchResults: List<TagDto> = emptyList()
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
-    // Reset form function
     val resetForm = {
         onFormStateChange(CreateSpaceFormState())
     }
@@ -150,7 +198,7 @@ fun CreateSpaceContent(
     // Create space function
     val createSpace = {
         if (formState.isFormValid) {
-            Toast.makeText(context, "Space created successfully!", Toast.LENGTH_SHORT).show()
+            onCreateClicked(formState)
             resetForm()
         } else {
             Toast.makeText(context, context.getString(R.string.fill_inputs_error_msg), Toast.LENGTH_SHORT).show()
@@ -209,7 +257,7 @@ fun CreateSpaceContent(
             // Tags Section
             TagsSection(
                 formState = formState,
-                searchResults = searchResults,  // ✅ Pass the parameter
+                searchResults = searchResults,
                 onAddTag = addTag,
                 onRemoveTag = removeTag,
                 onToggleTagSearch = toggleTagSearch,
@@ -345,7 +393,6 @@ private fun TagsSection(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             if (formState.selectedTags.isNotEmpty()) {
-                // Debug info
                 Text(
                     text = stringResource(R.string.selected_tags_title, formState.selectedTags.size),
                     fontSize = 14.sp,
@@ -353,7 +400,6 @@ private fun TagsSection(
                     color = Color.Blue
                 )
 
-                // Vertical list of selected tags
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -366,7 +412,6 @@ private fun TagsSection(
                     }
                 }
             } else {
-                // Show placeholder when no tags are selected
                 Text(
                     text = stringResource(R.string.no_tags),
                     fontSize = 12.sp,
@@ -424,7 +469,7 @@ private fun TagsSection(
         }
 
         // Search Results (shown when showSearchResults is true)
-        if (formState.showSearchResults && searchResults.isNotEmpty()) {  // ✅ Use the parameter instead of formState
+        if (formState.showSearchResults && searchResults.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),

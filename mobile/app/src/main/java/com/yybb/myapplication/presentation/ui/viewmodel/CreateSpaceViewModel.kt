@@ -3,7 +3,6 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,9 +14,16 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed interface RetrieveTagWikidataUiState {
+    object Loading : RetrieveTagWikidataUiState
+    data class Success(val tags: List<TagDto>, val showResults: Boolean = false) : RetrieveTagWikidataUiState
+    data class Error(val message: String) : RetrieveTagWikidataUiState
+    object Initial : RetrieveTagWikidataUiState
+}
+
 sealed interface CreateSpaceUiState {
     object Loading : CreateSpaceUiState
-    data class Success(val tags: List<TagDto>, val showResults: Boolean = false) : CreateSpaceUiState
+    data class Success(val result: Boolean = false) : CreateSpaceUiState
     data class Error(val message: String) : CreateSpaceUiState
     object Initial : CreateSpaceUiState
 }
@@ -40,12 +46,14 @@ data class CreateSpaceFormState(
 
 @HiltViewModel
 class CreateSpaceViewModel @Inject constructor(
-    private val apiService: ApiService,
     private val spaceRepository: SpacesRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<CreateSpaceUiState>(CreateSpaceUiState.Initial)
-    val uiState: StateFlow<CreateSpaceUiState> = _uiState.asStateFlow()
+    private val _tagWikidataUiState = MutableStateFlow<RetrieveTagWikidataUiState>(RetrieveTagWikidataUiState.Initial)
+    val tagWikidataUiState: StateFlow<RetrieveTagWikidataUiState> = _tagWikidataUiState.asStateFlow()
+
+    private val _createSpaceUiState = MutableStateFlow<CreateSpaceUiState>(CreateSpaceUiState.Initial)
+    val createSpaceUiState: StateFlow<CreateSpaceUiState> = _createSpaceUiState.asStateFlow()
 
     private val _formState = MutableStateFlow(CreateSpaceFormState())
     val formState: StateFlow<CreateSpaceFormState> = _formState.asStateFlow()
@@ -61,13 +69,13 @@ class CreateSpaceViewModel @Inject constructor(
 
     fun getTags(tagQuery: String) {
         viewModelScope.launch {
-            _uiState.value = CreateSpaceUiState.Loading
+            _tagWikidataUiState.value = RetrieveTagWikidataUiState.Loading
             spaceRepository.getWikiTags(tagQuery)
                 .onSuccess {
-                    _uiState.value = CreateSpaceUiState.Success(it, showResults = true)  // ✅ Show results
+                    _tagWikidataUiState.value = RetrieveTagWikidataUiState.Success(it, showResults = true)
                 }
                 .onFailure {
-                    _uiState.value = CreateSpaceUiState.Error(it.message ?: "An unknown error occurred")
+                    _tagWikidataUiState.value = RetrieveTagWikidataUiState.Error(it.message ?: "An unknown error occurred")
                 }
         }
     }
@@ -86,9 +94,25 @@ class CreateSpaceViewModel @Inject constructor(
         _formState.value = CreateSpaceFormState()
     }
 
-    fun resetState() {
-        _uiState.value = CreateSpaceUiState.Initial
+    fun resetTagWikidataState() {
+        _tagWikidataUiState.value = RetrieveTagWikidataUiState.Initial
     }
 
+    fun createSpace(_formState: CreateSpaceFormState) {
+        viewModelScope.launch {
+            _createSpaceUiState.value = CreateSpaceUiState.Loading
+            spaceRepository.createSpace(_formState.spaceTitle, _formState.spaceDescription, _formState.selectedTags)
+                .onSuccess {
+                    resetFormState()
+                    _createSpaceUiState.value = CreateSpaceUiState.Success(result = true)
+                }
+                .onFailure {
+                    _createSpaceUiState.value = CreateSpaceUiState.Error(it.message ?: "An unknown error occurred")
+                }
+        }
+    }
 
+    fun resetCreateSpaceState() {
+        _createSpaceUiState.value = CreateSpaceUiState.Initial
+    }
 }
