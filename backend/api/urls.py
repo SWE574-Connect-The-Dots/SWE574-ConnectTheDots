@@ -7,6 +7,11 @@ from .views import (
     SpaceViewSet, 
     TagViewSet, 
     ProfileViewSet,
+    assign_moderator,
+    change_user_type,
+    remove_moderator,
+    get_user_permissions,
+    list_users_by_type,
 )
 
 router = DefaultRouter()
@@ -19,4 +24,11 @@ urlpatterns = [
     path('register/', register, name='register'),
     path('login/', login, name='login'),
     path('search/', search, name='search'),
+    
+    # Authorization management endpoints
+    path('auth/assign-moderator/', assign_moderator, name='assign_moderator'),
+    path('auth/change-user-type/', change_user_type, name='change_user_type'),
+    path('auth/remove-moderator/', remove_moderator, name='remove_moderator'),
+    path('auth/permissions/', get_user_permissions, name='get_user_permissions'),
+    path('auth/users/', list_users_by_type, name='list_users_by_type'),
 ]

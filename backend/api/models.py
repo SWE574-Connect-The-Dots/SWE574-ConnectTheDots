@@ -5,7 +5,19 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 class Profile(models.Model):
+    # User types
+    ADMIN = 1
+    MODERATOR = 2
+    USER = 3
+    
+    USER_TYPE_CHOICES = [
+        (ADMIN, 'Admin'),
+        (MODERATOR, 'Moderator'),
+        (USER, 'User'),
+    ]
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user_type = models.IntegerField(choices=USER_TYPE_CHOICES, default=USER)
     profession = models.CharField(max_length=100, blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True, null=True)
     dob = models.DateField(null=True, blank=True)
@@ -14,6 +26,26 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s profile"
+    
+    def is_admin(self):
+        """Check if user is an admin"""
+        return self.user_type == self.ADMIN
+    
+    def is_moderator(self):
+        """Check if user is a moderator"""
+        return self.user_type == self.MODERATOR
+    
+    def is_regular_user(self):
+        """Check if user is a regular user"""
+        return self.user_type == self.USER
+    
+    def can_moderate_space(self, space):
+        """Check if user can moderate a specific space"""
+        if self.is_admin():
+            return True
+        if self.is_moderator():
+            return SpaceModerator.objects.filter(user=self.user, space=space).exists()
+        return False
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -43,8 +75,29 @@ class Space(models.Model):
     def __str__(self):
         return self.title
     
+    def get_moderators(self):
+        """Get all moderators for this space"""
+        return User.objects.filter(spacemoderator__space=self)
+    
+    def is_moderator(self, user):
+        """Check if a user is a moderator of this space"""
+        return SpaceModerator.objects.filter(user=user, space=self).exists()
+    
     class Meta:
         ordering = ['-created_at']
+
+class SpaceModerator(models.Model):
+    """Model to assign moderators to specific spaces"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    space = models.ForeignKey(Space, on_delete=models.CASCADE)
+    assigned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_moderators')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'space')
+        
+    def __str__(self):
+        return f"{self.user.username} moderates {self.space.title}"
         
 class Property(models.Model):
     node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')

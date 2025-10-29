@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from .models import Profile, SpaceModerator
 
 class IsCollaboratorOrReadOnly(permissions.BasePermission):
     """
@@ -48,4 +49,79 @@ class IsProfileOwner(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
             
-        return obj.user == request.user 
+        return obj.user == request.user
+
+class IsAdmin(permissions.BasePermission):
+    """
+    Custom permission to only allow admins.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        try:
+            profile = request.user.profile
+            return profile.is_admin()
+        except Profile.DoesNotExist:
+            return False
+
+class IsAdminOrModerator(permissions.BasePermission):
+    """
+    Custom permission to allow admins and moderators.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        try:
+            profile = request.user.profile
+            return profile.is_admin() or profile.is_moderator()
+        except Profile.DoesNotExist:
+            return False
+
+class IsSpaceModerator(permissions.BasePermission):
+    """
+    Custom permission to check if user is a moderator of a specific space.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        
+        space_pk = view.kwargs.get('space_pk') or view.kwargs.get('pk')
+        if not space_pk:
+            return False
+            
+        try:
+            profile = request.user.profile
+            if profile.is_admin():
+                return True
+                
+            from .models import Space
+            space = Space.objects.get(pk=space_pk)
+            return profile.can_moderate_space(space)
+        except (Profile.DoesNotExist, Space.DoesNotExist):
+            return False
+
+class CanChangeUserType(permissions.BasePermission):
+    """
+    Custom permission for changing user types.
+    Admins can change any user type.
+    Moderators can only change regular users to moderators within their spaces.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        
+        try:
+            profile = request.user.profile
+            # Admins can always change user types
+            if profile.is_admin():
+                return True
+            
+            # Moderators can only change user types in specific contexts
+            if profile.is_moderator():
+                # This permission will be further checked in the view
+                return True
+                
+        except Profile.DoesNotExist:
+            pass
+        
+        return False 
