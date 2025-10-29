@@ -79,31 +79,46 @@ const useGraphData = (spaceId) => {
         (e) => e && e.id && e.source && e.target
       );
 
-      const flowEdges = validEdges.map((edge) => ({
-        id: edge.id.toString(),
-        source: edge.source.toString(),
-        target: edge.target.toString(),
-        label: edge.label,
-        animated: false,
-        style: {
-          stroke: 'var(--color-border-1)',
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: "arrowclosed",
-          color: 'var(--color-border-1)',
-        },
-        labelStyle: {
-          background: 'var(--color-white)',
-          color: 'var(--color-text)',
-          padding: 4,
-          fontWeight: 600,
-          fontSize: 12,
-          borderRadius: 4,
-          border: '1px solid var(--color-border-2)',
-          zIndex: 10,
-        },
-      }));
+      const flowEdges = validEdges.map((edge) => {
+        const isWikidata = edge.wikidata_property_id;
+        const displayLabel = isWikidata 
+          ? `${edge.label} [${edge.wikidata_property_id}]`
+          : edge.label;
+
+        return {
+          id: edge.id.toString(),
+          source: edge.source.toString(),
+          target: edge.target.toString(),
+          label: displayLabel,
+          data: {
+            wikidata_property_id: edge.wikidata_property_id,
+            original_label: edge.label,
+          },
+          animated: false,
+          style: {
+            stroke: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
+            strokeWidth: isWikidata ? 3 : 2,
+            strokeDasharray: isWikidata ? '0' : '5,5',
+          },
+          markerEnd: {
+            type: "arrowclosed",
+            color: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
+          },
+          labelStyle: {
+            background: isWikidata ? 'var(--color-wikidata-bg)' : 'var(--color-white)',
+            color: 'var(--color-text)',
+            padding: isWikidata ? '6px 10px' : '4px 8px',
+            fontWeight: 600,
+            fontSize: 12,
+            borderRadius: 6,
+            border: isWikidata 
+              ? '2px solid var(--color-wikidata-border)' 
+              : '1px solid var(--color-border-2)',
+            zIndex: 10,
+            boxShadow: isWikidata ? '0 2px 4px rgba(0,114,178,0.2)' : 'none',
+          },
+        };
+      });
 
       const layoutedNodes = layoutNodesWithDagre(flowNodes, flowEdges);
 

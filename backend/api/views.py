@@ -379,7 +379,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 'id': edge.id,
                 'source': edge.source.id,
                 'target': edge.target.id,
-                'label': edge.relation_property
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id
             } 
             for edge in edges
         ]

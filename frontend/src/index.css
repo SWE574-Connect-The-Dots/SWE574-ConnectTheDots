@@ -24,6 +24,9 @@
   --color-panel-bg: #f1f1f1;
   --color-item-bg: #f9f9f9;
   --color-item-own-bg: #e6f4ff;
+  --color-wikidata: #0072B2;
+  --color-wikidata-bg: #E3F2FD;
+  --color-wikidata-border: #0072B2;
 
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
