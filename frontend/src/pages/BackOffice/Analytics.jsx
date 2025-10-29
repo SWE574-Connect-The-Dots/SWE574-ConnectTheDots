@@ -5,6 +5,7 @@ export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState("monthly");
+  const [activeTab, setActiveTab] = useState("users");
 
   useEffect(() => {
     setData(analyticsData);
@@ -19,7 +20,7 @@ export default function Analytics() {
     return (
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: "var(--color-white)",
           borderRadius: "8px",
           padding: "20px",
           boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
@@ -36,7 +37,13 @@ export default function Analytics() {
             marginBottom: "15px",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: "16px", color: "#555" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "16px",
+              color: "var(--color-gray-400)",
+            }}
+          >
             {title}
           </h3>
           {icon && <div>{icon}</div>}
@@ -46,7 +53,10 @@ export default function Analytics() {
           {change && (
             <span
               style={{
-                color: changeDirection === "up" ? "#4CAF50" : "#F44336",
+                color:
+                  changeDirection === "up"
+                    ? "var(--color-success)"
+                    : "var(--color-danger-dark)",
                 fontSize: "14px",
                 fontWeight: "500",
               }}
@@ -62,7 +72,11 @@ export default function Analytics() {
   const SectionHeader = ({ title, description }) => (
     <div style={{ marginBottom: "20px", marginTop: "20px" }}>
       <h2 style={{ fontSize: "20px", margin: "0 0 5px 0" }}>{title}</h2>
-      {description && <p style={{ color: "#666", margin: 0 }}>{description}</p>}
+      {description && (
+        <p style={{ color: "var(--color-gray-400)", margin: 0 }}>
+          {description}
+        </p>
+      )}
     </div>
   );
 
@@ -81,8 +95,8 @@ export default function Analytics() {
           padding: "8px 12px",
           borderRadius: "4px",
           border: "1px solid #ddd",
-          backgroundColor: "white",
-          color: "black",
+          backgroundColor: "var(--color-white)",
+          color: "var(--color-black)",
         }}
       >
         <option value="daily">Daily</option>
@@ -177,7 +191,7 @@ export default function Analytics() {
 
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: "var(--color-white)",
           borderRadius: "8px",
           padding: "20px",
           boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
@@ -189,11 +203,11 @@ export default function Analytics() {
             <div
               key={index}
               style={{
-                backgroundColor: "#f0f0f0",
+                backgroundColor: "var(--color-gray-200)",
                 borderRadius: "16px",
                 padding: "6px 12px",
                 fontSize: "14px",
-                color: "#333",
+                color: "var(--color-black)",
               }}
             >
               {tag}
@@ -209,7 +223,7 @@ export default function Analytics() {
 
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: "var(--color-white)",
           borderRadius: "8px",
           padding: "20px",
           boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
@@ -219,14 +233,82 @@ export default function Analytics() {
         <div
           style={{
             display: "flex",
+            borderBottom: "1px solid var(--color-gray-200)",
+            marginBottom: "20px",
+          }}
+        >
+          <div
+            onClick={() => setActiveTab("users")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom:
+                activeTab === "users" ? "2px solid var(--color-black)" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "users" ? "bold" : "normal",
+            }}
+          >
+            Users
+          </div>
+          <div
+            onClick={() => setActiveTab("nodes")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom:
+                activeTab === "nodes" ? "2px solid var(--color-black)" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "nodes" ? "bold" : "normal",
+            }}
+          >
+            Nodes
+          </div>
+          <div
+            onClick={() => setActiveTab("spaces")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              borderBottom:
+                activeTab === "spaces"
+                  ? "2px solid var(--color-black)"
+                  : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "spaces" ? "bold" : "normal",
+            }}
+          >
+            Spaces
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
             justifyContent: "center",
             alignItems: "center",
             height: "300px",
           }}
         >
-          <div style={{ textAlign: "center", color: "#666" }}>
-            <p>Graph visualization would be displayed here</p>
-          </div>
+          {activeTab === "users" && (
+            <div
+              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
+            >
+              <p>User graph will be here.</p>
+            </div>
+          )}
+          {activeTab === "nodes" && (
+            <div
+              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
+            >
+              <p>Node graph will be here.</p>
+            </div>
+          )}
+          {activeTab === "spaces" && (
+            <div
+              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
+            >
+              <p>Space graph will be here.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
