@@ -15,10 +15,46 @@ const Profile = () => {
   const [editFormData, setEditFormData] = useState({
     bio: "",
     profession: "",
+    location_name: "",
   });
+  const [countries, setCountries] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const { username } = useParams();
   const navigate = useNavigate();
+
+  // Fetch countries list
+  const fetchCountries = async () => {
+    try {
+      const response = await fetch('https://countriesnow.space/api/v0.1/countries');
+      const data = await response.json();
+      if (data.error === false) {
+        setCountries(data.data.map(country => country.country));
+      }
+    } catch (error) {
+      console.error('Failed to fetch countries:', error);
+    }
+  };
+
+  // Fetch cities for selected country
+  const fetchCities = async (country) => {
+    try {
+      const response = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country: country }),
+      });
+      const data = await response.json();
+      if (data.error === false) {
+        setCities(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cities:', error);
+      setCities([]);
+    }
+  };
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -35,6 +71,7 @@ const Profile = () => {
         setEditFormData({
           bio: response.data.bio || "",
           profession: response.data.profession || "",
+          location_name: response.data.location_name || "",
         });
 
         setLoading(false);
@@ -47,10 +84,26 @@ const Profile = () => {
     fetchProfileData();
   }, [username]);
 
-  const handleEditClick = () => {
+  const handleEditClick = async () => {
     setIsEditing(true);
     // Clear any previous errors when entering edit mode
     setError(null);
+    
+    // Fetch countries when starting to edit
+    await fetchCountries();
+    
+    // Parse existing location to set country and city
+    if (user?.location_name) {
+      const locationParts = user.location_name.split(', ');
+      if (locationParts.length >= 2) {
+        const country = locationParts[locationParts.length - 1];
+        const city = locationParts[0];
+        setSelectedCountry(country);
+        setSelectedCity(city);
+        // Fetch cities for the existing country
+        await fetchCities(country);
+      }
+    }
   };
 
   const handleCancelEdit = () => {
@@ -58,7 +111,13 @@ const Profile = () => {
     setEditFormData({
       bio: user.bio || "",
       profession: user.profession || "",
+      location_name: user.location_name || "",
     });
+    // Reset dropdown values
+    setSelectedCountry("");
+    setSelectedCity("");
+    setCities([]);
+    setCountries([]);
     // Clear any errors when cancelling
     setError(null);
   };
@@ -68,6 +127,35 @@ const Profile = () => {
     setEditFormData({
       ...editFormData,
       [name]: value,
+    });
+  };
+
+  const handleCountryChange = async (e) => {
+    const country = e.target.value;
+    setSelectedCountry(country);
+    setSelectedCity(""); // Reset city when country changes
+    setCities([]); // Clear cities
+    
+    if (country) {
+      await fetchCities(country);
+    }
+    
+    // Update location_name in form data
+    setEditFormData({
+      ...editFormData,
+      location_name: country ? `${selectedCity ? selectedCity + ', ' : ''}${country}` : "",
+    });
+  };
+
+  const handleCityChange = (e) => {
+    const city = e.target.value;
+    setSelectedCity(city);
+    
+    // Update location_name in form data
+    const locationName = city && selectedCountry ? `${city}, ${selectedCountry}` : selectedCountry || "";
+    setEditFormData({
+      ...editFormData,
+      location_name: locationName,
     });
   };
 
@@ -126,7 +214,45 @@ const Profile = () => {
                 Profession cannot be empty once set
               </small>
             </div>
+            <div className="form-group">
+              <label htmlFor="country">Country:</label>
+              <select
+                id="country"
+                name="country"
+                value={selectedCountry}
+                onChange={handleCountryChange}
+                required
+              >
+                <option value="">-- Select Country --</option>
+                {countries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </div>
 
+            <div className="form-group">
+              <label htmlFor="city">City:</label>
+              <select
+                id="city"
+                name="city"
+                value={selectedCity}
+                onChange={handleCityChange}
+                disabled={!selectedCountry}
+                required={!!selectedCountry}
+              >
+                <option value="">-- Select City --</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+              {!selectedCountry && (
+                <small className="field-note">Please select a country first</small>
+              )}
+            </div>
             <div className="form-group">
               <label htmlFor="bio">Bio (max 200 words):</label>
               <textarea
@@ -156,6 +282,9 @@ const Profile = () => {
           <>
             {user?.profession && (
               <p className="profession">Profession: {user.profession}</p>
+            )}
+            {user?.location_name && (
+              <p className="location">Location: {user.location_name}</p>
             )}
             <p className="bio">Bio: {user?.bio || "-"}</p>
             {user?.dob && (
