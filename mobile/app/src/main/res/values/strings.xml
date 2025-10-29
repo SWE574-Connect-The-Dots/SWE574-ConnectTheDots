@@ -63,4 +63,9 @@
     <string name="failed_create_space_message">Failed to create space</string>
     <string name="failed_get_disc_message">Failed to get discussions</string>
     <string name="failed_get_space_det_message">Failed to get space details</string>
+    <string name="delete_space_confirmation">Are you sure you want to delete the space \"%1$s\"? This action cannot be undone.</string>
+    <string name="space_deleted_message">space deleted</string>
+    <string name="space_deleted_successfully_message">Space deleted successfully</string>
+    <string name="failed_delete_space_message">Failed to delete space</string>
+    <string name="deleting_space_message">Deleting space...</string>
 </resources>

@@ -48,6 +48,12 @@ class SpaceDetailsViewModel @Inject constructor(
     private val _isJoiningLeavingSpace = MutableStateFlow(false)
     val isJoiningLeavingSpace: StateFlow<Boolean> = _isJoiningLeavingSpace.asStateFlow()
     
+    private val _isDeletingSpace = MutableStateFlow(false)
+    val isDeletingSpace: StateFlow<Boolean> = _isDeletingSpace.asStateFlow()
+    
+    private val _deleteSuccess = MutableStateFlow(false)
+    val deleteSuccess: StateFlow<Boolean> = _deleteSuccess.asStateFlow()
+    
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -149,7 +155,26 @@ class SpaceDetailsViewModel @Inject constructor(
         }
     }
 
+    fun deleteSpace() {
+        viewModelScope.launch {
+            _isDeletingSpace.value = true
+            _error.value = null
+            
+            val result = spaceRepository.deleteSpace(spaceId)
+            if (result.isSuccess) {
+                _deleteSuccess.value = true
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_delete_space_message)
+            }
+            _isDeletingSpace.value = false
+        }
+    }
+
     fun clearError() {
         _error.value = null
+    }
+
+    fun resetDeleteSuccess() {
+        _deleteSuccess.value = false
     }
 }

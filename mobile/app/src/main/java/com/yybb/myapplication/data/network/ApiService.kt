@@ -16,6 +16,7 @@ import com.yybb.myapplication.data.network.dto.TagResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -63,4 +64,7 @@ interface ApiService {
 
     @POST("api/spaces/{id}/join/")
     suspend fun joinSpace(@Path("id") id: String): Response<SpaceMembershipResponse>
+
+    @DELETE("api/spaces/{id}/")
+    suspend fun deleteSpace(@Path("id") id: String): Response<Unit>
 }

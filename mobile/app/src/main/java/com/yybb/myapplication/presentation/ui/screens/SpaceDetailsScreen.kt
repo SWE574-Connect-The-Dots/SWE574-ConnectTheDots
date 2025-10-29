@@ -90,12 +90,15 @@ fun SpaceDetailsScreen(
     val isLoadingDiscussions by viewModel.isLoadingDiscussions.collectAsState()
     val isAddingDiscussion by viewModel.isAddingDiscussion.collectAsState()
     val isJoiningLeavingSpace by viewModel.isJoiningLeavingSpace.collectAsState()
+    val isDeletingSpace by viewModel.isDeletingSpace.collectAsState()
+    val deleteSuccess by viewModel.deleteSuccess.collectAsState()
     val error by viewModel.error.collectAsState()
     
     var newComment by remember { mutableStateOf("") }
     var showSuccessMessage by remember { mutableStateOf(false) }
     var currentPage by remember { mutableStateOf(1) }
     var showCollaboratorDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     var discussionSectionOffset by remember { mutableStateOf(0f) }
@@ -109,14 +112,12 @@ fun SpaceDetailsScreen(
         calculatePagination(discussions, currentPage)
     }
 
-    // Auto-scroll to discussion section when page changes (but not on initial load)
     LaunchedEffect(currentPage) {
         if (!isInitialLoad && discussionSectionOffset > 0) {
             coroutineScope.launch {
                 scrollState.animateScrollTo(discussionSectionOffset.toInt())
             }
         }
-        // Mark that initial load is complete after first page change
         if (isInitialLoad) {
             isInitialLoad = false
         }
@@ -129,12 +130,10 @@ fun SpaceDetailsScreen(
         }
     }
 
-    // Show loading dialog when adding discussion
     if (isAddingDiscussion) {
         LoadingDialog(message = stringResource(R.string.adding_discussions_message))
     }
 
-    // Show loading dialog when joining/leaving space
     if (isJoiningLeavingSpace) {
         LoadingDialog(message = if (viewModel.isUserCollaborator())
             stringResource(R.string.leaving_space_message)
@@ -142,7 +141,23 @@ fun SpaceDetailsScreen(
             stringResource(R.string.joining_space_message))
     }
 
-    if (error != null && !isAddingDiscussion && !isJoiningLeavingSpace && !isLoading) {
+    if (isDeletingSpace) {
+        LoadingDialog(message = stringResource(R.string.deleting_space_message))
+    }
+
+    LaunchedEffect(deleteSuccess) {
+        if (deleteSuccess) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.space_deleted_successfully_message),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.resetDeleteSuccess()
+            onNavigateBack()
+        }
+    }
+
+    if (error != null && !isAddingDiscussion && !isJoiningLeavingSpace && !isDeletingSpace && !isLoading) {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
             title = { Text(stringResource(R.string.error)) },
@@ -238,7 +253,7 @@ fun SpaceDetailsScreen(
                         if (viewModel.isUserCreator()) {
                             Button(
                                 onClick = {
-                                    // TODO: Implement delete space functionality
+                                    showDeleteDialog = true
                                 },
                                 modifier = Modifier
                                     .width(150.dp)
@@ -543,6 +558,34 @@ fun SpaceDetailsScreen(
                     "Clicked on: $collaboratorName",
                     Toast.LENGTH_SHORT
                 ).show()
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog && spaceDetails != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_space_button)) },
+            text = {
+                Text(
+                    stringResource(R.string.delete_space_confirmation, spaceDetails!!.title)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteSpace()
+                    }
+                ) {
+                    Text(stringResource(R.string.delete_space_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
             }
         )
     }

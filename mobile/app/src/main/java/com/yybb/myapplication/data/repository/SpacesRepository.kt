@@ -128,6 +128,26 @@ class SpacesRepository @Inject constructor(
         }
     }
 
+    // Delete space
+    suspend fun deleteSpace(spaceId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val response = apiService.deleteSpace(spaceId)
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("${context.getString(R.string.failed_delete_space_message)}: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     // Search tag details from wikidata
     suspend fun getWikiTags(searchQuery: String): Result<List<TagDto>> {
         return withContext(Dispatchers.IO) {
