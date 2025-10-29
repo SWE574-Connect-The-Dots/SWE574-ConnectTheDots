@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
 import api from "../axiosConfig";
+import PropertySearch from "./PropertySearch";
 import "./NodeDetailModal.css";
 
 const EdgeDetailModal = ({
@@ -12,7 +13,10 @@ const EdgeDetailModal = ({
   onEdgeDelete,
   spaceId,
 }) => {
-  const [label, setLabel] = useState(edge.label || "");
+  const [edgeProperty, setEdgeProperty] = useState({ 
+    id: edge.wikidata_property_id || null, 
+    label: edge.label || "" 
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -51,7 +55,12 @@ const EdgeDetailModal = ({
       const tgtId = isSourceToTarget ? targetNode.id : sourceNode.id;
       await api.put(
         `/spaces/${spaceId}/edges/${edge.id}/update/`,
-        { label, source_id: srcId, target_id: tgtId },
+        { 
+          label: edgeProperty.label, 
+          source_id: srcId, 
+          target_id: tgtId,
+          wikidata_property_id: edgeProperty.id
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -92,7 +101,6 @@ const EdgeDetailModal = ({
   return (
     <div className="modal-backdrop">
       <div className="modal-content">
-        <style>{/* Reuse NodeDetailModal styles */}</style>
         <div className="modal-header">
           <h2>Edge Details</h2>
           <button onClick={onClose} className="close-button">
@@ -115,14 +123,11 @@ const EdgeDetailModal = ({
           </div>
           <div className="properties-section">
             <h4>Edit Edge Label & Direction</h4>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              style={{ width: "100%", marginBottom: 10 }}
-              disabled={loading}
+            <PropertySearch 
+              onSelect={setEdgeProperty}
+              initialLabel={edgeProperty.label}
             />
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 10, marginTop: 10 }}>
               <label>Direction:</label>
               <button
                 type="button"

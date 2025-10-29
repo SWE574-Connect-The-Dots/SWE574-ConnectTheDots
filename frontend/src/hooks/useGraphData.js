@@ -29,6 +29,7 @@ const useGraphData = (spaceId) => {
       const dagreNode = dagreGraph.node(node.id);
       return {
         ...node,
+        data: { ...node.data },
         position: {
           x: dagreNode.x - nodeWidth / 2,
           y: dagreNode.y - nodeHeight / 2,
@@ -47,7 +48,6 @@ const useGraphData = (spaceId) => {
       const nodesResponse = await api.get(`/spaces/${spaceId}/nodes/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      const nodesData = nodesResponse.data;
 
       let edgesData = [];
       try {
@@ -59,7 +59,12 @@ const useGraphData = (spaceId) => {
         console.warn("Edges endpoint not implemented yet");
       }
 
-      const flowNodes = nodesData.map((node) => ({
+      const nodesData = Array.isArray(nodesResponse.data)
+        ? nodesResponse.data
+        : [];
+      const validNodes = nodesData.filter((n) => n && n.id && n.label);
+
+      const flowNodes = validNodes.map((node) => ({
         id: node.id.toString(),
         type: "circular",
         position: { x: 0, y: 0 },
@@ -69,7 +74,12 @@ const useGraphData = (spaceId) => {
         },
       }));
 
-      const flowEdges = edgesData.map((edge) => ({
+      const edgesDataArray = Array.isArray(edgesData) ? edgesData : [];
+      const validEdges = edgesDataArray.filter(
+        (e) => e && e.id && e.source && e.target
+      );
+
+      const flowEdges = validEdges.map((edge) => ({
         id: edge.id.toString(),
         source: edge.source.toString(),
         target: edge.target.toString(),

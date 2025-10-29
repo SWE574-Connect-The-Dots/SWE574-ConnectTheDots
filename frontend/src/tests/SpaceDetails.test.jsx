@@ -43,6 +43,8 @@ describe("SpaceDetail Component", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.NODES("1")) {
         return Promise.resolve({ data: [] });
+      } else if (url === API_ENDPOINTS.EDGES("1")) {
+        return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.SPACES + "/1/") {
         return Promise.resolve({ data: mockSpaceData });
       } else if (url === API_ENDPOINTS.DISCUSSIONS("1")) {
@@ -129,6 +131,8 @@ describe("SpaceDetail Component", () => {
       if (url === API_ENDPOINTS.SNAPSHOTS("1")) {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.NODES("1")) {
+        return Promise.resolve({ data: [] });
+      } else if (url === API_ENDPOINTS.EDGES("1")) {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.SPACES + "/1/") {
         return Promise.resolve({ data: mockSpaceData });

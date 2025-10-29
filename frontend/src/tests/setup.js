@@ -44,4 +44,11 @@ vi.mock('../axiosConfig', () => {
   return {
     default: mockAxios
   };
-}); 
+});
+
+// Mock ResizeObserver for ReactFlow
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

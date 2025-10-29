@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import api from "../axiosConfig";
 import useWikidataSearch from "../hooks/useWikidataSearch";
+import PropertySearch from "./PropertySearch";
 import useClickOutside from "../hooks/useClickOutside";
 import "./NodeDetailModal.css";
 
 const propertySelectionStyles = `
 .property-selection-container {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-gray-300);
   border-radius: 4px;
   margin-bottom: 15px;
 }
@@ -22,17 +23,17 @@ const propertySelectionStyles = `
   display: flex;
   align-items: flex-start;
   padding: 8px 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-gray-200);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .property-selection-item:hover {
-  background-color: #f8f9fa;
+  background-color: var(--color-item-bg);
 }
 
 .property-selection-item.selected {
-  background-color: #e6f4ff;
+  background-color: var(--color-item-own-bg);
 }
 
 .property-checkbox {
@@ -49,7 +50,7 @@ const propertySelectionStyles = `
 }
 
 .entity-link {
-  color: #1a73e8;
+  color: var(--color-accent);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s ease;
@@ -57,18 +58,18 @@ const propertySelectionStyles = `
 
 .entity-link:hover {
   text-decoration: underline;
-  color: #0f62fe;
+  color: var(--color-accent-hover);
 }
 
 .selection-help-text {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 
 .property-label {
   font-weight: 600;
-  color: #444;
+  color: var(--color-text);
 }
 `;
 
@@ -77,18 +78,14 @@ const getPropertyLabelWithId = (prop) => {
     prop.property_label ||
     (prop.display && prop.display.includes(":")
       ? prop.display.split(":")[0].trim()
-      : null);
-
+      : prop.property_label);
   const propId = prop.property || prop.property_id;
-
   if (!label) {
     return propId || "Unknown Property";
   }
-
-  if (label.includes(propId)) {
+  if (propId && label.includes(propId)) {
     return label;
   }
-
   return propId ? `${label} (${propId})` : label;
 };
 
@@ -120,6 +117,7 @@ const PropertySelectionList = ({
 
   const renderSelectionPropertyValue = (prop) => {
     if (
+      prop && // Ensure prop exists
       prop.value &&
       typeof prop.value === "object" &&
       prop.value.type === "entity"
@@ -144,13 +142,13 @@ const PropertySelectionList = ({
       );
     }
 
-    return prop.value ? String(prop.value) : "No value available";
+    return prop?.value ? String(prop.value) : "No value available";
   };
 
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties.map((prop) => (
+        {properties.filter((prop) => prop && prop.statement_id).map((prop) => (
           <div
             key={prop.statement_id}
             className={`property-selection-item ${
@@ -199,7 +197,7 @@ const NodeDetailModal = ({
   const [allNodes, setAllNodes] = useState([]);
   const [allEdges, setAllEdges] = useState([]);
   const [addEdgeTarget, setAddEdgeTarget] = useState("");
-  const [addEdgeLabel, setAddEdgeLabel] = useState("");
+  const [addEdgeProperty, setAddEdgeProperty] = useState({ id: null, label: "" });
   const [addEdgeError, setAddEdgeError] = useState(null);
   const [addEdgeLoading, setAddEdgeLoading] = useState(false);
   const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
@@ -210,6 +208,7 @@ const NodeDetailModal = ({
   const filteredAndSortedProperties = useMemo(() => {
     if (!availableProperties) return [];
     return availableProperties
+      .filter((prop) => prop && prop.display && prop.property)
       .filter((prop) =>
         prop.display.toLowerCase().includes(propertySearch.toLowerCase())
       )
@@ -234,8 +233,9 @@ const NodeDetailModal = ({
         );
         setNodeProperties(response.data);
 
-        if (node.data?.wikidata_id) {
-          const properties = await fetchProperties(node.data.wikidata_id);
+        const wikidataId = node.data?.wikidata_id || node.wikidata_id;
+        if (wikidataId) {
+          const properties = await fetchProperties(wikidataId);
           setAvailableProperties(properties);
 
           const selectedPropertyIds = response.data.map(
@@ -251,7 +251,7 @@ const NodeDetailModal = ({
     };
 
     fetchNodeProperties();
-  }, [node, spaceId, fetchProperties]);
+  }, [node.id, spaceId, fetchProperties]);
 
   useEffect(() => {
     const fetchNodesAndEdges = async () => {
@@ -398,7 +398,7 @@ const NodeDetailModal = ({
 
   const handleAddEdge = async () => {
     setAddEdgeError(null);
-    if (!addEdgeTarget || !addEdgeLabel.trim()) {
+    if (!addEdgeTarget || !addEdgeProperty.label.trim()) {
       setAddEdgeError("Please select a node and enter a label.");
       return;
     }
@@ -409,14 +409,15 @@ const NodeDetailModal = ({
         {
           source_id: isCurrentNodeSource ? node.id : addEdgeTarget,
           target_id: isCurrentNodeSource ? addEdgeTarget : node.id,
-          label: addEdgeLabel.trim(),
+          label: addEdgeProperty.label.trim(),
+          wikidata_property_id: addEdgeProperty.id,
         },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
       setAddEdgeTarget("");
-      setAddEdgeLabel("");
+      setAddEdgeProperty({ id: null, label: "" });
       onNodeUpdate();
     } catch (err) {
       setAddEdgeError(
@@ -452,16 +453,18 @@ const NodeDetailModal = ({
         ) : (
           <div className="modal-body">
             <div className="node-info-section">
-              <h3>{node.data.label}</h3>
-              {node.data.wikidata_id && (
+              <h3>{node.data?.label || node.label}</h3>
+              {(node.data?.wikidata_id || node.wikidata_id) && (
                 <p className="wikidata-id">
                   Wikidata ID:{" "}
                   <a
-                    href={`https://www.wikidata.org/wiki/${node.data.wikidata_id}`}
+                    href={`https://www.wikidata.org/wiki/${
+                      node.data?.wikidata_id || node.wikidata_id
+                    }`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {node.data.wikidata_id}
+                    {node.data?.wikidata_id || node.wikidata_id}
                   </a>
                 </p>
               )}
@@ -557,13 +560,9 @@ const NodeDetailModal = ({
               </div>
               <div style={{ marginBottom: 10 }}>
                 <label htmlFor="add-edge-label">Edge Label:</label>
-                <input
-                  id="add-edge-label"
-                  type="text"
-                  value={addEdgeLabel}
-                  onChange={(e) => setAddEdgeLabel(e.target.value)}
-                  style={{ width: "100%" }}
-                  disabled={addEdgeLoading}
+                <PropertySearch
+                  onSelect={setAddEdgeProperty}
+                  initialLabel={addEdgeProperty.label}
                 />
               </div>
               <div style={{ marginBottom: 10 }}>
@@ -585,7 +584,7 @@ const NodeDetailModal = ({
                   disabled={addEdgeLoading || !addEdgeTarget}
                 >
                   {isCurrentNodeSource
-                    ? `${node.data.label} → ${
+                    ? `${node.data?.label || node.label} → ${
                         addEdgeTarget
                           ? allNodes.find(
                               (n) => String(n.id) === String(addEdgeTarget)
@@ -598,7 +597,7 @@ const NodeDetailModal = ({
                               (n) => String(n.id) === String(addEdgeTarget)
                             )?.label || addEdgeTarget
                           : "Target"
-                      } → ${node.data.label}`}
+                      } → ${node.data?.label || node.label}`}
                 </button>
               </div>
               <button
