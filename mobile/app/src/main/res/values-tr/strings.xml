@@ -68,5 +68,7 @@
     <string name="space_deleted_successfully_message">Space başarıyla silindi</string>
     <string name="failed_delete_space_message">Space silinemedi</string>
     <string name="deleting_space_message">Space siliniyor...</string>
+    <string name="failed_vote_discussion_message">Yorumda oy verme başarısız</string>
+    <string name="vote_requires_collaborator_message">Yorumlara oy verebilmek için space\'e katılmanız gerekmektedir</string>
 
 </resources>

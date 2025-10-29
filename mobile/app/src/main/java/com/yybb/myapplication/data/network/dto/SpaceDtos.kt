@@ -97,3 +97,15 @@ data class SpaceMembershipResponse(
     val message: String,
     val success: Boolean
 )
+
+// Vote Discussion Request
+data class VoteDiscussionRequest(
+    val value: String // "up" or "down"
+)
+
+// Vote Discussion Response
+data class VoteDiscussionResponse(
+    @SerializedName("toggled_off")
+    val toggledOff: Boolean,
+    val discussion: DiscussionDto
+)

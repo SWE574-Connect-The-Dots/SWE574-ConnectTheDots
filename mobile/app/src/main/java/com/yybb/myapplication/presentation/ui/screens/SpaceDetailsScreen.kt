@@ -67,6 +67,8 @@ import com.yybb.myapplication.data.Constants.COMMENTS_PER_PAGE
 import com.yybb.myapplication.data.Constants.DISCUSSION_SECTION_HEIGHT
 import com.yybb.myapplication.data.Constants.MAX_COMMENT_LENGTH
 import com.yybb.myapplication.data.model.Discussion
+import com.yybb.myapplication.data.model.VoteType
+import com.yybb.myapplication.presentation.navigation.Screen
 import com.yybb.myapplication.presentation.ui.screens.components.CollaboratorDialog
 import com.yybb.myapplication.presentation.ui.screens.components.DiscussionCard
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceDetailsViewModel
@@ -83,6 +85,7 @@ fun SpaceDetailsScreen(
     viewModel: SpaceDetailsViewModel = hiltViewModel(),
     onNavigateToNext: () -> Unit = {},
     onNavigateBack: () -> Unit,
+    onNavigateToProfile: (String) -> Unit = {},
 ) {
     val spaceDetails by viewModel.spaceDetails.collectAsState()
     val discussions by viewModel.discussions.collectAsState()
@@ -92,6 +95,9 @@ fun SpaceDetailsScreen(
     val isJoiningLeavingSpace by viewModel.isJoiningLeavingSpace.collectAsState()
     val isDeletingSpace by viewModel.isDeletingSpace.collectAsState()
     val deleteSuccess by viewModel.deleteSuccess.collectAsState()
+    val isLoadingProfile by viewModel.isLoadingProfile.collectAsState()
+    val profileLoadSuccess by viewModel.profileLoadSuccess.collectAsState()
+    val voteRequiresCollaboratorError by viewModel.voteRequiresCollaboratorError.collectAsState()
     val error by viewModel.error.collectAsState()
     
     var newComment by remember { mutableStateOf("") }
@@ -108,7 +114,7 @@ fun SpaceDetailsScreen(
     val context = LocalContext.current
 
     
-    val paginationInfo = remember(discussions.size, currentPage) {
+    val paginationInfo = remember(discussions, currentPage) {
         calculatePagination(discussions, currentPage)
     }
 
@@ -145,6 +151,17 @@ fun SpaceDetailsScreen(
         LoadingDialog(message = stringResource(R.string.deleting_space_message))
     }
 
+    if (isLoadingProfile) {
+        LoadingDialog(message = stringResource(R.string.loading_message))
+    }
+
+    LaunchedEffect(profileLoadSuccess) {
+        profileLoadSuccess?.let { username ->
+            viewModel.resetProfileLoadSuccess()
+            onNavigateToProfile(username)
+        }
+    }
+
     LaunchedEffect(deleteSuccess) {
         if (deleteSuccess) {
             Toast.makeText(
@@ -157,7 +174,21 @@ fun SpaceDetailsScreen(
         }
     }
 
-    if (error != null && !isAddingDiscussion && !isJoiningLeavingSpace && !isDeletingSpace && !isLoading) {
+    // Vote requires collaborator error dialog
+    if (voteRequiresCollaboratorError) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearVoteRequiresCollaboratorError() },
+            title = { Text(stringResource(R.string.error)) },
+            text = { Text(stringResource(R.string.vote_requires_collaborator_message)) },
+            confirmButton = {
+                Button(onClick = { viewModel.clearVoteRequiresCollaboratorError() }) {
+                    Text(stringResource(R.string.ok_button))
+                }
+            }
+        )
+    }
+
+    if (error != null && !isAddingDiscussion && !isJoiningLeavingSpace && !isDeletingSpace && !isLoading && !voteRequiresCollaboratorError) {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
             title = { Text(stringResource(R.string.error)) },
@@ -397,13 +428,12 @@ fun SpaceDetailsScreen(
                             DiscussionCard(
                                 discussion = discussion,
                                 onVoteClick = { discussionId, voteType ->
-                                    // TODO: Implement API call for voting
-                                    // For now, just show a toast
-                                    Toast.makeText(
-                                        context,
-                                        "Vote $voteType on discussion $discussionId",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    val voteValue = when (voteType) {
+                                        VoteType.UP -> "up"
+                                        VoteType.DOWN -> "down"
+                                        VoteType.NONE -> return@DiscussionCard
+                                    }
+                                    viewModel.voteDiscussion(discussionId, voteValue)
                                 }
                         )
                         }
@@ -552,12 +582,8 @@ fun SpaceDetailsScreen(
             collaborators = collaborators,
             onDismiss = { showCollaboratorDialog = false },
             onCollaboratorClick = { collaboratorName ->
-                // Show toast message
-                Toast.makeText(
-                    context,
-                    "Clicked on: $collaboratorName",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showCollaboratorDialog = false
+                viewModel.getProfileByUsername(collaboratorName)
             }
         )
     }

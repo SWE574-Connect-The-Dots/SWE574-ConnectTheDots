@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.UserPreferencesRepository
 import com.yybb.myapplication.data.model.Discussion
 import com.yybb.myapplication.data.model.SpaceDetails
+import com.yybb.myapplication.data.model.toDiscussion
+import com.yybb.myapplication.data.repository.ProfileRepository
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 class SpaceDetailsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val spaceRepository: SpacesRepository,
+    private val profileRepository: ProfileRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -54,8 +57,17 @@ class SpaceDetailsViewModel @Inject constructor(
     private val _deleteSuccess = MutableStateFlow(false)
     val deleteSuccess: StateFlow<Boolean> = _deleteSuccess.asStateFlow()
     
+    private val _isLoadingProfile = MutableStateFlow(false)
+    val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
+    
+    private val _profileLoadSuccess = MutableStateFlow<String?>(null)
+    val profileLoadSuccess: StateFlow<String?> = _profileLoadSuccess.asStateFlow()
+    
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+    
+    private val _voteRequiresCollaboratorError = MutableStateFlow(false)
+    val voteRequiresCollaboratorError: StateFlow<Boolean> = _voteRequiresCollaboratorError.asStateFlow()
 
     val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
 
@@ -176,5 +188,96 @@ class SpaceDetailsViewModel @Inject constructor(
 
     fun resetDeleteSuccess() {
         _deleteSuccess.value = false
+    }
+
+    fun voteDiscussion(discussionId: String, voteType: String) {
+        viewModelScope.launch {
+            _error.value = null
+            _voteRequiresCollaboratorError.value = false
+            
+            // Check if user is a collaborator before allowing vote
+            if (!isUserCollaborator()) {
+                _voteRequiresCollaboratorError.value = true
+                return@launch
+            }
+            
+            val currentDiscussion = _discussions.value.find { it.id.toString() == discussionId }
+            if (currentDiscussion == null) {
+                _error.value = context.getString(R.string.failed_vote_discussion_message)
+                return@launch
+            }
+
+            val currentReaction = currentDiscussion.userReaction
+            
+            // Check if vote should be processed
+            val shouldVote = when (voteType) {
+                "up" -> currentReaction != "up"
+                "down" -> currentReaction != "down"
+                else -> false
+            }
+
+            if (!shouldVote) {
+                return@launch
+            }
+
+            val result = spaceRepository.voteDiscussion(spaceId, discussionId, voteType)
+            if (result.isSuccess) {
+                val updatedDiscussionDto = result.getOrNull()
+                if (updatedDiscussionDto != null) {
+                    val updatedDiscussion = updatedDiscussionDto.toDiscussion()
+                    // Create a new list instance to ensure StateFlow detects the change
+                    val updatedDiscussions = _discussions.value.map { discussion ->
+                        if (discussion.id.toString() == discussionId) {
+                            updatedDiscussion
+                        } else {
+                            discussion
+                        }
+                    }
+                    _discussions.value = updatedDiscussions
+                }
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_vote_discussion_message)
+            }
+        }
+    }
+
+    fun getProfileByUsername(username: String) {
+        viewModelScope.launch {
+            _isLoadingProfile.value = true
+            _error.value = null
+            _profileLoadSuccess.value = null
+            
+            try {
+                val currentUsername = userPreferencesRepository.getCurrentUsernameSync()
+                // If viewing own profile, pass null to use /me endpoint, otherwise pass username
+                val usernameToFetch = if (username == currentUsername) {
+                    null
+                } else {
+                    username
+                }
+                
+                profileRepository.getProfile(usernameToFetch)
+                    .onEach { user ->
+                        _isLoadingProfile.value = false
+                        _profileLoadSuccess.value = user.username
+                    }
+                    .catch { e ->
+                        _isLoadingProfile.value = false
+                        _error.value = e.message ?: context.getString(R.string.failed_get_space_det_message)
+                    }
+                    .launchIn(viewModelScope)
+            } catch (e: Exception) {
+                _isLoadingProfile.value = false
+                _error.value = e.message ?: context.getString(R.string.failed_get_space_det_message)
+            }
+        }
+    }
+
+    fun resetProfileLoadSuccess() {
+        _profileLoadSuccess.value = null
+    }
+
+    fun clearVoteRequiresCollaboratorError() {
+        _voteRequiresCollaboratorError.value = false
     }
 }

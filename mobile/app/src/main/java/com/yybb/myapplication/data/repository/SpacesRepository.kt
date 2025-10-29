@@ -11,9 +11,11 @@ import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
+import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
+import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -141,6 +143,29 @@ class SpacesRepository @Inject constructor(
                     Result.success(Unit)
                 } else {
                     Result.failure(Exception("${context.getString(R.string.failed_delete_space_message)}: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // Vote on discussion
+    suspend fun voteDiscussion(spaceId: String, discussionId: String, voteValue: String): Result<DiscussionDto> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val request = VoteDiscussionRequest(value = voteValue)
+                val response = apiService.voteDiscussion(spaceId, discussionId, request)
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        Result.success(it.discussion)
+                    } ?: Result.failure(Exception(context.getString(R.string.failed_vote_discussion_message)))
+                } else {
+                    Result.failure(Exception("${context.getString(R.string.failed_vote_discussion_message)}: ${response.errorBody()?.string()}"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

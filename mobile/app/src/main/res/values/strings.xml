@@ -68,4 +68,6 @@
     <string name="space_deleted_successfully_message">Space deleted successfully</string>
     <string name="failed_delete_space_message">Failed to delete space</string>
     <string name="deleting_space_message">Deleting space...</string>
+    <string name="failed_vote_discussion_message">Failed to vote on discussion</string>
+    <string name="vote_requires_collaborator_message">You need to join the space to be able to vote for discussions</string>
 </resources>

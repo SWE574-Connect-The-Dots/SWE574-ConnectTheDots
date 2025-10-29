@@ -14,6 +14,8 @@ import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.TagResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
+import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
+import com.yybb.myapplication.data.network.dto.VoteDiscussionResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -67,4 +69,11 @@ interface ApiService {
 
     @DELETE("api/spaces/{id}/")
     suspend fun deleteSpace(@Path("id") id: String): Response<Unit>
+
+    @POST("api/spaces/{id}/discussions/{discussionId}/react/")
+    suspend fun voteDiscussion(
+        @Path("id") id: String,
+        @Path("discussionId") discussionId: String,
+        @Body request: VoteDiscussionRequest
+    ): Response<VoteDiscussionResponse>
 }

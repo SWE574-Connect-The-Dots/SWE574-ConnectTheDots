@@ -35,10 +35,21 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             ProfileScreen(navController = navController)
         }
         composable(
+            route = Screen.Profile.route,
+            arguments = listOf(navArgument("username") { type = NavType.StringType })
+        ) {
+            ProfileScreen(navController = navController)
+        }
+        composable(
             route = Screen.SpaceDetails.route,
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
         ) {
-            SpaceDetailsScreen(onNavigateBack = { navController.popBackStack() })
+            SpaceDetailsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToProfile = { username ->
+                    navController.navigate(Screen.Profile.createRoute(username))
+                }
+            )
         }
         composable(Screen.EditProfile.route) {
             val viewModel: EditProfileViewModel = hiltViewModel()
