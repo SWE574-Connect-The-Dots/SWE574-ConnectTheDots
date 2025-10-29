@@ -718,11 +718,20 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profile = request.user.profile
         bio = request.data.get('bio', None)
         profession = request.data.get('profession', None)
+        location_name = request.data.get('location_name', None)
+        latitude = request.data.get('latitude', None)
+        longitude = request.data.get('longitude', None)
         
         if bio is not None:
             profile.bio = bio
         if profession is not None:
             profile.profession = profession
+        if location_name is not None:
+            profile.location_name = location_name
+        if latitude is not None:
+            profile.latitude = latitude
+        if longitude is not None:
+            profile.longitude = longitude
             
         profile.save()
         serializer = self.get_serializer(profile)

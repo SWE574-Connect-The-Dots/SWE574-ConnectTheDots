@@ -6,15 +6,19 @@ from rest_framework import serializers
 class RegisterSerializer(serializers.ModelSerializer):
     profession = serializers.CharField(write_only=True, required=True)
     dob = serializers.DateField(write_only=True, required=True)
+    latitude = serializers.FloatField(write_only=True, required=False, allow_null=True)
+    longitude = serializers.FloatField(write_only=True, required=False, allow_null=True)
+    location_name = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'profession', 'dob']
+        fields = ['id', 'username', 'email', 'password', 'profession', 'dob', 'latitude', 'longitude', 'location_name']
         extra_kwargs = {
             'username': {'required': True},
             'password': {'write_only': True},
             'email': {'required': True},
         }
+        
     
     def validate_dob(self, value):
         """
@@ -31,6 +35,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         profession = validated_data.pop('profession', '')
         dob = validated_data.pop('dob', None)
+        latitude = validated_data.pop('latitude', None)
+        longitude = validated_data.pop('longitude', None)
+        location_name = validated_data.pop('location_name', None)
+
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -39,6 +47,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Update the profile that was automatically created by the signal
         user.profile.profession = profession
         user.profile.dob = dob
+        user.profile.latitude = latitude
+        user.profile.longitude = longitude
+        user.profile.location_name = location_name
         user.profile.save()
         return user
     
@@ -59,7 +70,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['user', 'user_type', 'user_type_display', 'profession', 'bio', 'dob', 
-                 'created_at', 'updated_at', 'joined_spaces', 'owned_spaces', 'moderated_spaces']
+                 'created_at', 'updated_at', 'latitude', 'longitude', 'location_name', 
+                 'joined_spaces', 'owned_spaces', 'moderated_spaces']
 
     def get_joined_spaces(self, obj):
         joined_spaces = Space.objects.filter(collaborators=obj.user)
