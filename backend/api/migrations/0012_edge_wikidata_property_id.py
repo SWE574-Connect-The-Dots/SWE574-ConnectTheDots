@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0010_remove_null_statement_ids'),
+        ('api', '0011_profile_user_type_spacemoderator'),
     ]
 
     operations = [
