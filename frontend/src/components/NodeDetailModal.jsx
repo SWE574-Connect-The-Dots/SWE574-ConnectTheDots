@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import api from "../axiosConfig";
 import useWikidataSearch from "../hooks/useWikidataSearch";
+import useClickOutside from "../hooks/useClickOutside";
 import "./NodeDetailModal.css";
 
 const propertySelectionStyles = `
@@ -427,9 +428,13 @@ const NodeDetailModal = ({
     }
   };
 
+  const modalRef = useClickOutside(() => {
+    onClose();
+  });
+
   return (
     <div className="modal-backdrop">
-      <div className="modal-content">
+      <div className="modal-content" ref={modalRef}>
         {/* Inject CSS for property selection */}
         <style>{propertySelectionStyles}</style>
 

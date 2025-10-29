@@ -87,6 +87,7 @@
 
 .create-space-button:hover {
   background-color: var(--color-accent-hover);
+  color: var(--color-white);
 }
 
 /* Tabs Styles */
@@ -218,7 +219,8 @@
   color: var(--color-white);
 }
 
-.join-button, .leave-button {
+.join-button,
+.leave-button {
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -238,7 +240,7 @@
 .join-button:hover {
   background-color: var(--color-accent-hover);
   transform: translateY(-2px);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .leave-button {
@@ -254,7 +256,7 @@
 .leave-button:hover {
   background-color: var(--color-warning);
   transform: translateY(-2px);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .collaborators-sidebar {
@@ -376,7 +378,7 @@
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
-  color: #1B1F3B;
+  color: #1b1f3b;
 }
 
 .form-group input,
@@ -397,7 +399,7 @@
 .form-group input:disabled {
   background-color: var(--color-bg);
   cursor: not-allowed;
-  color: #656F75;
+  color: #656f75;
 }
 
 .field-note {
