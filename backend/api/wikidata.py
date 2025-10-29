@@ -3,7 +3,26 @@ from django.core.cache import cache
 
 ENTITY_CACHE_TIME = 86400
 LABEL_CACHE_TIME = 604800
+
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
+WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
+
+WIKIDATA_USER_AGENT = 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+
+def get_wikidata_headers(include_accept=False):
+    """
+    Returns standardized headers for Wikidata API calls.
+    
+    Args:
+        include_accept: If True, includes Accept header for SPARQL queries
+    
+    Returns:
+        dict: Headers dictionary for Wikidata API requests
+    """
+    headers = {'User-Agent': WIKIDATA_USER_AGENT}
+    if include_accept:
+        headers['Accept'] = 'application/sparql-json'
+    return headers
 
 def get_property_labels(property_ids):
     """Fetch labels for multiple properties in a single API call"""
@@ -18,7 +37,6 @@ def get_property_labels(property_ids):
         return cached_labels
     
     try:
-        url = "https://www.wikidata.org/w/api.php"
         params = {
             "action": "wbgetentities",
             "ids": ids_param,
@@ -27,10 +45,7 @@ def get_property_labels(property_ids):
             "format": "json"
         }
         
-        headers = {
-            'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-        }
-        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers(), timeout=5)
         data = response.json()
         
         result = {}
@@ -68,13 +83,9 @@ def format_property_value(value):
 
 def execute_sparql_query(query):
     """Executes a SPARQL query against the Wikidata endpoint."""
-    headers = {
-        'Accept': 'application/sparql-json',
-        'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-    }
     params = {'query': query, 'format': 'json'}
     try:
-        response = requests.post(SPARQL_ENDPOINT, headers=headers, data=params, timeout=30)
+        response = requests.post(SPARQL_ENDPOINT, headers=get_wikidata_headers(include_accept=True), data=params, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
