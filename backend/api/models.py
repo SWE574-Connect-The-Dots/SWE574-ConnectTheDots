@@ -23,6 +23,17 @@ class Profile(models.Model):
     dob = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
+
+    # optional helper
+    def location_display(self):
+        if self.location_name:
+            return self.location_name
+        if self.latitude and self.longitude:
+            return f"({self.latitude}, {self.longitude})"
+        return "Unknown"
 
     def __str__(self):
         return f"{self.user.username}'s profile"
