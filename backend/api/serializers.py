@@ -51,12 +51,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
     joined_spaces = serializers.SerializerMethodField()
     owned_spaces = serializers.SerializerMethodField()
+    moderated_spaces = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ['user', 'profession', 'bio', 'dob', 'created_at', 'updated_at', 'joined_spaces', 'owned_spaces']
+        fields = ['user', 'user_type', 'user_type_display', 'profession', 'bio', 'dob', 
+                 'created_at', 'updated_at', 'joined_spaces', 'owned_spaces', 'moderated_spaces']
 
     def get_joined_spaces(self, obj):
         joined_spaces = Space.objects.filter(collaborators=obj.user)
@@ -73,6 +76,16 @@ class ProfileSerializer(serializers.ModelSerializer):
             'title': space.title,
             'description': space.description
         } for space in owned_spaces]
+    
+    def get_moderated_spaces(self, obj):
+        from .models import SpaceModerator
+        moderated_spaces = SpaceModerator.objects.filter(user=obj.user).select_related('space')
+        return [{
+            'id': moderator.space.id,
+            'title': moderator.space.title,
+            'description': moderator.space.description,
+            'assigned_at': moderator.assigned_at
+        } for moderator in moderated_spaces]
     
 class TagSerializer(serializers.ModelSerializer):
     class Meta:

@@ -10,11 +10,11 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator
 from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
 from .wikidata import get_wikidata_properties
-from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner
+from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
 from django.core.cache import cache
 from django.http import JsonResponse
 
@@ -684,3 +684,262 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Profile.objects.all()
+
+# Authorization Management Views
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def assign_moderator(request):
+    """
+    Admin can assign a moderator to a specific space.
+    """
+    user_id = request.data.get('user_id')
+    space_id = request.data.get('space_id')
+    
+    if not user_id or not space_id:
+        return Response({'error': 'user_id and space_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(id=user_id)
+        space = Space.objects.get(id=space_id)
+        
+        # Update user type to moderator
+        profile = user.profile
+        profile.user_type = Profile.MODERATOR
+        profile.save()
+        
+        # Create space moderator assignment
+        space_moderator, created = SpaceModerator.objects.get_or_create(
+            user=user,
+            space=space,
+            defaults={'assigned_by': request.user}
+        )
+        
+        if created:
+            return Response({
+                'message': f'{user.username} has been assigned as moderator for {space.title}',
+                'user_type': profile.user_type
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'message': f'{user.username} is already a moderator for {space.title}',
+                'user_type': profile.user_type
+            })
+    
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Space.DoesNotExist:
+        return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, CanChangeUserType])
+def change_user_type(request):
+    """
+    Change user type. Admins can change any user type.
+    Moderators can only change regular users to moderators within their spaces.
+    """
+    user_id = request.data.get('user_id')
+    new_user_type = request.data.get('user_type')
+    space_id = request.data.get('space_id')  # Required for moderator actions
+    
+    if not user_id or not new_user_type:
+        return Response({'error': 'user_id and user_type are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+        target_profile = target_user.profile
+        requesting_profile = request.user.profile
+        
+        # Validate new_user_type - convert to int if string (DRF converts integers to strings)
+        valid_types = [Profile.ADMIN, Profile.MODERATOR, Profile.USER]
+        if isinstance(new_user_type, str):
+            try:
+                new_user_type = int(new_user_type)
+            except ValueError:
+                return Response({'error': 'Invalid user type format'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if new_user_type not in valid_types:
+            return Response({'error': 'Invalid user type'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Admin can change any user type
+        if requesting_profile.is_admin():
+            target_profile.user_type = new_user_type
+            target_profile.save()
+            
+            # If changing to moderator and space_id provided, assign to space
+            if new_user_type == Profile.MODERATOR and space_id:
+                try:
+                    space = Space.objects.get(id=space_id)
+                    SpaceModerator.objects.get_or_create(
+                        user=target_user,
+                        space=space,
+                        defaults={'assigned_by': request.user}
+                    )
+                except Space.DoesNotExist:
+                    pass  # Continue without space assignment
+            
+            return Response({
+                'message': f'{target_user.username} user type changed to {target_profile.get_user_type_display()}',
+                'user_type': new_user_type
+            })
+        
+        # Moderator can only change regular users to moderators in their spaces
+        elif requesting_profile.is_moderator():
+            if not space_id:
+                return Response({'error': 'space_id is required for moderator actions'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                space = Space.objects.get(id=space_id)
+                
+                # Check if requesting user can moderate this space
+                if not requesting_profile.can_moderate_space(space):
+                    return Response({'error': 'You are not a moderator of this space'}, status=status.HTTP_403_FORBIDDEN)
+                
+                # Can only change regular users to moderators
+                if target_profile.user_type != Profile.USER or new_user_type != Profile.MODERATOR:
+                    return Response({'error': 'You can only change regular users to moderators'}, status=status.HTTP_403_FORBIDDEN)
+                
+                target_profile.user_type = Profile.MODERATOR
+                target_profile.save()
+                
+                SpaceModerator.objects.get_or_create(
+                    user=target_user,
+                    space=space,
+                    defaults={'assigned_by': request.user}
+                )
+                
+                return Response({
+                    'message': f'{target_user.username} has been assigned as moderator for {space.title}',
+                    'user_type': new_user_type
+                })
+                
+            except Space.DoesNotExist:
+                return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        else:
+            return Response({'error': 'Insufficient permissions'}, status=status.HTTP_403_FORBIDDEN)
+    
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def remove_moderator(request):
+    """
+    Admin can remove a moderator from a specific space.
+    """
+    user_id = request.data.get('user_id')
+    space_id = request.data.get('space_id')
+    
+    if not user_id or not space_id:
+        return Response({'error': 'user_id and space_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(id=user_id)
+        space = Space.objects.get(id=space_id)
+        
+        # Remove space moderator assignment
+        space_moderator = SpaceModerator.objects.filter(user=user, space=space).first()
+        if space_moderator:
+            space_moderator.delete()
+            
+            # Check if user is moderator of any other spaces
+            remaining_assignments = SpaceModerator.objects.filter(user=user).exists()
+            if not remaining_assignments:
+                # If no other moderator assignments, change user type back to regular user
+                profile = user.profile
+                profile.user_type = Profile.USER
+                profile.save()
+            
+            return Response({
+                'message': f'{user.username} has been removed as moderator from {space.title}'
+            })
+        else:
+            return Response({'error': 'User is not a moderator of this space'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Space.DoesNotExist:
+        return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_permissions(request):
+    """
+    Get current user's permissions and type.
+    """
+    try:
+        profile = request.user.profile
+        moderated_spaces = []
+        
+        if profile.is_moderator():
+            moderated_spaces = list(SpaceModerator.objects.filter(user=request.user).values(
+                'space__id', 'space__title', 'assigned_at'
+            ))
+        
+        return Response({
+            'user_type': profile.user_type,
+            'user_type_display': profile.get_user_type_display(),
+            'is_admin': profile.is_admin(),
+            'is_moderator': profile.is_moderator(),
+            'is_regular_user': profile.is_regular_user(),
+            'moderated_spaces': moderated_spaces
+        })
+    
+    except Profile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def list_users_by_type(request):
+    """
+    List users by type. Admins can see all users, moderators can see users in their spaces.
+    """
+    user_type = request.query_params.get('user_type')
+    space_id = request.query_params.get('space_id')
+    
+    try:
+        requesting_profile = request.user.profile
+        
+        if requesting_profile.is_admin():
+            # Admin can see all users
+            queryset = Profile.objects.all()
+            if user_type:
+                queryset = queryset.filter(user_type=int(user_type))
+                
+        elif requesting_profile.is_moderator():
+            # Moderator can only see users in spaces they moderate
+            if not space_id:
+                return Response({'error': 'space_id is required for moderators'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                space = Space.objects.get(id=space_id)
+                if not requesting_profile.can_moderate_space(space):
+                    return Response({'error': 'You are not a moderator of this space'}, status=status.HTTP_403_FORBIDDEN)
+                
+                # Get users who are collaborators of the space
+                collaborator_ids = space.collaborators.values_list('id', flat=True)
+                queryset = Profile.objects.filter(user__id__in=collaborator_ids)
+                
+                if user_type:
+                    queryset = queryset.filter(user_type=int(user_type))
+                    
+            except Space.DoesNotExist:
+                return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        users_data = []
+        for profile in queryset:
+            users_data.append({
+                'id': profile.user.id,
+                'username': profile.user.username,
+                'email': profile.user.email,
+                'user_type': profile.user_type,
+                'user_type_display': profile.get_user_type_display(),
+                'profession': profile.profession,
+                'created_at': profile.created_at
+            })
+        
+        return Response({'users': users_data})
+    
+    except Profile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
