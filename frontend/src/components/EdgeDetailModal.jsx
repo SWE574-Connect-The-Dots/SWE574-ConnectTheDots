@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
 import api from "../axiosConfig";
+import PropertySearch from "./PropertySearch";
 import "./NodeDetailModal.css";
 
 const EdgeDetailModal = ({
@@ -12,7 +13,13 @@ const EdgeDetailModal = ({
   onEdgeDelete,
   spaceId,
 }) => {
-  const [label, setLabel] = useState(edge.label || "");
+  const wikidataPropertyId = edge.data?.wikidata_property_id || edge.wikidata_property_id;
+  const originalLabel = edge.data?.original_label || edge.label;
+  
+  const [edgeProperty, setEdgeProperty] = useState({ 
+    id: wikidataPropertyId || null, 
+    label: originalLabel || "" 
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -51,7 +58,12 @@ const EdgeDetailModal = ({
       const tgtId = isSourceToTarget ? targetNode.id : sourceNode.id;
       await api.put(
         `/spaces/${spaceId}/edges/${edge.id}/update/`,
-        { label, source_id: srcId, target_id: tgtId },
+        { 
+          label: edgeProperty.label, 
+          source_id: srcId, 
+          target_id: tgtId,
+          wikidata_property_id: edgeProperty.id
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -92,7 +104,6 @@ const EdgeDetailModal = ({
   return (
     <div className="modal-backdrop">
       <div className="modal-content">
-        <style>{/* Reuse NodeDetailModal styles */}</style>
         <div className="modal-header">
           <h2>Edge Details</h2>
           <button onClick={onClose} className="close-button">
@@ -112,17 +123,36 @@ const EdgeDetailModal = ({
               {targetNode?.data?.label || targetNode?.label} (ID:{" "}
               {targetNode?.id})
             </p>
+            {wikidataPropertyId && (
+              <div style={{
+                marginTop: 12,
+                padding: '8px 12px',
+                background: 'var(--color-wikidata-bg)',
+                border: '2px solid var(--color-wikidata-border)',
+                borderRadius: 6,
+                display: 'inline-block'
+              }}>
+                <strong style={{ color: 'var(--color-wikidata)' }}>🔗 Wikidata Property:</strong>{" "}
+                <span style={{ 
+                  background: 'var(--color-wikidata)', 
+                  color: 'var(--color-white)', 
+                  padding: '2px 8px', 
+                  borderRadius: 4,
+                  marginLeft: 6,
+                  fontWeight: 600
+                }}>
+                  {wikidataPropertyId}
+                </span>
+              </div>
+            )}
           </div>
           <div className="properties-section">
             <h4>Edit Edge Label & Direction</h4>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              style={{ width: "100%", marginBottom: 10 }}
-              disabled={loading}
+            <PropertySearch 
+              onSelect={setEdgeProperty}
+              initialLabel={edgeProperty.label}
             />
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 10, marginTop: 10 }}>
               <label>Direction:</label>
               <button
                 type="button"
@@ -130,8 +160,8 @@ const EdgeDetailModal = ({
                 style={{
                   marginLeft: 10,
                   padding: "5px 10px",
-                  backgroundColor: isSourceToTarget ? "#4CAF50" : "#f44336",
-                  color: "white",
+                  backgroundColor: isSourceToTarget ? "var(--color-success)" : "var(--color-danger-light)",
+                  color: "var(--color-white)",
                   border: "none",
                   borderRadius: "4px",
                   cursor: duplicateExists ? "not-allowed" : "pointer",
@@ -152,7 +182,7 @@ const EdgeDetailModal = ({
                     }`}
               </button>
               {duplicateExists && (
-                <span style={{ color: "#d83025", marginLeft: 8 }}>
+                <span style={{ color: "var(--color-danger-light)", marginLeft: 8 }}>
                   Edge in this direction already exists
                 </span>
               )}

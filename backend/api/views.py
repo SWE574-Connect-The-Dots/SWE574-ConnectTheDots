@@ -322,6 +322,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         wikidata_entity = data['wikidata_entity']
         selected_properties = data.get('selected_properties', [])            
         edge_label = data.get('edge_label', '')
+        wikidata_property_id = data.get('wikidata_property_id', None)
         is_new_node_source = data.get('is_new_node_source', False)
 
         new_node = Node.objects.create(
@@ -341,9 +342,19 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if related_node_id:
             related_node = Node.objects.get(id=related_node_id)
             if is_new_node_source:
-                Edge.objects.create(source=new_node, target=related_node, relation_property=edge_label)
+                Edge.objects.create(
+                    source=new_node, 
+                    target=related_node, 
+                    relation_property=edge_label,
+                    wikidata_property_id=wikidata_property_id
+                )
             else:
-                Edge.objects.create(source=related_node, target=new_node, relation_property=edge_label)
+                Edge.objects.create(
+                    source=related_node, 
+                    target=new_node, 
+                    relation_property=edge_label,
+                    wikidata_property_id=wikidata_property_id
+                )
 
         return Response({'node_id': new_node.id}, status=201)
 
@@ -368,7 +379,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 'id': edge.id,
                 'source': edge.source.id,
                 'target': edge.target.id,
-                'label': edge.relation_property
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id
             } 
             for edge in edges
         ]
@@ -419,7 +431,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             'format': 'json',
             'search': query,
             'language': 'en',
-            'limit': 50
+            'limit': 100
         }
 
         try:
@@ -438,6 +450,41 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
             return Response(results)
 
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['get'], url_path='wikidata-property-search')
+    def wikidata_property_search(self, request):
+        """Search Wikidata properties by query"""
+        query = request.query_params.get('q', '')
+        if not query:
+            return Response({"error": "Query parameter is required"}, status=400)
+
+        url = 'https://www.wikidata.org/w/api.php'
+        params = {
+            'action': 'wbsearchentities',
+            'format': 'json',
+            'search': query,
+            'type': 'property',
+            'language': 'en',
+            'limit': 100
+        }
+
+        try:
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
+            data = response.json()
+
+            results = [{
+                'id': item.get('id'),
+                'label': item.get('label'),
+                'description': item.get('description', ''),
+                'url': item.get('url', '')
+            } for item in data.get('search', [])]
+
+            return Response(results)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -582,6 +629,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             new_label = request.data.get('label', '').strip()
             new_source_id = request.data.get('source_id')
             new_target_id = request.data.get('target_id')
+            wikidata_property_id = request.data.get('wikidata_property_id', None)
 
             if new_source_id and new_target_id:
                 if (str(edge.source.id) != str(new_source_id)) or (str(edge.target.id) != str(new_target_id)):
@@ -593,6 +641,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
             if new_label:
                 edge.relation_property = new_label
+            
+            edge.wikidata_property_id = wikidata_property_id
             edge.save()
             return Response({'message': 'Edge updated successfully'}, status=200)
         except Edge.DoesNotExist:
@@ -624,6 +674,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         source_id = request.data.get('source_id')
         target_id = request.data.get('target_id')
         label = request.data.get('label', '').strip()
+        wikidata_property_id = request.data.get('wikidata_property_id', None)
         if not source_id or not target_id or not label:
             return Response({'error': 'source_id, target_id, and label are required'}, status=400)
         try:
@@ -631,7 +682,12 @@ class SpaceViewSet(viewsets.ModelViewSet):
             target = Node.objects.get(id=target_id, space=space)
             if Edge.objects.filter(source=source, target=target).exists() or Edge.objects.filter(source=target, target=source).exists():
                 return Response({'error': 'Edge already exists between these nodes'}, status=400)
-            edge = Edge.objects.create(source=source, target=target, relation_property=label)
+            edge = Edge.objects.create(
+                source=source, 
+                target=target, 
+                relation_property=label,
+                wikidata_property_id=wikidata_property_id
+            )
             return Response({'message': 'Edge created', 'edge_id': edge.id}, status=201)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)

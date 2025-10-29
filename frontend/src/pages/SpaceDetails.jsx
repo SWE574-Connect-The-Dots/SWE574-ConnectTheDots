@@ -11,10 +11,11 @@ import useWikidataSearch from "../hooks/useWikidataSearch";
 import { API_ENDPOINTS } from "../constants/config";
 import EdgeDetailModal from "../components/EdgeDetailModal";
 import SpaceDiscussions from "../components/SpaceDiscussions";
+import PropertySearch from "../components/PropertySearch";
 
 const propertySelectionStyles = `
 .property-selection-container {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-gray-300);
   border-radius: 4px;
   margin-bottom: 15px;
 }
@@ -29,17 +30,17 @@ const propertySelectionStyles = `
   display: flex;
   align-items: flex-start;
   padding: 8px 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-gray-200);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .property-selection-item:hover {
-  background-color: #f8f9fa;
+  background-color: var(--color-item-bg);
 }
 
 .property-selection-item.selected {
-  background-color: #e6f4ff;
+  background-color: var(--color-item-own-bg);
 }
 
 .property-checkbox {
@@ -56,7 +57,7 @@ const propertySelectionStyles = `
 }
 
 .entity-link {
-  color: #1a73e8;
+  color: var(--color-accent);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s ease;
@@ -64,24 +65,24 @@ const propertySelectionStyles = `
 
 .entity-link:hover {
   text-decoration: underline;
-  color: #0f62fe;
+  color: var(--color-accent-hover);
 }
 
 .entity-indicator {
   font-size: 0.85em;
-  color: #888;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 .selection-help-text {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 
 .property-label {
   font-weight: 600;
-  color: #444;
+  color: var(--color-text);
 }
 `;
 
@@ -94,12 +95,12 @@ const getPropertyLabelWithId = (prop) => {
     prop.property_label ||
     (prop.display && prop.display.includes(":")
       ? prop.display.split(":")[0].trim()
-      : null);
+      : prop.property_label);
   const propId = prop.property || prop.property_id;
   if (!label) {
     return propId || "Unknown Property";
   }
-  if (label.includes(propId)) {
+  if (propId && label.includes(propId)) {
     return label;
   }
   return propId ? `${label} (${propId})` : label;
@@ -133,6 +134,7 @@ const PropertySelectionList = ({
 
   const renderPropertyValue = (prop) => {
     if (
+      prop &&
       prop.value &&
       typeof prop.value === "object" &&
       prop.value.type === "entity"
@@ -157,13 +159,13 @@ const PropertySelectionList = ({
       );
     }
 
-    return prop.value ? String(prop.value) : "No value available";
+    return prop?.value ? String(prop.value) : "No value available";
   };
 
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties.map((prop) => (
+        {properties.filter((prop) => prop && prop.statement_id).map((prop) => (
           <div
             key={prop.statement_id}
             className={`property-selection-item ${
@@ -214,7 +216,7 @@ const SpaceDetails = () => {
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [entityProperties, setEntityProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
-  const [edgeLabel, setEdgeLabel] = useState("");
+  const [edgeProperty, setEdgeProperty] = useState({ id: null, label: "" });
   const [existingNodes, setExistingNodes] = useState([]);
   const [relatedNodeId, setRelatedNodeId] = useState("");
   const [isNewNodeSource, setIsNewNodeSource] = useState(false);
@@ -243,6 +245,7 @@ const SpaceDetails = () => {
   const filteredAndSortedProperties = useMemo(() => {
     if (!entityProperties) return [];
     return entityProperties
+      .filter((prop) => prop && prop.display && prop.property)
       .filter((prop) =>
         prop.display.toLowerCase().includes(propertySearch.toLowerCase())
       )
@@ -290,7 +293,11 @@ const SpaceDetails = () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
-        setExistingNodes(nodesResponse.data);
+        const nodesData = Array.isArray(nodesResponse.data)
+          ? nodesResponse.data
+          : [];
+        const validNodes = nodesData.filter((n) => n && n.id && n.label);
+        setExistingNodes(validNodes);
         fetchGraphData();
       } catch (error) {
         console.error("Error fetching space data:", error);
@@ -743,12 +750,9 @@ const SpaceDetails = () => {
                 </div>
                 <div style={{ marginTop: "10px" }}>
                   <label>Edge Label:</label>
-                  <input
-                    type="text"
-                    value={edgeLabel}
-                    onChange={(e) => setEdgeLabel(e.target.value)}
-                    placeholder="e.g., related_to"
-                    style={{ width: "100%", maxWidth: "500px" }}
+                  <PropertySearch 
+                    onSelect={setEdgeProperty} 
+                    initialLabel={edgeProperty.label}
                   />
                 </div>
                 <button
@@ -768,7 +772,8 @@ const SpaceDetails = () => {
                           related_node_id: relatedNodeId,
                           wikidata_entity: selectedEntity,
                           selected_properties: fullSelectedProperties,
-                          edge_label: edgeLabel,
+                          edge_label: edgeProperty.label,
+                          wikidata_property_id: edgeProperty.id,
                           is_new_node_source: isNewNodeSource,
                         },
                         {
@@ -794,7 +799,6 @@ const SpaceDetails = () => {
                               },
                             }
                           );
-                          console.log("Snapshot created after node addition.");
                         } catch (err) {
                           console.error("Failed to create snapshot:", err);
                         }
