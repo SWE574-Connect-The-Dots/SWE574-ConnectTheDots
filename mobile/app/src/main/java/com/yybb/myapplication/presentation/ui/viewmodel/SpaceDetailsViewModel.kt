@@ -207,25 +207,11 @@ class SpaceDetailsViewModel @Inject constructor(
                 return@launch
             }
 
-            val currentReaction = currentDiscussion.userReaction
-            
-            // Check if vote should be processed
-            val shouldVote = when (voteType) {
-                "up" -> currentReaction != "up"
-                "down" -> currentReaction != "down"
-                else -> false
-            }
-
-            if (!shouldVote) {
-                return@launch
-            }
-
             val result = spaceRepository.voteDiscussion(spaceId, discussionId, voteType)
             if (result.isSuccess) {
                 val updatedDiscussionDto = result.getOrNull()
                 if (updatedDiscussionDto != null) {
                     val updatedDiscussion = updatedDiscussionDto.toDiscussion()
-                    // Create a new list instance to ensure StateFlow detects the change
                     val updatedDiscussions = _discussions.value.map { discussion ->
                         if (discussion.id.toString() == discussionId) {
                             updatedDiscussion
@@ -249,7 +235,6 @@ class SpaceDetailsViewModel @Inject constructor(
             
             try {
                 val currentUsername = userPreferencesRepository.getCurrentUsernameSync()
-                // If viewing own profile, pass null to use /me endpoint, otherwise pass username
                 val usernameToFetch = if (username == currentUsername) {
                     null
                 } else {
