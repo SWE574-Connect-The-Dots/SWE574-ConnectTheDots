@@ -59,17 +59,22 @@ describe('PropertySearch Component', () => {
     const input = screen.getByPlaceholderText(/search for a property or enter a custom label/i);
     fireEvent.change(input, { target: { value: 'aut' } });
     
-    expect(mockSearch).toHaveBeenCalledWith('aut');
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenCalledWith('aut');
+    }, { timeout: 600 });
   });
 
-  test('does not trigger search with 2 or fewer characters', () => {
+  test('does not trigger search with 2 or fewer characters', async () => {
     render(<PropertySearch onSelect={mockOnSelect} initialLabel="" />);
     
     const input = screen.getByPlaceholderText(/search for a property or enter a custom label/i);
     fireEvent.change(input, { target: { value: 'au' } });
     
+    await waitFor(() => {
+      expect(mockClearSearch).toHaveBeenCalled();
+    }, { timeout: 600 });
+    
     expect(mockSearch).not.toHaveBeenCalled();
-    expect(mockClearSearch).toHaveBeenCalled();
   });
 
   test('updates onSelect with custom label when typing', () => {

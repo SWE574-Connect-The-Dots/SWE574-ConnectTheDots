@@ -18,14 +18,21 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
     }
   }, [selectedProperty, onSelect]);
 
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm.length > 2) {
+        search(searchTerm);
+      } else {
+        clearSearch();
+      }
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, search, clearSearch]);
+
   const handleSearch = (e) => {
     const query = e.target.value;
     setSearchTerm(query);
-    if (query.length > 2) {
-      search(query);
-    } else {
-      clearSearch();
-    }
     setSelectedProperty({ id: null, label: query });
   };
 
