@@ -52,6 +52,12 @@ interface ApiService {
     @POST("api/spaces/")
     suspend fun createSpace(@Body request: CreateSpaceRequest): Response<CreateSpaceResponse>
 
+    @GET("api/spaces/new/")
+    suspend fun getNewSpaces(): Response<List<SpaceDetailsResponse>>
+
+    @GET("api/spaces/trending/")
+    suspend fun getTrendingSpaces(): Response<List<SpaceDetailsResponse>>
+
     @GET("api/spaces/{id}/")
     suspend fun getSpaceById(@Path("id") id: String): Response<SpaceDetailsResponse>
 
