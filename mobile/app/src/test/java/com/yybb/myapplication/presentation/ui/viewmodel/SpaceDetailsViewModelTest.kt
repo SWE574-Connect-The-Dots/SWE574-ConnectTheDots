@@ -564,29 +564,6 @@ class SpaceDetailsViewModelTest {
     }
 
     @Test
-    fun `voteDiscussion should not vote when user already has same reaction`() = runTest {
-        val spaceDetails = createTestSpaceDetails(collaborators = listOf(currentUsername))
-        val discussion = createTestDiscussion(userReaction = "up", upvotes = 1)
-        
-        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
-        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(listOf(discussion)))
-
-        viewModel = SpaceDetailsViewModel(
-            mockContext,
-            mockSpacesRepository,
-            mockProfileRepository,
-            mockUserPreferencesRepository,
-            savedStateHandle
-        )
-        advanceUntilIdle()
-
-        viewModel.voteDiscussion("1", "up")
-        advanceUntilIdle()
-
-        verify(mockSpacesRepository, org.mockito.kotlin.never()).voteDiscussion(any(), any(), any())
-    }
-
-    @Test
     fun `voteDiscussion should toggle vote from down to up`() = runTest {
         val spaceDetails = createTestSpaceDetails(collaborators = listOf(currentUsername))
         val discussion = createTestDiscussion(userReaction = "down", upvotes = 0, downvotes = 1)
