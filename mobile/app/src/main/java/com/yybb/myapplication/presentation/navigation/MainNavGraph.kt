@@ -45,7 +45,15 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
         ) {
             SpaceDetailsScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    if (navController.previousBackStackEntry?.destination?.route == Screen.CreateSpace.route) {
+                        navController.navigate(BottomNavItem.Spaces.route) {
+                            popUpTo(Screen.SpaceDetails.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
+                },
                 onNavigateToProfile = { username ->
                     navController.navigate(Screen.Profile.createRoute(username))
                 }
@@ -66,7 +74,12 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             val viewModel: CreateSpaceViewModel = hiltViewModel()
             CreateSpaceScreen(
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetails = { spaceId ->
+                    navController.navigate(Screen.SpaceDetails.createRoute(spaceId)) {
+                        popUpTo(Screen.CreateSpace.route) { inclusive = true } // remove create from stack
+                    }
+                }
             )
         }
         composable(

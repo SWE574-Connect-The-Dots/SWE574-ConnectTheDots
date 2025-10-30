@@ -23,7 +23,7 @@ sealed interface RetrieveTagWikidataUiState {
 
 sealed interface CreateSpaceUiState {
     object Loading : CreateSpaceUiState
-    data class Success(val result: Boolean = false) : CreateSpaceUiState
+    data class Success(val spaceId: Int) : CreateSpaceUiState
     data class Error(val message: String) : CreateSpaceUiState
     object Initial : CreateSpaceUiState
 }
@@ -104,7 +104,7 @@ class CreateSpaceViewModel @Inject constructor(
             spaceRepository.createSpace(_formState.spaceTitle, _formState.spaceDescription, _formState.selectedTags)
                 .onSuccess {
                     resetFormState()
-                    _createSpaceUiState.value = CreateSpaceUiState.Success(result = true)
+                    _createSpaceUiState.value = CreateSpaceUiState.Success(spaceId = it.id)
                 }
                 .onFailure {
                     _createSpaceUiState.value = CreateSpaceUiState.Error(it.message ?: "An unknown error occurred")
