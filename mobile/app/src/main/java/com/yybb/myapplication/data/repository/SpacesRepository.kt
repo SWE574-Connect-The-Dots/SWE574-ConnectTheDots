@@ -12,6 +12,7 @@ import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.DiscussionDto
+import com.yybb.myapplication.data.network.dto.SpaceDetailsResponse
 import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
@@ -32,6 +33,50 @@ class SpacesRepository @Inject constructor(
     private val sessionManager: SessionManager
 ) {
     val isColorBlindTheme: Flow<Boolean> get() = userPreferencesRepository.isColorBlindTheme
+
+    // Get trending spaces
+    suspend fun getTrendingSpaces(): Result<List<SpaceDetailsResponse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val response = apiService.getTrendingSpaces()
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        Result.success(it)
+                    } ?: Result.failure(Exception(context.getString(R.string.failed_get_space_det_message)))
+                } else {
+                    Result.failure(Exception("${context.getString(R.string.failed_get_space_det_message)}: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // Get new spaces
+    suspend fun getNewSpaces(): Result<List<SpaceDetailsResponse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val response = apiService.getNewSpaces()
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        Result.success(it)
+                    } ?: Result.failure(Exception(context.getString(R.string.failed_get_space_det_message)))
+                } else {
+                    Result.failure(Exception("${context.getString(R.string.failed_get_space_det_message)}: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 
     // Get space details
     fun getSpaceDetails(spaceId: String): Flow<SpaceDetails> = flow {
