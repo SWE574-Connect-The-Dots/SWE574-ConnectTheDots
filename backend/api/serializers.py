@@ -117,7 +117,11 @@ class SpaceSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Space
-        fields = ['id', 'title', 'description', 'created_at', 'creator_username', 'tags', 'tag_ids', 'collaborators']
+        fields = [
+            'id', 'title', 'description', 'created_at', 'creator_username',
+            'country', 'city', 'district', 'street', 'latitude', 'longitude',
+            'tags', 'tag_ids', 'collaborators'
+        ]
         read_only_fields = ['creator_username', 'created_at']
     
     def get_collaborators(self, obj):

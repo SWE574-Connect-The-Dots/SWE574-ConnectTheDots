@@ -82,9 +82,20 @@ class Space(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_spaces')
     collaborators = models.ManyToManyField(User, related_name='joined_spaces', blank=True)
     tags = models.ManyToManyField(Tag, blank=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True)
+    street = models.CharField(max_length=150, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     
     def __str__(self):
         return self.title
+    
+    def full_location(self):
+        """Return a human-readable location string."""
+        parts = [self.street, self.district, self.city, self.country]
+        return ", ".join([p for p in parts if p]) or "Location not specified"
     
     def get_moderators(self):
         """Get all moderators for this space"""
