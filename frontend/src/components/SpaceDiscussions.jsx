@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
+import ReportModal from "./ReportModal";
 
 const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
   const [discussions, setDiscussions] = useState([]);
@@ -8,6 +9,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDiscussionsOpen, setIsDiscussionsOpen] = useState(true);
+  const [reportingDiscussion, setReportingDiscussion] = useState(null);
   const currentUsername = localStorage.getItem("username");
   const isLoggedIn = !!localStorage.getItem("token");
 
@@ -155,7 +157,9 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
 
           {/* Error message */}
           {error && (
-            <div style={{ color: "var(--color-danger)", margin: "10px 0" }}>{error}</div>
+            <div style={{ color: "var(--color-danger)", margin: "10px 0" }}>
+              {error}
+            </div>
           )}
 
           {/* Comments list - visible to everyone */}
@@ -195,6 +199,24 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         }}
                       >
                         <strong>{discussion.username}</strong>
+                        {isLoggedIn && (
+                          <button
+                            onClick={() => {
+                              setReportingDiscussion(discussion);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--color-text-secondary)",
+                              cursor: "pointer",
+                              fontSize: "0.8rem",
+                              padding: "2px 5px",
+                            }}
+                            title="Report this comment"
+                          >
+                            Report
+                          </button>
+                        )}
                       </div>
                       <div>
                         <small style={{ color: "var(--color-text-secondary)" }}>
@@ -283,6 +305,15 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
             )}
           </div>
         </div>
+      )}
+
+      {reportingDiscussion && (
+        <ReportModal
+          contentId={reportingDiscussion.id}
+          contentType="Discussion"
+          contentTitle={`Comment by ${reportingDiscussion.username}`}
+          onClose={() => setReportingDiscussion(null)}
+        />
       )}
     </div>
   );
