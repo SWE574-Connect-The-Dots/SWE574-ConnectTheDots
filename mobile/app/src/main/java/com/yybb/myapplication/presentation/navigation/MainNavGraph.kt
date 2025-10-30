@@ -35,10 +35,29 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             ProfileScreen(navController = navController)
         }
         composable(
+            route = Screen.Profile.route,
+            arguments = listOf(navArgument("username") { type = NavType.StringType })
+        ) {
+            ProfileScreen(navController = navController)
+        }
+        composable(
             route = Screen.SpaceDetails.route,
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
         ) {
-            SpaceDetailsScreen(onNavigateBack = { navController.popBackStack() })
+            SpaceDetailsScreen(
+                onNavigateBack = {
+                    if (navController.previousBackStackEntry?.destination?.route == Screen.CreateSpace.route) {
+                        navController.navigate(BottomNavItem.Spaces.route) {
+                            popUpTo(Screen.SpaceDetails.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
+                },
+                onNavigateToProfile = { username ->
+                    navController.navigate(Screen.Profile.createRoute(username))
+                }
+            )
         }
         composable(Screen.EditProfile.route) {
             val viewModel: EditProfileViewModel = hiltViewModel()
@@ -55,7 +74,12 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             val viewModel: CreateSpaceViewModel = hiltViewModel()
             CreateSpaceScreen(
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetails = { spaceId ->
+                    navController.navigate(Screen.SpaceDetails.createRoute(spaceId)) {
+                        popUpTo(Screen.CreateSpace.route) { inclusive = true } // remove create from stack
+                    }
+                }
             )
         }
         composable(

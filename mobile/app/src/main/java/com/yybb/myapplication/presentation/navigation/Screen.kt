@@ -12,6 +12,9 @@ sealed class Screen(val route: String) {
     }
     object CreateSpace : Screen("create_space")
     object EditProfile : Screen("edit_profile")
+    object Profile : Screen("profile/{username}") {
+        fun createRoute(username: String) = "profile/$username"
+    }
     object AllSpaces : Screen("all_spaces/{spaceType}") {
         fun createRoute(spaceType: SpaceType) = "all_spaces/${spaceType.name}"
     }

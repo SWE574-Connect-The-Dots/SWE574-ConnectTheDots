@@ -61,7 +61,8 @@ import com.yybb.myapplication.presentation.ui.viewmodel.RetrieveTagWikidataUiSta
 @Composable
 fun CreateSpaceScreen(
     viewModel: CreateSpaceViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToDetails: (Int) -> Unit // new parameter
 ) {
     val tagWikidataUiState by viewModel.tagWikidataUiState.collectAsState()
     val createSpaceUiState by viewModel.createSpaceUiState.collectAsState()
@@ -80,10 +81,10 @@ fun CreateSpaceScreen(
         LoadingDialog(message = stringResource(R.string.creating_space_message))
     }
 
-    // Handle space creation success - navigate back
     if (createSpaceUiState is CreateSpaceUiState.Success) {
-        LaunchedEffect(Unit) {
-            onNavigateBack()
+        val spaceId = (createSpaceUiState as CreateSpaceUiState.Success).spaceId
+        LaunchedEffect(spaceId) {
+            onNavigateToDetails(spaceId)
             viewModel.resetCreateSpaceState()
         }
     }

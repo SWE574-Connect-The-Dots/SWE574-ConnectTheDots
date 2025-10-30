@@ -1,6 +1,7 @@
 package com.yybb.myapplication.data.repository
 
 import com.yybb.myapplication.data.SessionManager
+import com.yybb.myapplication.data.UserPreferencesRepository
 import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.RegisterRequest
@@ -10,7 +11,8 @@ import javax.inject.Inject
 
 class AuthRepository @Inject constructor(
     private val apiService: ApiService,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) {
 
     suspend fun login(loginRequest: LoginRequest): Result<Unit> {
@@ -20,6 +22,8 @@ class AuthRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.token?.let {
                         sessionManager.saveAuthToken(it)
+                        // Save username to preferences
+                        userPreferencesRepository.setUsername(loginRequest.username)
                         Result.success(Unit)
                     } ?: Result.failure(Exception("Login failed: Token not found"))
                 } else {
@@ -49,6 +53,7 @@ class AuthRepository @Inject constructor(
     suspend fun logout() {
         withContext(Dispatchers.IO) {
             sessionManager.clearAuthToken()
+            userPreferencesRepository.clearUsername()
         }
     }
 }
