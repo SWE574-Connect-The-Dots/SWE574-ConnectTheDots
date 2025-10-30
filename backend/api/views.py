@@ -716,26 +716,13 @@ class ProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['put', 'patch'])
     def update_profile(self, request):
         profile = request.user.profile
-        bio = request.data.get('bio', None)
-        profession = request.data.get('profession', None)
-        location_name = request.data.get('location_name', None)
-        latitude = request.data.get('latitude', None)
-        longitude = request.data.get('longitude', None)
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
         
-        if bio is not None:
-            profile.bio = bio
-        if profession is not None:
-            profile.profession = profession
-        if location_name is not None:
-            profile.location_name = location_name
-        if latitude is not None:
-            profile.latitude = latitude
-        if longitude is not None:
-            profile.longitude = longitude
-            
-        profile.save()
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
     def user_profile(self, request, pk=None):

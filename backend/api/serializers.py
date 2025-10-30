@@ -67,10 +67,51 @@ class ProfileSerializer(serializers.ModelSerializer):
     owned_spaces = serializers.SerializerMethodField()
     moderated_spaces = serializers.SerializerMethodField()
 
+    def geocode_location(self, country, city):
+        """Convert location text to coordinates using Nominatim API"""
+        import requests
+        import time
+        
+        # Build address string
+        address_parts = []
+        if city:
+            address_parts.append(city)
+        if country:
+            address_parts.append(country)
+            
+        if not address_parts:
+            return None, None
+            
+        address = ", ".join(address_parts)
+        
+        try:
+            # Use Nominatim API for geocoding
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': address,
+                'format': 'json',
+                'limit': 1
+            }
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0'
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            time.sleep(1)  # Be respectful to the API
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    return float(data[0]['lat']), float(data[0]['lon'])
+        except Exception as e:
+            print(f"Profile geocoding error: {e}")
+            
+        return None, None
+
     class Meta:
         model = Profile
         fields = ['user', 'user_type', 'user_type_display', 'profession', 'bio', 'dob', 
-                 'created_at', 'updated_at', 'latitude', 'longitude', 'location_name', 
+                 'created_at', 'updated_at', 'country', 'city', 'latitude', 'longitude', 'location_name', 
                  'joined_spaces', 'owned_spaces', 'moderated_spaces']
 
     def get_joined_spaces(self, obj):
@@ -99,6 +140,55 @@ class ProfileSerializer(serializers.ModelSerializer):
             'assigned_at': moderator.assigned_at
         } for moderator in moderated_spaces]
     
+    def update(self, instance, validated_data):
+        # Handle different location update scenarios
+        location_fields = ['country', 'city']
+        location_changed = any(field in validated_data for field in location_fields)
+        coordinates_provided = 'latitude' in validated_data and 'longitude' in validated_data
+        location_name_provided = 'location_name' in validated_data
+        
+        # Scenario 1: Country/City changed and coordinates NOT manually provided
+        if location_changed and not coordinates_provided:
+            country = validated_data.get('country', instance.country)
+            city = validated_data.get('city', instance.city)
+            
+            if country or city:  # Geocode if we have location info
+                lat, lon = self.geocode_location(country, city)
+                if lat and lon:
+                    validated_data['latitude'] = lat
+                    validated_data['longitude'] = lon
+                    # Auto-generate location_name if not manually provided
+                    if not location_name_provided:
+                        if country and city:
+                            validated_data['location_name'] = f"{city}, {country}"
+                        elif city:
+                            validated_data['location_name'] = city
+                        elif country:
+                            validated_data['location_name'] = country
+            else:
+                # Clear coordinates if no location info provided
+                validated_data['latitude'] = None
+                validated_data['longitude'] = None
+                if not location_name_provided:
+                    validated_data['location_name'] = None
+        
+        # Scenario 2: Coordinates manually provided - clear derived location_name unless manually set
+        elif coordinates_provided and not location_name_provided:
+            # Keep the coordinates but update location_name based on country/city if available
+            country = validated_data.get('country', instance.country)  
+            city = validated_data.get('city', instance.city)
+            if country and city:
+                validated_data['location_name'] = f"{city}, {country}"
+            elif city:
+                validated_data['location_name'] = city
+            elif country:
+                validated_data['location_name'] = country
+        
+        # Scenario 3: Only location_name provided - keep existing coordinates and country/city
+        # (This is handled automatically by the parent update method)
+        
+        return super().update(instance, validated_data)
+    
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
@@ -115,6 +205,51 @@ class SpaceSerializer(serializers.ModelSerializer):
     )
     collaborators = serializers.SerializerMethodField()
     
+    def geocode_location(self, country, city, district=None, street=None):
+        """Convert location text to coordinates using Nominatim API"""
+        import requests
+        import time
+        
+        # Build address string
+        address_parts = []
+        if street:
+            address_parts.append(street)
+        if district:
+            address_parts.append(district)
+        if city:
+            address_parts.append(city)
+        if country:
+            address_parts.append(country)
+            
+        if not address_parts:
+            return None, None
+            
+        address = ", ".join(address_parts)
+        
+        try:
+            # Use Nominatim API for geocoding
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': address,
+                'format': 'json',
+                'limit': 1
+            }
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0'
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            time.sleep(1)  # Be respectful to the API
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    return float(data[0]['lat']), float(data[0]['lon'])
+        except Exception as e:
+            print(f"Geocoding error: {e}")
+            
+        return None, None
+    
     class Meta:
         model = Space
         fields = [
@@ -129,6 +264,20 @@ class SpaceSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         tag_ids = validated_data.pop('tag_ids', [])
+        
+        # Geocode location if coordinates are not provided
+        if not validated_data.get('latitude') or not validated_data.get('longitude'):
+            country = validated_data.get('country')
+            city = validated_data.get('city')
+            district = validated_data.get('district')
+            street = validated_data.get('street')
+            
+            if country or city:  # Only geocode if we have at least country or city
+                lat, lon = self.geocode_location(country, city, district, street)
+                if lat and lon:
+                    validated_data['latitude'] = lat
+                    validated_data['longitude'] = lon
+        
         space = Space.objects.create(**validated_data)
         
         space.collaborators.add(validated_data['creator'])
@@ -137,6 +286,27 @@ class SpaceSerializer(serializers.ModelSerializer):
             space.tags.add(tag)
             
         return space
+    
+    def update(self, instance, validated_data):
+        # If location fields are being updated and coordinates are not provided,
+        # try to geocode the new location
+        location_fields = ['country', 'city', 'district', 'street']
+        location_changed = any(field in validated_data for field in location_fields)
+        coordinates_provided = 'latitude' in validated_data and 'longitude' in validated_data
+        
+        if location_changed and not coordinates_provided:
+            country = validated_data.get('country', instance.country)
+            city = validated_data.get('city', instance.city)
+            district = validated_data.get('district', instance.district)
+            street = validated_data.get('street', instance.street)
+            
+            if country or city:  # Only geocode if we have at least country or city
+                lat, lon = self.geocode_location(country, city, district, street)
+                if lat and lon:
+                    validated_data['latitude'] = lat
+                    validated_data['longitude'] = lon
+        
+        return super().update(instance, validated_data)
 
 class DiscussionSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')

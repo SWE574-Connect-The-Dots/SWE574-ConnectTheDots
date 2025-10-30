@@ -15,6 +15,8 @@ const Profile = () => {
   const [editFormData, setEditFormData] = useState({
     bio: "",
     profession: "",
+    country: "",
+    city: "",
     location_name: "",
   });
   const [countries, setCountries] = useState([]);
@@ -71,6 +73,8 @@ const Profile = () => {
         setEditFormData({
           bio: response.data.bio || "",
           profession: response.data.profession || "",
+          country: response.data.country || "",
+          city: response.data.city || "",
           location_name: response.data.location_name || "",
         });
 
@@ -111,6 +115,8 @@ const Profile = () => {
     setEditFormData({
       bio: user.bio || "",
       profession: user.profession || "",
+      country: user.country || "",
+      city: user.city || "",
       location_name: user.location_name || "",
     });
     // Reset dropdown values
@@ -140,9 +146,11 @@ const Profile = () => {
       await fetchCities(country);
     }
     
-    // Update location_name in form data
+    // Update location_name and location fields in form data
     setEditFormData({
       ...editFormData,
+      country: country,
+      city: selectedCity || "",
       location_name: country ? `${selectedCity ? selectedCity + ', ' : ''}${country}` : "",
     });
   };
@@ -151,10 +159,12 @@ const Profile = () => {
     const city = e.target.value;
     setSelectedCity(city);
     
-    // Update location_name in form data
+    // Update location_name and location fields in form data
     const locationName = city && selectedCountry ? `${city}, ${selectedCountry}` : selectedCountry || "";
     setEditFormData({
       ...editFormData,
+      country: selectedCountry || "",
+      city: city,
       location_name: locationName,
     });
   };
