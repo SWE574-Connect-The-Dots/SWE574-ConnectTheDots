@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator
 from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
-from .wikidata import get_wikidata_properties
+from .wikidata import get_wikidata_properties, get_wikidata_headers, WIKIDATA_API_URL
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -96,7 +96,6 @@ class TagViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
         
-        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -106,10 +105,7 @@ class TagViewSet(viewsets.ModelViewSet):
         }
         
         try:
-            headers = {
-                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-            }
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
             data = response.json()
             
             results = []
@@ -425,7 +421,6 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
 
-        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -435,10 +430,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         }
 
         try:
-            headers = {
-                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-            }
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
             data = response.json()
 
             results = [{
@@ -460,7 +452,6 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
 
-        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -471,10 +462,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         }
 
         try:
-            headers = {
-                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
-            }
-            response = requests.get(url, params=params, headers=headers)
+            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
             data = response.json()
 
             results = [{
