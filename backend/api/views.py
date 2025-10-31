@@ -382,7 +382,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         nodes = Node.objects.filter(space_id=pk)
         data = [{
             'id': node.id, 
-            'label': node.label, 
+            'label': node.label,
             'wikidata_id': node.wikidata_id,
             'country': node.country,
             'city': node.city,
