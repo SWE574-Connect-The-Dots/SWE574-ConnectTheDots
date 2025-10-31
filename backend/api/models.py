@@ -126,13 +126,23 @@ class SpaceModerator(models.Model):
 class Property(models.Model):
     node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')
     property_id = models.CharField(max_length=255)
-    statement_id = models.CharField(max_length=255, unique=True, null=True, default=None)
+    statement_id = models.CharField(max_length=255, null=True, default=None)
+    
+    class Meta:
+        unique_together = ('node', 'statement_id')
     
 class Node(models.Model):
     label = models.CharField(max_length=255)
     wikidata_id = models.CharField(max_length=50, blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     space = models.ForeignKey(Space, on_delete=models.CASCADE)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True)
+    street = models.CharField(max_length=150, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
