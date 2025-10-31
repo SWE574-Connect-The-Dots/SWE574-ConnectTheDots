@@ -313,6 +313,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='add-node')
     def add_node(self, request, pk=None):
+        from .wikidata import extract_location_from_properties
+        
         space = self.get_object()
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can add nodes'}, status=403)
@@ -324,12 +326,29 @@ class SpaceViewSet(viewsets.ModelViewSet):
         edge_label = data.get('edge_label', '')
         wikidata_property_id = data.get('wikidata_property_id', None)
         is_new_node_source = data.get('is_new_node_source', False)
+        
+        # Extract location from Wikidata properties
+        location_data = extract_location_from_properties(selected_properties)
+        
+        # Allow manual location override from request data
+        manual_location = data.get('location', {})
+        if manual_location:
+            for field in ['country', 'city', 'district', 'street', 'latitude', 'longitude', 'location_name']:
+                if manual_location.get(field):
+                    location_data[field] = manual_location[field]
 
         new_node = Node.objects.create(
             label=wikidata_entity['label'],
             wikidata_id=wikidata_entity['id'],
             created_by=request.user,
-            space = space
+            space=space,
+            country=location_data.get('country'),
+            city=location_data.get('city'),
+            district=location_data.get('district'),
+            street=location_data.get('street'),
+            latitude=location_data.get('latitude'),
+            longitude=location_data.get('longitude'),
+            location_name=location_data.get('location_name')
         )
         
         for prop in selected_properties:
@@ -361,7 +380,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk)
-        data = [{'id': node.id, 'label': node.label, 'wikidata_id': node.wikidata_id} for node in nodes]
+        data = [{
+            'id': node.id, 
+            'label': node.label, 
+            'wikidata_id': node.wikidata_id,
+            'country': node.country,
+            'city': node.city,
+            'district': node.district,
+            'street': node.street,
+            'latitude': node.latitude,
+            'longitude': node.longitude,
+            'location_name': node.location_name
+        } for node in nodes]
         return Response(data)
     
     @action(detail=True, methods=['get'], url_path='edges')
@@ -616,6 +646,79 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Property.DoesNotExist:
             return Response({'error': 'Property not found'}, status=404)
         except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['put'], url_path='nodes/(?P<node_id>[^/.]+)/update-location')
+    def update_node_location(self, request, pk=None, node_id=None):
+        """Update the location information of a node"""
+        space = self.get_object()
+        
+        # Basic collaborator check
+        if request.user not in space.collaborators.all():
+            return Response({'message': 'Only collaborators can update nodes'}, status=403)
+            
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            
+            # Enhanced permission check for location updates
+            # Safely get user profile with fallback
+            try:
+                user_profile = request.user.profile
+                is_system_admin = user_profile.is_admin()
+                is_system_moderator = user_profile.is_moderator()
+            except AttributeError:
+                # Profile doesn't exist, treat as regular user
+                is_system_admin = False
+                is_system_moderator = False
+            
+            # Check if user has permission to update this node's location
+            can_update = (
+                # System administrators can update any node
+                is_system_admin or
+                # System moderators can update any node  
+                is_system_moderator or
+                # Space owner can update any node in their space
+                space.creator == request.user or
+                # Space moderators can update any node in spaces they moderate
+                space.is_moderator(request.user) or
+                # Node creator can update their own node
+                node.created_by == request.user
+            )
+            
+            if not can_update:
+                return Response({
+                    'error': 'Permission denied. Only the node creator, space owner, space moderators, or system administrators can update node locations.'
+                }, status=403)
+            
+            location_data = request.data.get('location', {})
+            
+            # Debug logging
+            print(f"Updating node {node_id} location with data: {location_data}")
+            
+            # Update location fields
+            node.country = location_data.get('country', node.country)
+            node.city = location_data.get('city', node.city)
+            node.district = location_data.get('district', node.district)
+            node.street = location_data.get('street', node.street)
+            node.latitude = location_data.get('latitude', node.latitude)
+            node.longitude = location_data.get('longitude', node.longitude)
+            node.location_name = location_data.get('location_name', node.location_name)
+            
+            try:
+                node.save()
+                print(f"Successfully saved node {node_id} location")
+            except Exception as save_error:
+                print(f"Error saving node {node_id}: {str(save_error)}")
+                return Response({'error': f'Failed to save location: {str(save_error)}'}, status=500)
+            
+            return Response({'message': 'Node location updated successfully'}, status=200)
+        except Node.DoesNotExist:
+            print(f"Node {node_id} not found in space {pk}")
+            return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            print(f"Unexpected error in update_node_location: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({'error': str(e)}, status=500)
 
     @action(detail=True, methods=['put'], url_path='edges/(?P<edge_id>[^/.]+)/update')
