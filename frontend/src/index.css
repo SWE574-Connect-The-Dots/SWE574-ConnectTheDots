@@ -47,6 +47,7 @@ a {
   color: var(--color-accent);
   text-decoration: inherit;
 }
+
 a:hover {
   color: var(--color-accent-hover);
 }
@@ -56,7 +57,7 @@ body {
   place-items: top;
   min-width: 320px;
   min-height: 100vh;
-  color: var(--color-text)
+  color: var(--color-text);
 }
 
 h1 {
@@ -76,12 +77,9 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: var(--color-accent-hover);
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
 @media (prefers-color-scheme: light) {
@@ -89,9 +87,11 @@ button:focus-visible {
     color: var(--color-text);
     background-color: var(--color-bg);
   }
+
   a:hover {
     color: var(--color-accent-hover);
   }
+
   button {
     background-color: var(--color-accent);
     color: var(--color-white);

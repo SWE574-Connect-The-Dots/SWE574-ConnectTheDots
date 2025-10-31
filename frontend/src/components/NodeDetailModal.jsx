@@ -4,6 +4,7 @@ import api from "../axiosConfig";
 import useWikidataSearch from "../hooks/useWikidataSearch";
 import PropertySearch from "./PropertySearch";
 import useClickOutside from "../hooks/useClickOutside";
+import ReportModal from "./ReportModal";
 import "./NodeDetailModal.css";
 
 const propertySelectionStyles = `
@@ -148,34 +149,36 @@ const PropertySelectionList = ({
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties.filter((prop) => prop && prop.statement_id).map((prop) => (
-          <div
-            key={prop.statement_id}
-            className={`property-selection-item ${
-              selectedProperties.includes(prop.statement_id) ? "selected" : ""
-            }`}
-            onClick={() => handleItemClick(prop.statement_id)}
-          >
-            <input
-              type="checkbox"
-              id={`prop-${prop.statement_id}`}
-              checked={selectedProperties.includes(prop.statement_id)}
-              onChange={() => handleItemClick(prop.statement_id)}
-              className="property-checkbox"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label
-              htmlFor={`prop-${prop.statement_id}`}
-              className="property-selection-label"
-              onClick={(e) => e.stopPropagation()}
+        {properties
+          .filter((prop) => prop && prop.statement_id)
+          .map((prop) => (
+            <div
+              key={prop.statement_id}
+              className={`property-selection-item ${
+                selectedProperties.includes(prop.statement_id) ? "selected" : ""
+              }`}
+              onClick={() => handleItemClick(prop.statement_id)}
             >
-              <span className="property-label">
-                {getPropertyLabelWithId(prop)}:
-              </span>{" "}
-              {renderSelectionPropertyValue(prop)}
-            </label>
-          </div>
-        ))}
+              <input
+                type="checkbox"
+                id={`prop-${prop.statement_id}`}
+                checked={selectedProperties.includes(prop.statement_id)}
+                onChange={() => handleItemClick(prop.statement_id)}
+                className="property-checkbox"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <label
+                htmlFor={`prop-${prop.statement_id}`}
+                className="property-selection-label"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="property-label">
+                  {getPropertyLabelWithId(prop)}:
+                </span>{" "}
+                {renderSelectionPropertyValue(prop)}
+              </label>
+            </div>
+          ))}
       </div>
     </div>
   );
@@ -199,11 +202,15 @@ const NodeDetailModal = ({
   const [allNodes, setAllNodes] = useState([]);
   const [allEdges, setAllEdges] = useState([]);
   const [addEdgeTarget, setAddEdgeTarget] = useState("");
-  const [addEdgeProperty, setAddEdgeProperty] = useState({ id: null, label: "" });
+  const [addEdgeProperty, setAddEdgeProperty] = useState({
+    id: null,
+    label: "",
+  });
   const [addEdgeError, setAddEdgeError] = useState(null);
   const [addEdgeLoading, setAddEdgeLoading] = useState(false);
   const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
   const [propertySearch, setPropertySearch] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Report modal state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -1400,10 +1407,7 @@ const NodeDetailModal = ({
                 <div className="current-properties">
                   <ul>
                     {nodeProperties.map((prop) => (
-                      <li
-                        key={prop.statement_id}
-                        className="property-item"
-                      >
+                      <li key={prop.statement_id} className="property-item">
                         <span className="property-content">
                           <span className="property-label">
                             {getPropertyLabelWithId(prop)}:
@@ -1557,6 +1561,17 @@ const NodeDetailModal = ({
           </div>
         )}
       </div>
+
+      {showReportModal && (
+        <div>
+          <ReportModal
+            contentId={node.id}
+            contentType="Node"
+            contentTitle={node.data.label}
+            onClose={() => setShowReportModal(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };

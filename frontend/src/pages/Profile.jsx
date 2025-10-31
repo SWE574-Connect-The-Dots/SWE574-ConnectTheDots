@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 import { formatDate } from "../utils/dateUtils";
+import ReportModal from "../components/ReportModal";
 import "../ConnectTheDots.css";
 
 const Profile = () => {
@@ -24,6 +25,7 @@ const Profile = () => {
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const { username } = useParams();
   const navigate = useNavigate();
 
@@ -205,7 +207,30 @@ const Profile = () => {
         </div>
       )}
       <div className="profile-header">
-        <h1>{user?.user?.username}'s Profile</h1>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h1>{user?.user?.username}'s Profile</h1>
+          {!isCurrentUser && localStorage.getItem("token") && (
+            <button
+              onClick={() => setShowReportModal(true)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-text-secondary)",
+                cursor: "pointer",
+                fontSize: "0.8rem",
+                padding: "2px 5px",
+              }}
+            >
+              Report Profile
+            </button>
+          )}
+        </div>
 
         {isEditing ? (
           <form onSubmit={handleSubmit} className="profile-edit-form">
@@ -355,6 +380,14 @@ const Profile = () => {
           )}
         </div>
       </div>
+      {showReportModal && (
+        <ReportModal
+          contentId={username}
+          contentType="Profile"
+          contentTitle={`${username}'s Profile`}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </div>
   );
 };

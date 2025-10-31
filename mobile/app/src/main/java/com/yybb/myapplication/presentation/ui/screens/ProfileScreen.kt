@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Person
@@ -27,7 +28,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,23 +65,55 @@ fun ProfileScreen(
         viewModel.getProfile()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-    ) {
-        when (val state = uiState) {
-            is ProfileUiState.Loading -> CircularProgressIndicator()
-            is ProfileUiState.Success -> ProfileContent(
-                user = state.user,
-                isCurrentUser = state.isCurrentUser,
-                onEditProfile = { navController.navigate(Screen.EditProfile.route) },
-                onNavigateToAllSpaces = { spaceType ->
-                    navController.navigate(Screen.AllSpaces.createRoute(spaceType))
-                },
-                onSpaceClick = { spaceId ->
-                    navController.navigate(Screen.SpaceDetails.createRoute(spaceId.toInt()))
-                })
-
-            is ProfileUiState.Error -> Text(text = state.message)
+    when (val state = uiState) {
+        is ProfileUiState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(), 
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        is ProfileUiState.Success -> {
+            val showBackButton = !state.isCurrentUser
+            Scaffold(
+                topBar = {
+                    if (showBackButton) {
+                        TopAppBar(
+                            title = { Text("") },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
+            ) { paddingValues ->
+                ProfileContent(
+                    user = state.user,
+                    isCurrentUser = state.isCurrentUser,
+                    onEditProfile = { navController.navigate(Screen.EditProfile.route) },
+                    onNavigateToAllSpaces = { spaceType ->
+                        navController.navigate(Screen.AllSpaces.createRoute(spaceType))
+                    },
+                    onSpaceClick = { spaceId ->
+                        navController.navigate(Screen.SpaceDetails.createRoute(spaceId.toInt()))
+                    },
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
+        }
+        is ProfileUiState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxSize(), 
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = state.message)
+            }
         }
     }
 }
@@ -89,10 +124,11 @@ fun ProfileContent(
     isCurrentUser: Boolean,
     onEditProfile: () -> Unit,
     onNavigateToAllSpaces: (SpaceType) -> Unit,
-    onSpaceClick: (String) -> Unit
+    onSpaceClick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())

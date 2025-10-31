@@ -48,4 +48,33 @@
     <string name="selected_tags_title">Selected tags %1d</string>
     <string name="loading_tags_message">Searching tags...</string>
     <string name="creating_space_message">Creating space...</string>
+    <string name="adding_discussions_message">Adding discussion...</string>
+    <string name="leaving_space_message">Leaving space...</string>
+    <string name="joining_space_message">Joining space...</string>
+    <string name="loading_message">Loading...</string>
+    <string name="leave_space_button">Leave Space</string>
+    <string name="join_space_button">Join Space</string>
+    <string name="delete_space_button">Delete Space</string>
+    <string name="join_collaborator_message">Join as a collaborator to participate in discussions</string>
+    <string name="failed_add_disc_message">Failed to add discussion</string>
+    <string name="failed_join_space_message">Failed to join space</string>
+    <string name="failed_leave_space_message">Failed to leave space</string>
+    <string name="failed_create_tag_message">Failed to create tag</string>
+    <string name="failed_create_space_message">Failed to create space</string>
+    <string name="failed_get_disc_message">Failed to get discussions</string>
+    <string name="failed_get_space_det_message">Failed to get space details</string>
+    <string name="delete_space_confirmation">Are you sure you want to delete the space \"%1$s\"? This action cannot be undone.</string>
+    <string name="space_deleted_message">space deleted</string>
+    <string name="space_deleted_successfully_message">Space deleted successfully</string>
+    <string name="failed_delete_space_message">Failed to delete space</string>
+    <string name="deleting_space_message">Deleting space...</string>
+    <string name="failed_vote_discussion_message">Failed to vote on discussion</string>
+    <string name="vote_requires_collaborator_message">You need to join the space to be able to vote for discussions</string>
+    <string name="spaces_title">Spaces</string>
+    <string name="trending_section">Trending</string>
+    <string name="new_section">New</string>
+    <string name="contributors_text">%1$d Contributors</string>
+    <string name="no_spaces_found">No spaces found</string>
+    <string name="space_owner">Space owner: %1$s</string>
+
 </resources>

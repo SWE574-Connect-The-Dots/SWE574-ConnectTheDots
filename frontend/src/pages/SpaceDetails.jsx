@@ -167,33 +167,35 @@ const PropertySelectionList = ({
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties.filter((prop) => prop && prop.statement_id).map((prop) => (
-          <div
-            key={prop.statement_id}
-            className={`property-selection-item ${
-              selectedProperties.includes(prop.statement_id) ? "selected" : ""
-            }`}
-            onClick={() => handleItemClick(prop.statement_id)}
-          >
-            <input
-              type="checkbox"
-              id={`prop-${prop.statement_id}`}
-              checked={selectedProperties.includes(prop.statement_id)}
-              onChange={() => handleItemClick(prop.statement_id)}
-              className="property-checkbox"
-            />
-            <label
-              htmlFor={`prop-${prop.statement_id}`}
-              className="property-selection-label"
-              onClick={(e) => e.stopPropagation()}
+        {properties
+          .filter((prop) => prop && prop.statement_id)
+          .map((prop) => (
+            <div
+              key={prop.statement_id}
+              className={`property-selection-item ${
+                selectedProperties.includes(prop.statement_id) ? "selected" : ""
+              }`}
+              onClick={() => handleItemClick(prop.statement_id)}
             >
-              <span className="property-label">
-                {getPropertyLabelWithId(prop)}:
-              </span>{" "}
-              {renderPropertyValue(prop)}
-            </label>
-          </div>
-        ))}
+              <input
+                type="checkbox"
+                id={`prop-${prop.statement_id}`}
+                checked={selectedProperties.includes(prop.statement_id)}
+                onChange={() => handleItemClick(prop.statement_id)}
+                className="property-checkbox"
+              />
+              <label
+                htmlFor={`prop-${prop.statement_id}`}
+                className="property-selection-label"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="property-label">
+                  {getPropertyLabelWithId(prop)}:
+                </span>{" "}
+                {renderPropertyValue(prop)}
+              </label>
+            </div>
+          ))}
       </div>
     </div>
   );
@@ -231,6 +233,7 @@ const SpaceDetails = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
 
   // Location editing states
@@ -258,9 +261,6 @@ const SpaceDetails = () => {
   
   // Space map modal state
   const [showSpaceMap, setShowSpaceMap] = useState(false);
-  
-  // Report modal state
-  const [showReportModal, setShowReportModal] = useState(false);
 
   const {
     nodes,
@@ -820,6 +820,10 @@ const SpaceDetails = () => {
     setSelectedNode(node);
   }, []);
 
+  const handleReportSpace = () => {
+    setShowReportModal(true);
+  };
+
   const handleCloseModal = () => {
     setSelectedNode(null);
   };
@@ -1024,8 +1028,8 @@ const SpaceDetails = () => {
                 className="delete-button"
                 title="Delete"
                 style={{
-                  background: 'var(--color-danger-light)',
-                  color: 'var(--color-white)',
+                  background: "var(--color-danger-light)",
+                  color: "var(--color-white)",
                   border: "none",
                   borderRadius: 4,
                   fontWeight: 600,
@@ -1037,15 +1041,28 @@ const SpaceDetails = () => {
                 onClick={handleDeleteClick}
                 disabled={deleting}
                 onMouseOver={(e) =>
-                  (e.currentTarget.style.background = 'var(--color-danger-dark)')
+                  (e.currentTarget.style.background =
+                    "var(--color-danger-dark)")
                 }
                 onMouseOut={(e) =>
-                  (e.currentTarget.style.background = 'var(--color-danger-light)')
+                  (e.currentTarget.style.background =
+                    "var(--color-danger-light)")
                 }
               >
                 Delete
               </button>
             )}
+            <button
+              className="report-button"
+              onClick={handleReportSpace}
+              style={{
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              Report
+            </button>
           </div>
         </div>
         <p>{space.description}</p>
@@ -1263,8 +1280,8 @@ const SpaceDetails = () => {
               key={tag.id || tag.name}
               style={{
                 display: "inline-block",
-                backgroundColor: 'var(--color-teal-dark)',
-                color: 'var(--color-white)',
+                backgroundColor: "var(--color-teal-dark)",
+                color: "var(--color-white)",
                 padding: "3px 8px",
                 borderRadius: "12px",
                 fontSize: "12px",
@@ -1275,7 +1292,12 @@ const SpaceDetails = () => {
               {tag.name}
               {tag.wikidata_label && (
                 <span
-                  style={{ marginLeft: "5px", fontSize: "10px", color: 'var(--color-white)', opacity: 0.8 }}
+                  style={{
+                    marginLeft: "5px",
+                    fontSize: "10px",
+                    color: "var(--color-white)",
+                    opacity: 0.8,
+                  }}
                 >
                   (Wikidata label: {tag.wikidata_label})
                 </span>
@@ -1437,21 +1459,27 @@ const SpaceDetails = () => {
                   <label>Edge Direction:</label>
                   <button
                     onClick={() => setIsNewNodeSource(!isNewNodeSource)}
-                  style={{
-                    marginLeft: "10px",
-                    padding: "5px 10px",
-                    backgroundColor: isNewNodeSource ? 'var(--color-success)' : 'var(--color-danger)',
-                    color: 'var(--color-white)',
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
+                    style={{
+                      marginLeft: "10px",
+                      padding: "5px 10px",
+                      backgroundColor: isNewNodeSource
+                        ? "var(--color-success)"
+                        : "var(--color-danger)",
+                      color: "var(--color-white)",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
                     {isNewNodeSource ? "New → Existing" : "Existing → New"}
                   </button>
                 </div>
                 <div
-                  style={{ marginTop: "10px", color: 'var(--color-text-secondary)', fontSize: "14px" }}
+                  style={{
+                    marginTop: "10px",
+                    color: "var(--color-text-secondary)",
+                    fontSize: "14px",
+                  }}
                 >
                   {isNewNodeSource
                     ? `"${selectedEntity?.label || "New Node"}" → "${
@@ -1482,8 +1510,8 @@ const SpaceDetails = () => {
                 </div>
                 <div style={{ marginTop: "10px" }}>
                   <label>Edge Label:</label>
-                  <PropertySearch 
-                    onSelect={setEdgeProperty} 
+                  <PropertySearch
+                    onSelect={setEdgeProperty}
                     initialLabel={edgeProperty.label}
                   />
                 </div>
@@ -1805,7 +1833,10 @@ const SpaceDetails = () => {
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  style={{ background: 'var(--color-danger)', color: 'var(--color-white)' }}
+                  style={{
+                    background: "var(--color-danger)",
+                    color: "var(--color-white)",
+                  }}
                   disabled={deleting}
                 >
                   {deleting ? "Deleting..." : "Delete"}
@@ -1823,7 +1854,7 @@ const SpaceDetails = () => {
             border: "1px solid #68686B",
             borderRadius: "4px",
             overflow: "hidden",
-            backgroundColor: "#FFFFFF"
+            backgroundColor: "#FFFFFF",
           }}
         >
           <div
@@ -1834,7 +1865,7 @@ const SpaceDetails = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              color: "#1B1F3B"
+              color: "#1B1F3B",
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
