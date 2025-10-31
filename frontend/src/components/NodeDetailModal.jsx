@@ -212,9 +212,6 @@ const NodeDetailModal = ({
   const [propertySearch, setPropertySearch] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
 
-  // Report modal state
-  const [showReportModal, setShowReportModal] = useState(false);
-
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [nodeLocation, setNodeLocation] = useState({
