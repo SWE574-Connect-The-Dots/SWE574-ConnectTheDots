@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import useWikidataSearch from "../hooks/useWikidataSearch";
 import PropertySearch from "./PropertySearch";
@@ -191,6 +192,7 @@ const NodeDetailModal = ({
   onNodeUpdate,
   spaceId,
 }) => {
+  const { t } = useTranslation();
   const [nodeProperties, setNodeProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -251,7 +253,7 @@ const NodeDetailModal = ({
           setSelectedProperties(selectedPropertyIds);
         }
       } catch (err) {
-        setError("Failed to load node properties");
+        setError(t("errors.general"));
       } finally {
         setLoading(false);
       }
@@ -327,7 +329,7 @@ const NodeDetailModal = ({
 
       onNodeUpdate();
     } catch (err) {
-      alert("Failed to update node properties");
+      alert(t("errors.general"));
     }
   };
 
@@ -347,7 +349,7 @@ const NodeDetailModal = ({
       onNodeDelete();
       onClose();
     } catch (err) {
-      alert("Failed to delete node");
+      alert(t("errors.general"));
     }
   };
 
@@ -378,7 +380,7 @@ const NodeDetailModal = ({
 
       onNodeUpdate();
     } catch (err) {
-      alert("Failed to delete property");
+      alert(t("errors.general"));
     }
   };
 
@@ -406,7 +408,7 @@ const NodeDetailModal = ({
   const handleAddEdge = async () => {
     setAddEdgeError(null);
     if (!addEdgeTarget || !addEdgeProperty.label.trim()) {
-      setAddEdgeError("Please select a node and enter a label.");
+      setAddEdgeError(t("graph.selectNodeAndLabel"));
       return;
     }
     setAddEdgeLoading(true);
@@ -428,8 +430,7 @@ const NodeDetailModal = ({
       onNodeUpdate();
     } catch (err) {
       setAddEdgeError(
-        err.response?.data?.error ||
-          "Failed to add edge. Maybe edge already exists."
+        err.response?.data?.error || t("graph.failedToAddEdge")
       );
     } finally {
       setAddEdgeLoading(false);
@@ -449,7 +450,7 @@ const NodeDetailModal = ({
         <style>{propertySelectionStyles}</style>
 
         <div className="modal-header">
-          <h2>Node Details</h2>
+          <h2>{t("graph.nodeDetails")}</h2>
           <div style={{ display: "flex", gap: "10px" }}>
             <button
               onClick={() => setShowReportModal(true)}
@@ -462,7 +463,7 @@ const NodeDetailModal = ({
                 padding: "5px 10px",
               }}
             >
-              Report
+              {t("backoffice.reports")}
             </button>
             <button onClick={onClose} className="close-button">
               ×
@@ -471,7 +472,7 @@ const NodeDetailModal = ({
         </div>
 
         {loading ? (
-          <div className="loading">Loading node details...</div>
+          <div className="loading">{t("common.loading")}</div>
         ) : error ? (
           <div className="error">{error}</div>
         ) : (
@@ -480,7 +481,7 @@ const NodeDetailModal = ({
               <h3>{node.data?.label || node.label}</h3>
               {(node.data?.wikidata_id || node.wikidata_id) && (
                 <p className="wikidata-id">
-                  Wikidata ID:{" "}
+                  {t("graph.wikidataId")}:{" "}
                   <a
                     href={`https://www.wikidata.org/wiki/${
                       node.data?.wikidata_id || node.wikidata_id
@@ -495,7 +496,7 @@ const NodeDetailModal = ({
             </div>
 
             <div className="properties-section">
-              <h4>Node Properties</h4>
+              <h4>{t("graph.nodeProperties")}</h4>
               {nodeProperties.length > 0 ? (
                 <div className="current-properties">
                   <ul>
@@ -512,7 +513,7 @@ const NodeDetailModal = ({
                           onClick={() =>
                             handleDeleteProperty(prop.statement_id)
                           }
-                          title="Delete property"
+                          title={t("graph.deleteProperty")}
                         >
                           ×
                         </button>
@@ -521,20 +522,20 @@ const NodeDetailModal = ({
                   </ul>
                 </div>
               ) : (
-                <p>No properties found for this node</p>
+                <p>{t("graph.noPropertiesFound")}</p>
               )}
             </div>
 
             {/* Property selection UI for editing node properties */}
             {availableProperties.length > 0 && (
               <div className="edit-properties-section">
-                <h4>Edit Node Properties</h4>
+                <h4>{t("graph.editNodeProperties")}</h4>
                 <p className="selection-help-text">
-                  Click on a property to select/deselect it
+                  {t("graph.clickToSelectDeselect")}
                 </p>
                 <input
                   type="text"
-                  placeholder="Search properties..."
+                  placeholder={t("graph.searchProperties")}
                   value={propertySearch}
                   onChange={(e) => setPropertySearch(e.target.value)}
                   style={{
@@ -555,15 +556,15 @@ const NodeDetailModal = ({
                   onClick={handleSaveChanges}
                   disabled={loading}
                 >
-                  Save Properties
+                  {t("graph.saveProperties")}
                 </button>
               </div>
             )}
 
             <div className="edit-properties-section">
-              <h4>Add New Edge</h4>
+              <h4>{t("graph.addNewEdge")}</h4>
               <div style={{ marginBottom: 10 }}>
-                <label htmlFor="add-edge-target">Connect to node:</label>
+                <label htmlFor="add-edge-target">{t("graph.connectToNode")}:</label>
                 <select
                   id="add-edge-target"
                   value={addEdgeTarget}
@@ -571,7 +572,7 @@ const NodeDetailModal = ({
                   style={{ width: "100%", marginBottom: 8 }}
                   disabled={addEdgeLoading || possibleNodes.length === 0}
                 >
-                  <option value="">-- Select a node --</option>
+                  <option value="">{t("graph.selectNode")}</option>
                   {possibleNodes.map((n) => (
                     <option key={n.id} value={n.id}>
                       {n.label} (ID: {n.id})
@@ -580,14 +581,14 @@ const NodeDetailModal = ({
                 </select>
               </div>
               <div style={{ marginBottom: 10 }}>
-                <label htmlFor="add-edge-label">Edge Label:</label>
+                <label htmlFor="add-edge-label">{t("graph.edgeLabel")}:</label>
                 <PropertySearch
                   onSelect={setAddEdgeProperty}
                   initialLabel={addEdgeProperty.label}
                 />
               </div>
               <div style={{ marginBottom: 10 }}>
-                <label>Direction:</label>
+                <label>{t("graph.direction")}:</label>
                 <button
                   type="button"
                   onClick={() => setIsCurrentNodeSource((v) => !v)}
@@ -626,29 +627,28 @@ const NodeDetailModal = ({
                 className="save-button"
                 disabled={addEdgeLoading || possibleNodes.length === 0}
               >
-                Add Edge
+                {t("graph.addEdge")}
               </button>
               {addEdgeError && <div className="error">{addEdgeError}</div>}
               {possibleNodes.length === 0 && (
                 <div style={{ color: "#888", marginTop: 8 }}>
-                  All possible nodes are already connected.
+                  {t("graph.allNodesConnected")}
                 </div>
               )}
             </div>
 
             <div className="danger-zone">
-              <h4>Danger Zone</h4>
+              <h4>{t("graph.dangerZone")}</h4>
               <p className="warning-text">
-                Deleting this node will remove it and all its connections from
-                the graph. This action cannot be undone.
+                {t("graph.deleteNodeWarning")}
               </p>
               <button
                 onClick={handleDeleteNode}
                 className={`delete-button ${confirmDelete ? "confirm" : ""}`}
               >
                 {confirmDelete
-                  ? "Click again to confirm deletion"
-                  : "Delete Node"}
+                  ? t("graph.confirmDeletion")
+                  : t("graph.deleteNode")}
               </button>
             </div>
           </div>

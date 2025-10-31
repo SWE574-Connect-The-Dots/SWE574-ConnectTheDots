@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import PropertySearch from "./PropertySearch";
 import "./NodeDetailModal.css";
@@ -13,6 +14,7 @@ const EdgeDetailModal = ({
   onEdgeDelete,
   spaceId,
 }) => {
+  const { t } = useTranslation();
   const wikidataPropertyId = edge.data?.wikidata_property_id || edge.wikidata_property_id;
   const originalLabel = edge.data?.original_label || edge.label;
   
@@ -73,7 +75,7 @@ const EdgeDetailModal = ({
       onEdgeUpdate();
       onClose();
     } catch (err) {
-      setError("Failed to update edge");
+      setError(t("errors.general"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ const EdgeDetailModal = ({
       onEdgeDelete();
       onClose();
     } catch (err) {
-      setError("Failed to delete edge");
+      setError(t("errors.general"));
     } finally {
       setLoading(false);
     }
@@ -105,21 +107,21 @@ const EdgeDetailModal = ({
     <div className="modal-backdrop">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>Edge Details</h2>
+          <h2>{t("graph.edgeDetails")}</h2>
           <button onClick={onClose} className="close-button">
             ×
           </button>
         </div>
         <div className="modal-body">
           <div className="node-info-section">
-            <h3>Connected Nodes</h3>
+            <h3>{t("graph.connectedNodes")}</h3>
             <p>
-              <strong>Source:</strong>{" "}
+              <strong>{t("graph.source")}:</strong>{" "}
               {sourceNode?.data?.label || sourceNode?.label} (ID:{" "}
               {sourceNode?.id})
             </p>
             <p>
-              <strong>Target:</strong>{" "}
+              <strong>{t("graph.target")}:</strong>{" "}
               {targetNode?.data?.label || targetNode?.label} (ID:{" "}
               {targetNode?.id})
             </p>
@@ -132,7 +134,7 @@ const EdgeDetailModal = ({
                 borderRadius: 6,
                 display: 'inline-block'
               }}>
-                <strong style={{ color: 'var(--color-wikidata)' }}>🔗 Wikidata Property:</strong>{" "}
+                <strong style={{ color: 'var(--color-wikidata)' }}>🔗 {t("graph.wikidataProperty")}:</strong>{" "}
                 <span style={{ 
                   background: 'var(--color-wikidata)', 
                   color: 'var(--color-white)', 
@@ -147,13 +149,13 @@ const EdgeDetailModal = ({
             )}
           </div>
           <div className="properties-section">
-            <h4>Edit Edge Label & Direction</h4>
+            <h4>{t("graph.editEdgeLabelDirection")}</h4>
             <PropertySearch 
               onSelect={setEdgeProperty}
               initialLabel={edgeProperty.label}
             />
             <div style={{ marginBottom: 10, marginTop: 10 }}>
-              <label>Direction:</label>
+              <label>{t("graph.direction")}:</label>
               <button
                 type="button"
                 onClick={() => setIsSourceToTarget((v) => !v)}
@@ -169,8 +171,8 @@ const EdgeDetailModal = ({
                 disabled={loading || duplicateExists}
                 title={
                   duplicateExists
-                    ? "Edge in this direction already exists"
-                    : "Toggle direction"
+                    ? t("graph.edgeExistsInDirection")
+                    : t("graph.toggleDirection")
                 }
               >
                 {isSourceToTarget
@@ -183,7 +185,7 @@ const EdgeDetailModal = ({
               </button>
               {duplicateExists && (
                 <span style={{ color: "var(--color-danger-light)", marginLeft: 8 }}>
-                  Edge in this direction already exists
+                  {t("graph.edgeExistsInDirection")}
                 </span>
               )}
             </div>
@@ -192,14 +194,13 @@ const EdgeDetailModal = ({
               className="save-button"
               disabled={loading || duplicateExists}
             >
-              Update Label & Direction
+              {t("graph.updateLabelDirection")}
             </button>
           </div>
           <div className="danger-zone">
-            <h4>Danger Zone</h4>
+            <h4>{t("graph.dangerZone")}</h4>
             <p className="warning-text">
-              Deleting this edge will remove the connection between these nodes.
-              This action cannot be undone.
+              {t("graph.deleteEdgeWarning")}
             </p>
             <button
               onClick={handleDelete}
@@ -207,8 +208,8 @@ const EdgeDetailModal = ({
               disabled={loading}
             >
               {confirmDelete
-                ? "Click again to confirm deletion"
-                : "Delete Edge"}
+                ? t("graph.confirmDeletion")
+                : t("graph.deleteEdge")}
             </button>
           </div>
           {error && <div className="error">{error}</div>}

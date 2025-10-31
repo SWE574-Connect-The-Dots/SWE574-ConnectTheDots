@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../contexts/TranslationContext';
 import api from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 
 const CreateSpace = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -38,7 +40,7 @@ const CreateSpace = () => {
       });
       setSearchResults(response.data);
     } catch (err) {
-      setError('Failed to search Wikidata');
+      setError(t('space.failedToSearchWikidata'));
       console.error('Error searching Wikidata:', err);
     } finally {
       setSearchLoading(false);
@@ -106,7 +108,7 @@ const CreateSpace = () => {
 
       navigate(`/spaces/${response.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create space');
+      setError(err.response?.data?.message || t('space.failedToCreateSpace'));
     } finally {
       setLoading(false);
     }
@@ -114,12 +116,12 @@ const CreateSpace = () => {
 
   return (
     <div className="create-space-container">
-      <h2>Create a New Collaboration Space</h2>
+      <h2>{t('space.createNewSpace')}</h2>
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="title">Title:</label>
+          <label htmlFor="title">{t('space.title')}:</label>
           <input
             type="text"
             id="title"
@@ -131,7 +133,7 @@ const CreateSpace = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="description">Description:</label>
+          <label htmlFor="description">{t('space.description')}:</label>
           <textarea
             id="description"
             name="description"
@@ -143,7 +145,7 @@ const CreateSpace = () => {
         </div>
         
         <div className="form-group">
-          <label>Tags:</label>
+          <label>{t('space.tags')}:</label>
           
           {/* Display selected tags */}
           <div className="selected-tags">
@@ -173,7 +175,7 @@ const CreateSpace = () => {
             onClick={() => setShowTagSearch(!showTagSearch)}
             className="toggle-tag-search-btn"
           >
-            {showTagSearch ? 'Hide Tag Search' : 'Add Tags from Wikidata'}
+            {showTagSearch ? t('space.hideTagSearch') : t('space.addTagsFromWikidata')}
           </button>
           
           {showTagSearch && (
@@ -183,7 +185,7 @@ const CreateSpace = () => {
                   type="text"
                   value={tagQuery}
                   onChange={(e) => setTagQuery(e.target.value)}
-                  placeholder="Search for tags in Wikidata..."
+                  placeholder={t('space.searchTagsPlaceholder')}
                   className="tag-search-input"
                 />
                 <button 
@@ -192,13 +194,13 @@ const CreateSpace = () => {
                   disabled={searchLoading}
                   className="search-wikidata-btn"
                 >
-                  {searchLoading ? 'Searching...' : 'Search'}
+                  {searchLoading ? t('common.searching') : t('common.search')}
                 </button>
               </div>
               
               {searchResults.length > 0 && (
                 <div className="search-results">
-                  <h4>Select from results:</h4>
+                  <h4>{t('space.selectFromResults')}:</h4>
                   <ul className="wikidata-results-list">
                     {searchResults.map(entity => (
                       <li 
@@ -219,7 +221,7 @@ const CreateSpace = () => {
         </div>
         
         <button type="submit" disabled={loading} className="create-space-btn">
-          {loading ? 'Creating...' : 'Create Space'}
+          {loading ? t('space.creating') : t('space.createSpace')}
         </button>
       </form>
     </div>

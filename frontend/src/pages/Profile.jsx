@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 import { formatDate } from "../utils/dateUtils";
@@ -7,6 +8,7 @@ import ReportModal from "../components/ReportModal";
 import "../ConnectTheDots.css";
 
 const Profile = () => {
+  const { t } = useTranslation();
   const [user, setUser] = useState(null);
   const [joinedSpaces, setJoinedSpaces] = useState([]);
   const [ownedSpaces, setOwnedSpaces] = useState([]);
@@ -41,7 +43,7 @@ const Profile = () => {
 
         setLoading(false);
       } catch (err) {
-        setError("Failed to load profile data");
+        setError(t("errors.general"));
         setLoading(false);
       }
     };
@@ -80,7 +82,7 @@ const Profile = () => {
       user.profession.trim() !== "" &&
       (!editFormData.profession || editFormData.profession.trim() === "")
     ) {
-      setError("Profession cannot be emptied once set");
+      setError(t("errors.validationError"));
       return;
     }
 
@@ -93,12 +95,12 @@ const Profile = () => {
       setIsEditing(false);
       setError(null);
     } catch (err) {
-      setError("Failed to update profile data");
+      setError(t("errors.general"));
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t("common.loading")}</div>;
   }
 
   return (
@@ -116,7 +118,7 @@ const Profile = () => {
             alignItems: "center",
           }}
         >
-          <h1>{user?.user?.username}'s Profile</h1>
+          <h1>{user?.user?.username}'s {t("profile.profile")}</h1>
           {!isCurrentUser && localStorage.getItem("token") && (
             <button
               onClick={() => setShowReportModal(true)}
@@ -129,7 +131,7 @@ const Profile = () => {
                 padding: "2px 5px",
               }}
             >
-              Report Profile
+              {t("backoffice.reports")} {t("profile.profile")}
             </button>
           )}
         </div>
@@ -137,7 +139,7 @@ const Profile = () => {
         {isEditing ? (
           <form onSubmit={handleSubmit} className="profile-edit-form">
             <div className="form-group">
-              <label htmlFor="profession">Profession:</label>
+              <label htmlFor="profession">{t("profile.profession")}:</label>
               <input
                 type="text"
                 id="profession"
@@ -148,12 +150,12 @@ const Profile = () => {
                 required={user.profession !== null && user.profession !== ""}
               />
               <small className="field-note">
-                Profession cannot be empty once set
+                {t("profile.professionNote")}
               </small>
             </div>
 
             <div className="form-group">
-              <label htmlFor="bio">Bio (max 200 words):</label>
+              <label htmlFor="bio">{t("profile.bio")} (max 200 words):</label>
               <textarea
                 id="bio"
                 name="bio"
@@ -166,34 +168,34 @@ const Profile = () => {
 
             <div className="form-actions">
               <button type="submit" className="save-button">
-                Save
+                {t("common.save")}
               </button>
               <button
                 type="button"
                 onClick={handleCancelEdit}
                 className="cancel-button"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </form>
         ) : (
           <>
             {user?.profession && (
-              <p className="profession">Profession: {user.profession}</p>
+              <p className="profession">{t("profile.profession")}: {user.profession}</p>
             )}
-            <p className="bio">Bio: {user?.bio || "-"}</p>
+            <p className="bio">{t("profile.bio")}: {user?.bio || "-"}</p>
             {user?.dob && (
-              <p className="dob">Date of Birth: {formatDate(user.dob)}</p>
+              <p className="dob">{t("profile.dateOfBirth")}: {formatDate(user.dob)}</p>
             )}
             {user?.created_at && (
               <p className="created-at">
-                Joined: {formatDate(user.created_at)}
+                {t("profile.joinedDate")}: {formatDate(user.created_at)}
               </p>
             )}
             {isCurrentUser && (
               <button onClick={handleEditClick} className="edit-profile-button">
-                Edit Profile
+                {t("profile.editProfile")}
               </button>
             )}
           </>
@@ -202,7 +204,7 @@ const Profile = () => {
 
       <div className="profile-content">
         <div className="owned-spaces">
-          <h2>Owned Spaces</h2>
+          <h2>{t("profile.ownedSpaces")}</h2>
           {ownedSpaces.length > 0 ? (
             <div className="spaces-grid">
               {ownedSpaces.map((space) => (
@@ -217,12 +219,12 @@ const Profile = () => {
               ))}
             </div>
           ) : (
-            <p>No owned spaces</p>
+            <p>{t("profile.noOwnedSpaces")}</p>
           )}
         </div>
 
         <div className="joined-spaces">
-          <h2>Joined Spaces</h2>
+          <h2>{t("profile.joinedSpaces")}</h2>
           {joinedSpaces.length > 0 ? (
             <div className="spaces-grid">
               {joinedSpaces.map((space) => (
@@ -237,7 +239,7 @@ const Profile = () => {
               ))}
             </div>
           ) : (
-            <p>No spaces joined yet</p>
+            <p>{t("profile.noJoinedSpaces")}</p>
           )}
         </div>
       </div>
