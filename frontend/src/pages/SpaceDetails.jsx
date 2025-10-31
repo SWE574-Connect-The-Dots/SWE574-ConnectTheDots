@@ -258,6 +258,9 @@ const SpaceDetails = () => {
   
   // Space map modal state
   const [showSpaceMap, setShowSpaceMap] = useState(false);
+  
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const {
     nodes,
