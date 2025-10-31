@@ -12,6 +12,7 @@ import { API_ENDPOINTS } from "../constants/config";
 import EdgeDetailModal from "../components/EdgeDetailModal";
 import SpaceDiscussions from "../components/SpaceDiscussions";
 import PropertySearch from "../components/PropertySearch";
+import SpaceMapModal from "../components/SpaceMapModal";
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -253,6 +254,9 @@ const SpaceDetails = () => {
     location_name: ''
   });
   const [showLocationSection, setShowLocationSection] = useState(false);
+  
+  // Space map modal state
+  const [showSpaceMap, setShowSpaceMap] = useState(false);
 
   const {
     nodes,
@@ -979,6 +983,27 @@ const SpaceDetails = () => {
         >
           <h2 style={{ margin: 0 }}>{space.title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setShowSpaceMap(true)}
+              style={{
+                background: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#218838'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#28a745'}
+            >
+              🗺️ Show Space Map
+            </button>
             <button
               className={isCollaborator ? "leave-button" : "join-button"}
               onClick={handleJoinLeaveSpace}
@@ -1871,6 +1896,14 @@ const SpaceDetails = () => {
           spaceId={id}
         />
       )}
+
+      {/* Space Map Modal */}
+      <SpaceMapModal
+        isOpen={showSpaceMap}
+        onClose={() => setShowSpaceMap(false)}
+        spaceId={id}
+        spaceTitle={space.title}
+      />
     </div>
   );
 };
