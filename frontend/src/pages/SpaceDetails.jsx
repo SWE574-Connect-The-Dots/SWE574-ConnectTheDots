@@ -13,6 +13,7 @@ import EdgeDetailModal from "../components/EdgeDetailModal";
 import SpaceDiscussions from "../components/SpaceDiscussions";
 import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
+import ReportModal from "../components/ReportModal";
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -1904,6 +1905,16 @@ const SpaceDetails = () => {
         spaceId={id}
         spaceTitle={space.title}
       />
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <ReportModal
+          contentId={id}
+          contentType="Space"
+          contentTitle={space.title}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </div>
   );
 };

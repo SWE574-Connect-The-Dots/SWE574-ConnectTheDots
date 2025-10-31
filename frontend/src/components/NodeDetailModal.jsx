@@ -205,6 +205,9 @@ const NodeDetailModal = ({
   const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
   const [propertySearch, setPropertySearch] = useState("");
 
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [nodeLocation, setNodeLocation] = useState({
@@ -943,7 +946,9 @@ const NodeDetailModal = ({
   };
 
   const modalRef = useClickOutside(() => {
-    handleModalClose();
+    if (!showReportModal) {
+      handleModalClose();
+    }
   });
 
   return (
@@ -954,9 +959,24 @@ const NodeDetailModal = ({
 
         <div className="modal-header">
           <h2>Node Details</h2>
-          <button onClick={handleModalClose} className="close-button">
-            ×
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => setShowReportModal(true)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-text-secondary)",
+                cursor: "pointer",
+                fontSize: "0.9rem",
+                padding: "5px 10px",
+              }}
+            >
+              Report
+            </button>
+            <button onClick={handleModalClose} className="close-button">
+              ×
+            </button>
+          </div>
         </div>
 
         {loading ? (
