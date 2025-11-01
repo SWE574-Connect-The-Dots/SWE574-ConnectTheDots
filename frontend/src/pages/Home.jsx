@@ -116,7 +116,7 @@ export default function Home({ currentUser }) {
       setSpaceToDelete(null);
     } catch (err) {
       setDeleteError(
-        err.response?.data?.detail || t("space.deleteSpaceFailed")
+        err.response?.data?.detail || t("errors.failedToDeleteSpace")
       );
     } finally {
       setDeleting(false);

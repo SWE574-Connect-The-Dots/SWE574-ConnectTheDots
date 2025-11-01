@@ -43,7 +43,7 @@ const Profile = () => {
 
         setLoading(false);
       } catch (err) {
-        setError(t("errors.general"));
+        setError(t("errors.failedToLoadProfile"));
         setLoading(false);
       }
     };
@@ -82,7 +82,7 @@ const Profile = () => {
       user.profession.trim() !== "" &&
       (!editFormData.profession || editFormData.profession.trim() === "")
     ) {
-      setError(t("errors.validationError"));
+      setError(t("errors.professionCannotBeEmpty"));
       return;
     }
 
@@ -95,7 +95,7 @@ const Profile = () => {
       setIsEditing(false);
       setError(null);
     } catch (err) {
-      setError(t("errors.general"));
+      setError(t("errors.failedToUpdateProfile"));
     }
   };
 

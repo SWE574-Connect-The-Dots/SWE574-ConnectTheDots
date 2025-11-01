@@ -40,7 +40,7 @@ const CreateSpace = () => {
       });
       setSearchResults(response.data);
     } catch (err) {
-      setError(t('space.failedToSearchWikidata'));
+      setError(t('errors.failedToSearchWikidata'));
       console.error('Error searching Wikidata:', err);
     } finally {
       setSearchLoading(false);
@@ -108,7 +108,7 @@ const CreateSpace = () => {
 
       navigate(`/spaces/${response.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.message || t('space.failedToCreateSpace'));
+      setError(err.response?.data?.message || t('errors.failedToCreateSpace'));
     } finally {
       setLoading(false);
     }

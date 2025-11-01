@@ -35,7 +35,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       setError("");
     } catch (err) {
       console.error("Error fetching discussions:", err);
-      setError(t("errors.general"));
+      setError(t("errors.failedToLoadDiscussions"));
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -64,7 +64,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       await fetchDiscussions(false);
     } catch (err) {
       console.error("Error adding comment:", err);
-      setError(t("discussion.failedToAdd"));
+      setError(t("errors.failedToAddComment"));
     }
   };
 
@@ -80,7 +80,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       );
     } catch (err) {
       console.error("Error reacting to comment:", err);
-      setError(t("discussion.failedToReact"));
+      setError(t("errors.failedToUpdateReaction"));
     }
   };
 

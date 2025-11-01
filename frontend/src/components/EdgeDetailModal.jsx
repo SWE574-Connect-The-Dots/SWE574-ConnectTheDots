@@ -75,7 +75,7 @@ const EdgeDetailModal = ({
       onEdgeUpdate();
       onClose();
     } catch (err) {
-      setError(t("errors.general"));
+      setError(t("errors.failedToUpdateReaction"));
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const EdgeDetailModal = ({
       onEdgeDelete();
       onClose();
     } catch (err) {
-      setError(t("errors.general"));
+      setError(t("errors.failedToUpdateReaction"));
     } finally {
       setLoading(false);
     }

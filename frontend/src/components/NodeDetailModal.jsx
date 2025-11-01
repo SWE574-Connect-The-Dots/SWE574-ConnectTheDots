@@ -253,7 +253,7 @@ const NodeDetailModal = ({
           setSelectedProperties(selectedPropertyIds);
         }
       } catch (err) {
-        setError(t("errors.general"));
+        setError(t("errors.failedToFetchEntityProperties"));
       } finally {
         setLoading(false);
       }
@@ -329,7 +329,7 @@ const NodeDetailModal = ({
 
       onNodeUpdate();
     } catch (err) {
-      alert(t("errors.general"));
+      alert(t("errors.failedToUpdateNodeProperties"));
     }
   };
 
@@ -349,7 +349,7 @@ const NodeDetailModal = ({
       onNodeDelete();
       onClose();
     } catch (err) {
-      alert(t("errors.general"));
+      alert(t("errors.failedToDeleteNode"));
     }
   };
 
@@ -380,7 +380,7 @@ const NodeDetailModal = ({
 
       onNodeUpdate();
     } catch (err) {
-      alert(t("errors.general"));
+      alert(t("errors.failedToDeleteProperty"));
     }
   };
 
