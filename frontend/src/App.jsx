@@ -5,6 +5,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { TranslationProvider } from "./contexts/TranslationContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
@@ -77,16 +78,17 @@ function App() {
   }, [isAuthenticated]);
 
   return (
-    <Router>
-      <div className="connect-dots-container">
-        <Header
-          isAuthenticated={isAuthenticated}
-          currentUser={currentUser}
-          setIsAuthenticated={setIsAuthenticated}
-        />
+    <TranslationProvider>
+      <Router>
+        <div className="connect-dots-container">
+          <Header
+            isAuthenticated={isAuthenticated}
+            currentUser={currentUser}
+            setIsAuthenticated={setIsAuthenticated}
+          />
 
-        <main className="main-content">
-          <Routes>
+          <main className="main-content">
+            <Routes>
             <Route
               path="/"
               element={
@@ -143,7 +145,8 @@ function App() {
           </Routes>
         </main>
       </div>
-    </Router>
+      </Router>
+    </TranslationProvider>
   );
 }
 

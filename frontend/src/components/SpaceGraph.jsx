@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { useTranslation } from "../contexts/TranslationContext";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
 import CircularNode from "./CircularNode";
@@ -8,11 +9,13 @@ const nodeTypes = {
 };
 
 const SpaceGraph = ({ nodes, edges, loading, error }) => {
+  const { t } = useTranslation();
+  
   if (loading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner" />
-        <p>Loading graph...</p>
+        <p>{t("graph.loadingGraph")}</p>
       </div>
     );
   }
@@ -20,7 +23,7 @@ const SpaceGraph = ({ nodes, edges, loading, error }) => {
   if (error) {
     return (
       <div className="error-container">
-        <p className="error-message">Error: {error}</p>
+        <p className="error-message">{t("common.error")}: {error}</p>
       </div>
     );
   }

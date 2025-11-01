@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 
 function Login({ setIsAuthenticated }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -51,18 +53,18 @@ function Login({ setIsAuthenticated }) {
       setIsAuthenticated(true);
       navigate("/");
     } catch (error) {
-      setMessage("Login failed. Please check your credentials.");
+      setMessage(t("auth.loginFailed"));
       console.error("Login error:", error);
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>Login</h2>
+      <h2>{t("auth.login")}</h2>
       <input
         type="text"
         name="username"
-        placeholder="Username"
+        placeholder={t("auth.username")}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         required
@@ -70,12 +72,12 @@ function Login({ setIsAuthenticated }) {
       <input
         type="password"
         name="password"
-        placeholder="Password"
+        placeholder={t("auth.password")}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button type="submit">Login</button>
+      <button type="submit">{t("auth.login")}</button>
       <p>{message}</p>
     </form>
   );

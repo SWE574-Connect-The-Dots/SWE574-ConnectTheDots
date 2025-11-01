@@ -1,5 +1,6 @@
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "../contexts/TranslationContext";
 import ReactFlow, { Controls, Background } from "reactflow";
 import "reactflow/dist/style.css";
 import api from "../axiosConfig";
@@ -201,6 +202,7 @@ const PropertySelectionList = ({
 };
 
 const SpaceDetails = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -458,8 +460,7 @@ const SpaceDetails = () => {
       navigate("/");
     } catch (err) {
       setDeleteError(
-        err.response?.data?.detail ||
-          "Failed to delete space. Please try again."
+        err.response?.data?.detail || t("space.deleteSpaceFailed")
       );
     } finally {
       setDeleting(false);
@@ -501,12 +502,12 @@ const SpaceDetails = () => {
                   : "header-join-space-button"
               }
             >
-              {isCollaborator ? "LEAVE SPACE" : "JOIN SPACE"}
+              {isCollaborator ? t("space.leaveSpace") : t("space.joinSpace")}
             </button>
             {canDeleteSpace() && (
               <button
                 className="delete-button"
-                title="Delete"
+                title={t("common.delete")}
                 style={{
                   background: "var(--color-danger-light)",
                   color: "var(--color-white)",
@@ -529,7 +530,7 @@ const SpaceDetails = () => {
                     "var(--color-danger-light)")
                 }
               >
-                Delete
+                {t("common.delete")}
               </button>
             )}
             <button
@@ -541,7 +542,7 @@ const SpaceDetails = () => {
                 cursor: "pointer",
               }}
             >
-              Report
+              {t("backoffice.reports")}
             </button>
           </div>
         </div>
@@ -647,16 +648,16 @@ const SpaceDetails = () => {
                       }
                     )
                     .then(() => {
-                      alert("Graph reverted successfully!");
+                      alert(t("space.graphRevertedSuccessfully"));
                       window.location.reload();
                     })
                     .catch((err) => {
-                      alert("Revert failed");
+                      alert(t("space.revertFailed"));
                       console.error(err);
                     });
                 }}
               >
-                <option value="">Select a snapshot to revert...</option>
+                <option value="">{t("space.selectSnapshotToRevert")}</option>
                 {snapshots.map((snap) => (
                   <option key={snap.id} value={snap.id}>
                     {new Date(snap.created_at).toLocaleString()}
@@ -664,7 +665,7 @@ const SpaceDetails = () => {
                 ))}
               </select>
             ) : (
-              <p>No snapshots available for this space yet.</p>
+              <p>{t("space.noSnapshotsAvailable")}</p>
             )}
             <hr />
           </>
@@ -673,25 +674,25 @@ const SpaceDetails = () => {
         {/* Add Node Section - Only show if collaborator */}
         {isCollaborator && (
           <>
-            <h3>Add Node from Wikidata</h3>
+            <h3>{t("space.addNodeFromWikidata")}</h3>
             <div>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search Wikidata..."
+                placeholder={t("space.searchWikidataPlaceholder")}
               />
-              <button onClick={handleSearch}>Search</button>
+              <button onClick={handleSearch}>{t("common.search")}</button>
             </div>
 
             {searchResults.length > 0 && (
               <div>
-                <h4>Select Entity</h4>
+                <h4>{t("space.selectEntity")}</h4>
                 <select
                   value={selectedEntity?.id || ""}
                   onChange={handleEntitySelection}
                   style={{ width: "100%", maxWidth: "500px" }}
                 >
-                  <option value="">-- Select an entity --</option>
+                  <option value="">{t("space.selectEntityPlaceholder")}</option>
                   {searchResults.map((entity) => (
                     <option key={entity.id} value={entity.id}>
                       {entity.label} ({entity.description})
@@ -703,15 +704,15 @@ const SpaceDetails = () => {
 
             {selectedEntity && entityProperties.length > 0 && (
               <div>
-                <h4>Selected Entity: {selectedEntity.label}</h4>
+                <h4>{t("space.selectedEntity")}: {selectedEntity.label}</h4>
                 <div>
-                  <h5>Select Properties</h5>
+                  <h5>{t("space.selectProperties")}</h5>
                   <p className="selection-help-text">
-                    Click on a property to select/deselect it
+                    {t("graph.clickToSelectDeselect")}
                   </p>
                   <input
                     type="text"
-                    placeholder="Search properties..."
+                    placeholder={t("graph.searchProperties")}
                     value={propertySearch}
                     onChange={(e) => setPropertySearch(e.target.value)}
                     style={{
@@ -728,7 +729,7 @@ const SpaceDetails = () => {
                   />
                 </div>
                 <div style={{ marginTop: "10px" }}>
-                  <label>Edge Direction:</label>
+                  <label>{t("space.edgeDirection")}:</label>
                   <button
                     onClick={() => setIsNewNodeSource(!isNewNodeSource)}
                     style={{
@@ -743,7 +744,7 @@ const SpaceDetails = () => {
                       cursor: "pointer",
                     }}
                   >
-                    {isNewNodeSource ? "New → Existing" : "Existing → New"}
+                    {isNewNodeSource ? t("space.newToExisting") : t("space.existingToNew")}
                   </button>
                 </div>
                 <div
@@ -766,13 +767,13 @@ const SpaceDetails = () => {
                       }" → "${selectedEntity?.label || "New Node"}"`}
                 </div>
                 <div style={{ marginTop: "20px" }}>
-                  <label>Connect To Node:</label>
+                  <label>{t("space.connectToNode")}:</label>
                   <select
                     value={relatedNodeId}
                     onChange={(e) => setRelatedNodeId(e.target.value)}
                     style={{ width: "100%", maxWidth: "500px" }}
                   >
-                    <option value="">Select node to relate</option>
+                    <option value="">{t("space.selectNodeToRelate")}</option>
                     {existingNodes.map((node) => (
                       <option key={node.id} value={node.id}>
                         {node.label}
@@ -781,7 +782,7 @@ const SpaceDetails = () => {
                   </select>
                 </div>
                 <div style={{ marginTop: "10px" }}>
-                  <label>Edge Label:</label>
+                  <label>{t("graph.edgeLabel")}:</label>
                   <PropertySearch
                     onSelect={setEdgeProperty}
                     initialLabel={edgeProperty.label}
@@ -817,7 +818,7 @@ const SpaceDetails = () => {
                         }
                       )
                       .then(async () => {
-                        alert("Node and edge added successfully!");
+                        alert(t("space.nodeAndEdgeAddedSuccessfully"));
 
                         try {
                           await api.post(
@@ -839,11 +840,11 @@ const SpaceDetails = () => {
                       })
                       .catch((err) => {
                         console.error(err);
-                        alert("Failed to add node.");
+                        alert(t("space.failedToAddNode"));
                       });
                   }}
                 >
-                  Add Node with Edge
+                  {t("space.addNodeWithEdge")}
                 </button>
               </div>
             )}
@@ -887,7 +888,7 @@ const SpaceDetails = () => {
                   onClick={() => setShowDeleteModal(false)}
                   disabled={deleting}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={handleConfirmDelete}
@@ -897,7 +898,7 @@ const SpaceDetails = () => {
                   }}
                   disabled={deleting}
                 >
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? t("space.deleting") : t("common.delete")}
                 </button>
               </div>
             </div>
@@ -927,7 +928,7 @@ const SpaceDetails = () => {
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
-            <strong>Collaborators ({space.collaborators.length})</strong>
+            <strong>{t("space.collaborators")} ({space.collaborators.length})</strong>
             <span>{isCollaboratorsOpen ? "▲" : "▼"}</span>
           </div>
 

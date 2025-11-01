@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 import ReportModal from "./ReportModal";
 
 const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
+  const { t } = useTranslation();
   const [discussions, setDiscussions] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       setError("");
     } catch (err) {
       console.error("Error fetching discussions:", err);
-      setError("Failed to load discussions");
+      setError(t("errors.failedToLoadDiscussions"));
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -62,7 +64,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       await fetchDiscussions(false);
     } catch (err) {
       console.error("Error adding comment:", err);
-      setError("Failed to add comment");
+      setError(t("errors.failedToAddComment"));
     }
   };
 
@@ -78,7 +80,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       );
     } catch (err) {
       console.error("Error reacting to comment:", err);
-      setError("Failed to update reaction");
+      setError(t("errors.failedToUpdateReaction"));
     }
   };
 
@@ -102,7 +104,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
         }}
         onClick={() => setIsDiscussionsOpen(!isDiscussionsOpen)}
       >
-        <strong>Discussions</strong>
+        <strong>{t("discussion.discussions")}</strong>
         <span>{isDiscussionsOpen ? "▲" : "▼"}</span>
       </div>
 
@@ -114,7 +116,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
+                placeholder={t("discussion.addComment")}
                 style={{
                   width: "100%",
                   padding: "8px",
@@ -137,7 +139,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                 }}
                 disabled={!newComment.trim()}
               >
-                Post Comment
+                {t("discussion.postComment")}
               </button>
             </form>
           )}
@@ -151,7 +153,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                 color: "var(--color-text-secondary)",
               }}
             >
-              Join as a collaborator to participate in discussions
+              {t("discussion.joinToParticipate")}
             </div>
           )}
 
@@ -165,7 +167,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
           {/* Comments list - visible to everyone */}
           <div style={{ marginTop: "20px" }}>
             {loading ? (
-              <p>Loading discussions...</p>
+              <p>{t("common.loading")}</p>
             ) : discussions.length > 0 ? (
               <div
                 style={{
@@ -212,9 +214,9 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                               fontSize: "0.8rem",
                               padding: "2px 5px",
                             }}
-                            title="Report this comment"
+                            title={t("discussion.reportComment")}
                           >
-                            Report
+                            {t("backoffice.reports")}
                           </button>
                         )}
                       </div>
@@ -246,8 +248,8 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                           onClick={() => handleReact(discussion.id, "up")}
                           disabled={!isLoggedIn}
                           aria-pressed={discussion.user_reaction === "up"}
-                          aria-label="Thumbs up"
-                          title={isLoggedIn ? "Thumbs up" : "Login to react"}
+                          aria-label={t("discussion.thumbsUp")}
+                          title={isLoggedIn ? t("discussion.thumbsUp") : t("discussion.loginToReact")}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -273,8 +275,8 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                           onClick={() => handleReact(discussion.id, "down")}
                           disabled={!isLoggedIn}
                           aria-pressed={discussion.user_reaction === "down"}
-                          aria-label="Thumbs down"
-                          title={isLoggedIn ? "Thumbs down" : "Login to react"}
+                          aria-label={t("discussion.thumbsDown")}
+                          title={isLoggedIn ? t("discussion.thumbsDown") : t("discussion.loginToReact")}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -301,7 +303,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                 </ul>
               </div>
             ) : (
-              <p>No discussions yet</p>
+              <p>{t("discussion.noDiscussions")}</p>
             )}
           </div>
         </div>
