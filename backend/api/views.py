@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator
 from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
-from .wikidata import get_wikidata_properties, get_wikidata_headers, WIKIDATA_API_URL
+from .wikidata import get_wikidata_properties, extract_location_from_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -96,6 +96,7 @@ class TagViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
         
+        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -105,7 +106,10 @@ class TagViewSet(viewsets.ModelViewSet):
         }
         
         try:
-            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
             data = response.json()
             
             results = []
@@ -334,6 +338,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 property_id=prop['property'],
                 statement_id=prop['statement_id']
             )
+        
+        # Extract location information from selected properties if they exist
+        if selected_properties:
+            location_data = extract_location_from_properties(selected_properties)
+            # Update node with location information if any was found
+            if any(location_data.values()):
+                for field, value in location_data.items():
+                    if value is not None:
+                        setattr(new_node, field, value)
+                new_node.save()
 
         if related_node_id:
             related_node = Node.objects.get(id=related_node_id)
@@ -357,7 +371,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk)
-        data = [{'id': node.id, 'label': node.label, 'wikidata_id': node.wikidata_id} for node in nodes]
+        data = []
+        for node in nodes:
+            node_data = {
+                'id': node.id, 
+                'label': node.label, 
+                'wikidata_id': node.wikidata_id,
+                'country': node.country,
+                'city': node.city,
+                'district': node.district,
+                'street': node.street,
+                'latitude': node.latitude,
+                'longitude': node.longitude,
+                'location_name': node.location_name
+            }
+            data.append(node_data)
         return Response(data)
     
     @action(detail=True, methods=['get'], url_path='edges')
@@ -421,6 +449,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
 
+        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -430,7 +459,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
         }
 
         try:
-            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
             data = response.json()
 
             results = [{
@@ -452,6 +484,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if not query:
             return Response({"error": "Query parameter is required"}, status=400)
 
+        url = 'https://www.wikidata.org/w/api.php'
         params = {
             'action': 'wbsearchentities',
             'format': 'json',
@@ -462,7 +495,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
         }
 
         try:
-            response = requests.get(WIKIDATA_API_URL, params=params, headers=get_wikidata_headers())
+            headers = {
+                'User-Agent': 'ConnectTheDots/1.0 (https://github.com/repo/connectthedots)'
+            }
+            response = requests.get(url, params=params, headers=headers)
             data = response.json()
 
             results = [{
@@ -579,6 +615,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     property_id=prop['property'],
                     statement_id=prop['statement_id']
                 )
+            
+            # Extract location information from updated properties if they exist
+            if selected_properties:
+                location_data = extract_location_from_properties(selected_properties)
+                # Update node with location information if any was found
+                if any(location_data.values()):
+                    for field, value in location_data.items():
+                        if value is not None:
+                            setattr(node, field, value)
+                    node.save()
                 
             return Response({'message': 'Node properties updated'}, status=200)
         except Node.DoesNotExist:
@@ -603,6 +649,52 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Node not found'}, status=404)
         except Property.DoesNotExist:
             return Response({'error': 'Property not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['put'], url_path='nodes/(?P<node_id>[^/.]+)/update-location')
+    def update_node_location(self, request, pk=None, node_id=None):
+        """Update the location information of a node"""
+        space = self.get_object()
+        # Allow both space creator and collaborators to update location
+        if request.user != space.creator and request.user not in space.collaborators.all():
+            return Response({'message': 'Only space members can update node location'}, status=403)
+            
+        try:
+            node = Node.objects.get(id=node_id, space_id=pk)
+            
+            # Get location data from request (frontend sends it wrapped in 'location')
+            location_data = request.data.get('location', request.data)
+            print(f"Received location data: {location_data}")
+            
+            # Update node location fields
+            node.country = location_data.get('country', '') or None
+            node.city = location_data.get('city', '') or None
+            node.district = location_data.get('district', '') or None
+            node.street = location_data.get('street', '') or None
+            node.latitude = location_data.get('latitude') if location_data.get('latitude') is not None else None
+            node.longitude = location_data.get('longitude') if location_data.get('longitude') is not None else None
+            node.location_name = location_data.get('location_name', '') or None
+            
+            print(f"Updated node location - Country: {node.country}, City: {node.city}, Lat: {node.latitude}, Lng: {node.longitude}")
+            
+            node.save()
+            
+            return Response({
+                'message': 'Node location updated successfully',
+                'location': {
+                    'country': node.country,
+                    'city': node.city,
+                    'district': node.district,
+                    'street': node.street,
+                    'latitude': node.latitude,
+                    'longitude': node.longitude,
+                    'location_name': node.location_name
+                }
+            }, status=200)
+            
+        except Node.DoesNotExist:
+            return Response({'error': 'Node not found'}, status=404)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -704,17 +796,13 @@ class ProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['put', 'patch'])
     def update_profile(self, request):
         profile = request.user.profile
-        bio = request.data.get('bio', None)
-        profession = request.data.get('profession', None)
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
         
-        if bio is not None:
-            profile.bio = bio
-        if profession is not None:
-            profile.profession = profession
-            
-        profile.save()
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
     def user_profile(self, request, pk=None):

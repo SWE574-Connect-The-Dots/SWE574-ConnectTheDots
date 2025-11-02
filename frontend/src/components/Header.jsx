@@ -54,6 +54,9 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
             <Link to="/" className="nav-item">
               Discover
             </Link>
+            <Link to="/map" className="nav-item">
+              Map
+            </Link>
           </div>
 
           <div className="search-container">

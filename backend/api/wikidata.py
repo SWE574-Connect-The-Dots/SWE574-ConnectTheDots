@@ -156,3 +156,245 @@ def get_wikidata_properties(entity_id):
 
     cache.set(cache_key, properties, ENTITY_CACHE_TIME)
     return properties
+
+def extract_location_from_properties(properties):
+    """
+    Extract location information from Wikidata properties.
+    Returns a dictionary with location fields: country, city, district, street, latitude, longitude, location_name
+    """
+    location_data = {
+        'country': None,
+        'city': None,
+        'district': None,
+        'street': None,
+        'latitude': None,
+        'longitude': None,
+        'location_name': None
+    }
+    
+    # Property IDs for location-related data
+    LOCATION_PROPERTIES = {
+        'P625': 'coordinate_location',  # coordinate location
+        'P17': 'country',              # country
+        'P131': 'located_in',          # located in the administrative territorial entity
+        'P276': 'location',            # location
+        'P159': 'headquarters_location', # headquarters location
+        'P740': 'location_of_formation', # location of formation
+        'P19': 'place_of_birth',       # place of birth
+        'P20': 'place_of_death',       # place of death
+        'P551': 'residence',           # residence
+        'P937': 'work_location',       # work location
+    }
+    
+    for prop in properties:
+        prop_id = prop.get('property')
+        value = prop.get('value')
+        display_value = prop.get('display', '')
+        
+        if not prop_id or not value:
+            continue
+            
+        # Extract coordinates (P625)
+        if prop_id == 'P625':
+            # Coordinate format in Wikidata is typically "Point(longitude latitude)"
+            coord_text = str(value)
+            if 'Point(' in coord_text:
+                try:
+                    coords = coord_text.replace('Point(', '').replace(')', '').strip()
+                    lon, lat = coords.split()
+                    location_data['latitude'] = float(lat)
+                    location_data['longitude'] = float(lon)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Extract country (P17)
+        elif prop_id == 'P17':
+            if isinstance(value, dict) and value.get('type') == 'entity':
+                location_data['country'] = value.get('text')
+            else:
+                location_data['country'] = str(value)
+        
+        # Extract other location properties
+        elif prop_id in ['P131', 'P276', 'P159', 'P740', 'P19', 'P20', 'P551', 'P937']:
+            location_text = None
+            if isinstance(value, dict) and value.get('type') == 'entity':
+                location_text = value.get('text')
+            else:
+                location_text = str(value)
+            
+            if location_text and not location_data['location_name']:
+                location_data['location_name'] = location_text
+                
+            # Try to parse city/district from location text
+            if location_text and ',' in location_text:
+                parts = [part.strip() for part in location_text.split(',')]
+                if len(parts) >= 2:
+                    if not location_data['city']:
+                        location_data['city'] = parts[0]
+                    if not location_data['district'] and len(parts) > 2:
+                        location_data['district'] = parts[1]
+    
+    # If we have coordinates but missing location info, try reverse geocoding
+    if (location_data['latitude'] and location_data['longitude'] and 
+        not any([location_data['country'], location_data['city'], location_data['location_name']])):
+        reverse_geocoded = reverse_geocode_coordinates(location_data['latitude'], location_data['longitude'])
+        if reverse_geocoded:
+            for key, value in reverse_geocoded.items():
+                if value and not location_data[key]:
+                    location_data[key] = value
+    
+    return location_data
+
+def reverse_geocode_coordinates(latitude, longitude):
+    """
+    Convert coordinates to address information using Nominatim reverse geocoding API.
+    Returns a dictionary with location fields: country, city, district, street, location_name
+    """
+    import requests
+    import time
+    
+    try:
+        # Use Nominatim API for reverse geocoding
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            'lat': latitude,
+            'lon': longitude,
+            'format': 'json',
+            'addressdetails': 1,
+            'zoom': 18,  # High detail level
+            'accept-language': 'en'
+        }
+        headers = {
+            'User-Agent': 'ConnectTheDots/1.0'
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        time.sleep(1)  # Be respectful to the API
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'address' in data:
+                address = data['address']
+                
+                location_info = {
+                    'country': None,
+                    'city': None,
+                    'district': None,
+                    'street': None,
+                    'location_name': None
+                }
+                
+                # Extract country
+                location_info['country'] = (
+                    address.get('country') or
+                    address.get('country_code', '').upper()
+                )
+                
+                # Extract city (try multiple possible fields)
+                location_info['city'] = (
+                    address.get('city') or
+                    address.get('town') or
+                    address.get('municipality') or
+                    address.get('village') or
+                    address.get('hamlet')
+                )
+                
+                # Extract district/area
+                location_info['district'] = (
+                    address.get('suburb') or
+                    address.get('district') or
+                    address.get('neighbourhood') or
+                    address.get('quarter') or
+                    address.get('city_district') or
+                    address.get('state_district')
+                )
+                
+                # Extract street
+                location_info['street'] = (
+                    address.get('road') or
+                    address.get('pedestrian') or
+                    address.get('path')
+                )
+                
+                # Create a readable location name from display_name
+                if 'display_name' in data:
+                    # Take first few parts of display_name for a concise location
+                    parts = data['display_name'].split(',')[:3]
+                    location_info['location_name'] = ', '.join(part.strip() for part in parts)
+                
+                return location_info
+                
+    except Exception as e:
+        print(f"Reverse geocoding error for coordinates ({latitude}, {longitude}): {e}")
+    
+    return None
+
+def forward_geocode_address(country=None, city=None, district=None, street=None):
+    """
+    Convert address information to coordinates using Nominatim geocoding API.
+    Returns a dictionary with latitude, longitude, and formatted location_name
+    """
+    import requests
+    import time
+    
+    # Build address string from available components
+    address_parts = []
+    if street:
+        address_parts.append(street)
+    if district:
+        address_parts.append(district)
+    if city:
+        address_parts.append(city)
+    if country:
+        address_parts.append(country)
+    
+    if not address_parts:
+        return None
+    
+    address_string = ", ".join(address_parts)
+    
+    try:
+        # Use Nominatim API for forward geocoding
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            'q': address_string,
+            'format': 'json',
+            'addressdetails': 1,
+            'limit': 1,
+            'accept-language': 'en'
+        }
+        headers = {
+            'User-Agent': 'ConnectTheDots/1.0'
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        time.sleep(1)  # Be respectful to the API
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0:
+                result = data[0]
+                
+                geocoded_info = {
+                    'latitude': None,
+                    'longitude': None,
+                    'location_name': None
+                }
+                
+                # Extract coordinates
+                if 'lat' in result and 'lon' in result:
+                    geocoded_info['latitude'] = float(result['lat'])
+                    geocoded_info['longitude'] = float(result['lon'])
+                
+                # Extract formatted location name
+                if 'display_name' in result:
+                    # Take first few parts of display_name for a concise location
+                    parts = result['display_name'].split(',')[:4]
+                    geocoded_info['location_name'] = ', '.join(part.strip() for part in parts)
+                
+                return geocoded_info
+                
+    except Exception as e:
+        print(f"Forward geocoding error for address '{address_string}': {e}")
+    
+    return None

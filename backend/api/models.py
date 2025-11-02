@@ -23,6 +23,19 @@ class Profile(models.Model):
     dob = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
+
+    # optional helper
+    def location_display(self):
+        if self.location_name:
+            return self.location_name
+        if self.latitude and self.longitude:
+            return f"({self.latitude}, {self.longitude})"
+        return "Unknown"
 
     def __str__(self):
         return f"{self.user.username}'s profile"
@@ -71,9 +84,20 @@ class Space(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_spaces')
     collaborators = models.ManyToManyField(User, related_name='joined_spaces', blank=True)
     tags = models.ManyToManyField(Tag, blank=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True)
+    street = models.CharField(max_length=150, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     
     def __str__(self):
         return self.title
+    
+    def full_location(self):
+        """Return a human-readable location string."""
+        parts = [self.street, self.district, self.city, self.country]
+        return ", ".join([p for p in parts if p]) or "Location not specified"
     
     def get_moderators(self):
         """Get all moderators for this space"""
@@ -102,13 +126,23 @@ class SpaceModerator(models.Model):
 class Property(models.Model):
     node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')
     property_id = models.CharField(max_length=255)
-    statement_id = models.CharField(max_length=255, unique=True, null=True, default=None)
+    statement_id = models.CharField(max_length=255, null=True, default=None)
+    
+    class Meta:
+        unique_together = ('node', 'statement_id')
     
 class Node(models.Model):
     label = models.CharField(max_length=255)
     wikidata_id = models.CharField(max_length=50, blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     space = models.ForeignKey(Space, on_delete=models.CASCADE)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True)
+    street = models.CharField(max_length=150, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_name = models.CharField(max_length=255, blank=True, null=True)
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
