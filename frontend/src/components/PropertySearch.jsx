@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useTranslation } from "../contexts/TranslationContext";
 import useWikidataPropertySearch from "../hooks/useWikidataPropertySearch";
 import "./PropertySearch.css";
 
 const PropertySearch = ({ onSelect, initialLabel }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState(initialLabel || "");
   const [selectedProperty, setSelectedProperty] = useState({
     id: null,
@@ -48,10 +50,10 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
         type="text"
         value={searchTerm}
         onChange={handleSearch}
-        placeholder="Search for a property or enter a custom label..."
+        placeholder={t("property.searchPlaceholder")}
         className="property-search-input"
       />
-      {loading && <div className="property-search-loading">Searching...</div>}
+      {loading && <div className="property-search-loading">{t("property.searching")}</div>}
       {searchResults.length > 0 && (
         <ul className="property-search-results">
           {searchResults.map((prop) => (

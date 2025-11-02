@@ -1,26 +1,28 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
+import { useTranslation } from "../contexts/TranslationContext";
 import useClickOutside from "../hooks/useClickOutside";
 
 const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
 
   const commonReasons = [
-    "Inappropriate content",
-    "Misinformation",
-    "Spam",
-    "Harassment",
-    "Other",
+    t("report.inappropriateContent"),
+    t("report.misinformation"),
+    t("report.spam"),
+    t("report.harassment"),
+    t("report.other"),
   ];
 
   const specificReasons = {
-    Space: ["Duplicate space", "Misleading title or description"],
-    Node: ["Inaccurate information", "Duplicate node", "Unverified source"],
-    Discussion: ["Off-topic", "Offensive language"],
-    Profile: ["Fake account", "Impersonation"],
+    Space: [t("report.duplicateSpace"), t("report.misleadingTitle")],
+    Node: [t("report.inaccurateInfo"), t("report.duplicateNode"), t("report.unverifiedSource")],
+    Discussion: [t("report.offTopic"), t("report.offensiveLanguage")],
+    Profile: [t("report.fakeAccount"), t("report.impersonation")],
   };
 
   console.log("contentType:", contentType);
@@ -37,7 +39,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
     e.preventDefault();
 
     if (!reason) {
-      setError("Please select a reason for your report");
+      setError(t("report.selectReason"));
       return;
     }
 
@@ -60,7 +62,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
       }, 2000);
     } catch (err) {
       console.error("Error submitting report:", err);
-      setError("Failed to submit report. Please try again later.");
+      setError(t("report.submitFailed"));
     } finally {
       setLoading(false);
     }
@@ -77,7 +79,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2>Report {contentType}</h2>
+          <h2>{t("report.reportTitle")} {contentType}</h2>
           <button onClick={onClose} className="close-button">
             ×
           </button>
@@ -86,7 +88,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
         <div className="modal-body">
           {success ? (
             <div className="success-message">
-              <p>Thank you for your report. We will review it shortly.</p>
+              <p>{t("report.thankYou")}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
@@ -105,7 +107,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
                     fontWeight: "bold",
                   }}
                 >
-                  Reason for report:
+                  {t("report.reasonLabel")}
                 </label>
                 <select
                   id="report-reason"
@@ -120,7 +122,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
                     color: "var(--color-text)",
                   }}
                 >
-                  <option value="">-- Select a reason --</option>
+                  <option value="">{t("report.selectReasonPlaceholder")}</option>
                   {reportReasons.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -160,7 +162,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
                     cursor: "pointer",
                   }}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -175,7 +177,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
                     opacity: loading ? 0.7 : 1,
                   }}
                 >
-                  {loading ? "Submitting..." : "Submit Report"}
+                  {loading ? t("report.submitting") : t("report.submitButton")}
                 </button>
               </div>
             </form>

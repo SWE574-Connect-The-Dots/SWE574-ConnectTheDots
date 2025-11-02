@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import "../ConnectTheDots.css";
 
 export default function Home({ currentUser }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -114,8 +116,7 @@ export default function Home({ currentUser }) {
       setSpaceToDelete(null);
     } catch (err) {
       setDeleteError(
-        err.response?.data?.detail ||
-          "Failed to delete space. Please try again."
+        err.response?.data?.detail || t("errors.failedToDeleteSpace")
       );
     } finally {
       setDeleting(false);
@@ -130,13 +131,13 @@ export default function Home({ currentUser }) {
           className={`tab ${activeTab === "trending" ? "active" : ""}`}
           onClick={() => handleTabChange("trending")}
         >
-          Trending
+          {t("space.trending")}
         </div>
         <div
           className={`tab ${activeTab === "new" ? "active" : ""}`}
           onClick={() => handleTabChange("new")}
         >
-          New
+          {t("space.new")}
         </div>
       </div>
       {/* Space Cards */}
@@ -166,12 +167,12 @@ export default function Home({ currentUser }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div className="contributors">
-                  Contributors: {space.collaborators?.length || 0}
+                  {t("space.contributors")}: {space.collaborators?.length || 0}
                 </div>
                 {canDeleteSpace(space) && (
                   <button
                     className="delete-button"
-                    title="Delete"
+                    title={t("common.delete")}
                     style={{
                       background: "#e53935",
                       color: "white",
@@ -195,7 +196,7 @@ export default function Home({ currentUser }) {
                       (e.currentTarget.style.background = "#e53935")
                     }
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 )}
               </div>
@@ -232,12 +233,12 @@ export default function Home({ currentUser }) {
                 disabled={loadingSpaces[space.id]}
               >
                 {loadingSpaces[space.id]
-                  ? "Processing..."
+                  ? t("common.processing")
                   : space.collaborators?.includes(
                       localStorage.getItem("username")
                     )
-                  ? "LEAVE"
-                  : "JOIN"}
+                  ? t("space.leave")
+                  : t("space.join")}
               </button>
             </div>
           </div>
@@ -248,12 +249,13 @@ export default function Home({ currentUser }) {
         <div className="modal-backdrop">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Confirm Delete</h3>
+              <h3>{t("space.confirmDelete")}</h3>
             </div>
             <div className="modal-body">
               <p>
-                Are you sure you want to delete the space "
-                {spaceToDelete?.title}"? This action cannot be undone.
+                {t("space.confirmDeleteMessage", {
+                  title: spaceToDelete?.title,
+                })}
               </p>
               {deleteError && (
                 <div style={{ color: "#BD4902" }}>{deleteError}</div>
@@ -264,14 +266,14 @@ export default function Home({ currentUser }) {
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleting}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 style={{ background: "#BD4902", color: "#FFFFFF" }}
                 disabled={deleting}
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? t("space.deleting") : t("common.delete")}
               </button>
             </div>
           </div>

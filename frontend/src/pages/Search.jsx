@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 
 const Search = () => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({ spaces: [], users: [] });
   const [activeTab, setActiveTab] = useState("spaces");
@@ -64,7 +66,7 @@ const Search = () => {
 
   return (
     <div style={{ padding: "20px", maxWidth: "1000px", margin: "0 auto" }}>
-      <h2>Search</h2>
+      <h2>{t("search.search")}</h2>
 
       <div
         style={{ display: "flex", marginBottom: "20px", position: "relative" }}
@@ -74,7 +76,7 @@ const Search = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Search spaces or users..."
+          placeholder={t("search.searchSpacesOrUsers")}
           style={{
             flex: 1,
             padding: "10px",
@@ -114,7 +116,7 @@ const Search = () => {
             cursor: "pointer",
           }}
         >
-          Search
+          {t("common.search")}
         </button>
       </div>
 
@@ -137,7 +139,7 @@ const Search = () => {
             cursor: "pointer",
           }}
         >
-          Spaces ({searchResults.spaces.length})
+          {t("search.spaces")} ({searchResults.spaces.length})
         </button>
         <button
           onClick={() => setActiveTab("users")}
@@ -150,19 +152,19 @@ const Search = () => {
             cursor: "pointer",
           }}
         >
-          Users ({searchResults.users.length})
+          {t("search.users")} ({searchResults.users.length})
         </button>
       </div>
 
       {loading ? (
-        <div>Loading...</div>
+        <div>{t("common.loading")}</div>
       ) : (
         <>
           {/* Spaces Tab */}
           {activeTab === "spaces" && (
             <div>
               {searchResults.spaces.length === 0 ? (
-                <p>No spaces found matching your search.</p>
+                <p>{t("search.noSpacesFound")}</p>
               ) : (
                 <div>
                   {searchResults.spaces.map((space) => (
@@ -190,9 +192,9 @@ const Search = () => {
                         {space.description}
                       </p>
                       <div style={{ fontSize: "14px", color: 'var(--color-text-secondary)' }}>
-                        <span>Created by: {space.creator_username}</span>
+                        <span>{t("search.createdBy")}: {space.creator_username}</span>
                         <span style={{ marginLeft: "15px" }}>
-                          Created:{" "}
+                          {t("search.created")}:{" "}
                           {new Date(space.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -232,7 +234,7 @@ const Search = () => {
           {activeTab === "users" && (
             <div>
               {searchResults.users.length === 0 ? (
-                <p>No users found matching your search.</p>
+                <p>{t("search.noUsersFound")}</p>
               ) : (
                 <div>
                   {searchResults.users.map((user) => (
@@ -272,17 +274,17 @@ const Search = () => {
                             fontSize: "12px",
                           }}
                         >
-                          View Profile
+                          {t("profile.viewProfile")}
                         </span>
                       </div>
                       {user.profession && (
                         <p style={{ margin: "5px 0 0 0", color: 'var(--color-text-secondary)' }}>
-                          Profession: {user.profession}
+                          {t("profile.profession")}: {user.profession}
                         </p>
                       )}
                       {(user.first_name || user.last_name) && (
                         <p style={{ margin: "5px 0 0 0", color: 'var(--color-text-secondary)' }}>
-                          Name:{" "}
+                          {t("search.name")}:{" "}
                           {[user.first_name, user.last_name]
                             .filter(Boolean)
                             .join(" ")}

@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "../contexts/TranslationContext";
 import "./Header.css";
 
 const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
+  const { t, changeLanguage, currentLanguage } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
@@ -44,7 +46,7 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
     <header className="header">
       <div className="logo-container">
         <Link to="/">
-          <div className="app-name">Connect the Dots</div>
+          <div className="app-name">{t("app.name")}</div>
         </Link>
       </div>
 
@@ -52,7 +54,7 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
         <>
           <div className="navigation">
             <Link to="/" className="nav-item">
-              Discover
+              {t("navigation.discover")}
             </Link>
             <Link to="/map" className="nav-item">
               Map
@@ -63,7 +65,7 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
             <form onSubmit={handleSearch}>
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t("common.search")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -80,8 +82,23 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
           </div>
 
           <Link to="/create-space" className="create-space-button">
-            Create Space
+            {t("navigation.createSpace")}
           </Link>
+          
+          <div className="language-switcher">
+            <button
+              onClick={() => changeLanguage('en')}
+              className={currentLanguage === 'en' ? 'active' : ''}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => changeLanguage('tr')}
+              className={currentLanguage === 'tr' ? 'active' : ''}
+            >
+              TR
+            </button>
+          </div>
 
           {currentUser && (
             <div className="nav-item profile-dropdown" ref={dropdownRef}>
@@ -94,17 +111,17 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
                     to={`/profile/${currentUser.username}`}
                     onClick={() => setDropdownOpen(false)}
                   >
-                    Profile
+                    {t("navigation.profile")}
                   </Link>
                   {(currentUser.is_staff || currentUser.is_superuser) && (
                     <Link
                       to="/backoffice"
                       onClick={() => setDropdownOpen(false)}
                     >
-                      Admin Dashboard
+                      {t("navigation.adminDashboard")}
                     </Link>
                   )}
-                  <button onClick={handleLogout}>Logout</button>
+                  <button onClick={handleLogout}>{t("auth.logout")}</button>
                 </div>
               )}
             </div>
@@ -113,14 +130,30 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
       )}
 
       {!isAuthenticated && (
-        <div className="auth-buttons">
-          <Link to="/login" className="auth-button login">
-            Login
-          </Link>
-          <Link to="/register" className="auth-button register">
-            Register
-          </Link>
-        </div>
+        <>
+          <div className="language-switcher">
+            <button
+              onClick={() => changeLanguage('en')}
+              className={currentLanguage === 'en' ? 'active' : ''}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => changeLanguage('tr')}
+              className={currentLanguage === 'tr' ? 'active' : ''}
+            >
+              TR
+            </button>
+          </div>
+          <div className="auth-buttons">
+            <Link to="/login" className="auth-button login">
+              {t("auth.login")}
+            </Link>
+            <Link to="/register" className="auth-button register">
+              {t("auth.register")}
+            </Link>
+          </div>
+        </>
       )}
     </header>
   );
