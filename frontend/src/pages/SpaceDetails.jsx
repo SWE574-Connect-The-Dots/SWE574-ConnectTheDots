@@ -317,7 +317,8 @@ const SpaceDetails = () => {
 
         const username = localStorage.getItem("username");
         const isUserCollaborator =
-          spaceResponse.data.collaborators.includes(username);
+          spaceResponse.data.collaborators.includes(username) || 
+          spaceResponse.data.creator_username === username;
         setIsCollaborator(isUserCollaborator);
 
         const snapshotsResponse = await api.get(API_ENDPOINTS.SNAPSHOTS(id), {

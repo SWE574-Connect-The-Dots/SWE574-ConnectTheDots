@@ -746,7 +746,7 @@ const NodeDetailModal = ({
 
       setIsEditingLocation(false);
       setOriginalNodeLocation(nodeLocation); // Update original after successful save
-      onNodeUpdate(); // Refresh the graph
+      await onNodeUpdate(); // Refresh the graph and wait for completion
       alert("Node location updated successfully!");
     } catch (error) {
       console.error("Error updating node location:", error);
@@ -765,16 +765,10 @@ const NodeDetailModal = ({
   const canEditNodeLocation = () => {
     if (!currentUser) return false;
     
-    // For now, we'll implement basic checks. The backend will do the comprehensive permission check
-    // including system admin/moderator roles and space moderator status which require API calls
-    return (
-      // Node creator can edit their own node
-      (node.data?.created_by === currentUser || node.created_by === currentUser) ||
-      // Space creator can edit any node in their space
-      (spaceCreator === currentUser)
-      // Note: System admin/moderator and space moderator checks are handled by the backend
-      // as they require database queries that are not available in the frontend
-    );
+    // Since this modal is only shown to space members (creator + collaborators),
+    // and the requirement is that any space member can update node location,
+    // we return true here. The backend will do the comprehensive permission check.
+    return true;
   };
 
   // Auto-save location when modal closes if there are changes
@@ -1044,7 +1038,7 @@ const NodeDetailModal = ({
                 )}
                 {!isEditingLocation && !canEditNodeLocation() && (
                   <small style={{ color: '#666', fontSize: '11px', fontStyle: 'italic' }}>
-                    Only the node creator, space owner, or moderators can edit location
+                    Only space members can edit location
                   </small>
                 )}
               </div>
