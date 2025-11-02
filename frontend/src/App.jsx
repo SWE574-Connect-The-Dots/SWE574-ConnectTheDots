@@ -18,6 +18,9 @@ import Header from "./components/Header";
 import api from "./axiosConfig";
 import { API_ENDPOINTS } from "./constants/config";
 import "./ConnectTheDots.css";
+import "leaflet/dist/leaflet.css";
+import MapView from "./pages/MapView";
+
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -141,6 +144,10 @@ function App() {
               element={
                 isAuthenticated ? <BackOffice /> : <Navigate to="/login" />
               }
+            />
+            <Route
+              path="/map"
+              element={isAuthenticated ? <MapView /> : <Navigate to="/login" />}
             />
           </Routes>
         </main>

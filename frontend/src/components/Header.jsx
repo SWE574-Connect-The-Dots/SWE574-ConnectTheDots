@@ -56,6 +56,9 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
             <Link to="/" className="nav-item">
               {t("navigation.discover")}
             </Link>
+            <Link to="/map" className="nav-item">
+              Map
+            </Link>
           </div>
 
           <div className="search-container">

@@ -13,6 +13,7 @@ import { API_ENDPOINTS } from "../constants/config";
 import EdgeDetailModal from "../components/EdgeDetailModal";
 import SpaceDiscussions from "../components/SpaceDiscussions";
 import PropertySearch from "../components/PropertySearch";
+import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 
 const propertySelectionStyles = `
@@ -212,6 +213,10 @@ const SpaceDetails = () => {
     tags: location.state?.tags || [],
     collaborators: location.state?.collaborators || [],
     creator_username: location.state?.creator_username || "",
+    country: location.state?.country || "",
+    city: location.state?.city || "",
+    district: location.state?.district || "",
+    street: location.state?.street || "",
   });
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -232,6 +237,32 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+
+  // Location editing states
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [countries, setCountries] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [streets, setStreets] = useState([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingStreets, setLoadingStreets] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  
+  // Node creation location states
+  const [newNodeLocation, setNewNodeLocation] = useState({
+    country: '',
+    city: '',
+    district: '',
+    street: '',
+    latitude: null,
+    longitude: null,
+    location_name: ''
+  });
+  const [showLocationSection, setShowLocationSection] = useState(false);
+  
+  // Space map modal state
+  const [showSpaceMap, setShowSpaceMap] = useState(false);
 
   const {
     nodes,
@@ -280,11 +311,16 @@ const SpaceDetails = () => {
           tags: spaceResponse.data.tags || [],
           collaborators: spaceResponse.data.collaborators || [],
           creator_username: spaceResponse.data.creator_username,
+          country: spaceResponse.data.country || "",
+          city: spaceResponse.data.city || "",
+          district: spaceResponse.data.district || "",
+          street: spaceResponse.data.street || "",
         });
 
         const username = localStorage.getItem("username");
         const isUserCollaborator =
-          spaceResponse.data.collaborators.includes(username);
+          spaceResponse.data.collaborators.includes(username) || 
+          spaceResponse.data.creator_username === username;
         setIsCollaborator(isUserCollaborator);
 
         const snapshotsResponse = await api.get(API_ENDPOINTS.SNAPSHOTS(id), {
@@ -315,6 +351,317 @@ const SpaceDetails = () => {
     fetchData();
   }, [id, fetchGraphData]);
 
+  // Fetch countries on mount
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const res = await fetch("https://countriesnow.space/api/v0.1/countries/positions");
+        const data = await res.json();
+        setCountries(data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch countries", err);
+      }
+    };
+    fetchCountries();
+  }, []);
+
+  // Fetch cities when country changes
+  useEffect(() => {
+    if (space.country && isEditingLocation) {
+      const fetchCities = async () => {
+        setLoadingCities(true);
+        try {
+          const res = await fetch("https://countriesnow.space/api/v0.1/countries/cities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: space.country }),
+          });
+          const data = await res.json();
+          if (data.error === false) {
+            setCities(data.data || []);
+          } else {
+            console.error("API Error:", data.msg);
+            setCities([]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch cities", err);
+          setCities([]);
+        } finally {
+          setLoadingCities(false);
+        }
+      };
+      fetchCities();
+    } else {
+      setCities([]);
+    }
+  }, [space.country, isEditingLocation]);
+
+  // Fetch districts when city changes using Nominatim API
+  useEffect(() => {
+    if (space.city && space.country && isEditingLocation) {
+      const fetchDistricts = async () => {
+        setLoadingDistricts(true);
+        try {
+          const query = `${space.city}, ${space.country}`;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&featuretype=settlement`
+          );
+          const data = await res.json();
+          
+          // Extract unique districts/suburbs from the results
+          const districtSet = new Set();
+          data.forEach(item => {
+            if (item.address) {
+              // Try different address components that might represent districts
+              const district = item.address.suburb || 
+                              item.address.district || 
+                              item.address.neighbourhood || 
+                              item.address.quarter ||
+                              item.address.city_district;
+              if (district && district !== space.city) {
+                districtSet.add(district);
+              }
+            }
+          });
+          
+          const uniqueDistricts = Array.from(districtSet).slice(0, 20); // Limit to 20
+          setDistricts(uniqueDistricts.length > 0 ? uniqueDistricts : [
+            `${space.city} Central`,
+            `${space.city} Downtown`,
+            `${space.city} Old Town`
+          ]);
+        } catch (err) {
+          console.error("Failed to fetch districts", err);
+          // Fallback to generic districts
+          setDistricts([
+            `${space.city} Central`,
+            `${space.city} Downtown`,
+            `${space.city} Old Town`
+          ]);
+        } finally {
+          setLoadingDistricts(false);
+        }
+      };
+      fetchDistricts();
+    } else {
+      setDistricts([]);
+    }
+  }, [space.city, space.country, isEditingLocation]);
+
+  // Fetch streets when district changes using Nominatim API
+  useEffect(() => {
+    if (space.district && space.city && space.country && isEditingLocation) {
+      const fetchStreets = async () => {
+        setLoadingStreets(true);
+        try {
+          const query = `${space.district}, ${space.city}, ${space.country}`;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=20&featuretype=way&class=highway`
+          );
+          const data = await res.json();
+          
+          // Extract unique street names
+          const streetSet = new Set();
+          data.forEach(item => {
+            if (item.address && item.address.road) {
+              streetSet.add(item.address.road);
+            }
+            // Also check display_name for street patterns
+            if (item.display_name) {
+              const parts = item.display_name.split(',');
+              if (parts.length > 0) {
+                const streetPart = parts[0].trim();
+                if (streetPart && (streetPart.includes('Street') || streetPart.includes('Avenue') || 
+                    streetPart.includes('Road') || streetPart.includes('Boulevard') || 
+                    streetPart.includes('Lane') || streetPart.includes('Way'))) {
+                  streetSet.add(streetPart);
+                }
+              }
+            }
+          });
+          
+          const uniqueStreets = Array.from(streetSet).slice(0, 15); // Limit to 15
+          setStreets(uniqueStreets.length > 0 ? uniqueStreets : [
+            `${space.district} Main Street`,
+            `${space.district} Central Avenue`,
+            `${space.district} Park Road`
+          ]);
+        } catch (err) {
+          console.error("Failed to fetch streets", err);
+          // Fallback to generic streets
+          setStreets([
+            `${space.district} Main Street`,
+            `${space.district} Central Avenue`,
+            `${space.district} Park Road`
+          ]);
+        } finally {
+          setLoadingStreets(false);
+        }
+      };
+      fetchStreets();
+    } else {
+      setStreets([]);
+    }
+  }, [space.district, space.city, space.country, isEditingLocation]);
+
+  // Fetch cities for new node when country changes
+  useEffect(() => {
+    if (newNodeLocation.country && showLocationSection) {
+      const fetchCitiesForNewNode = async () => {
+        setLoadingCities(true);
+        
+        // Turkish cities fallback for when API is slow
+        const turkishCities = [
+          "Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Adana", "Konya", 
+          "Gaziantep", "Mersin", "Diyarbakir", "Kayseri", "Eskisehir", "Urfa", 
+          "Malatya", "Erzurum", "Van", "Batman", "Elazig", "Denizli", "Samsun",
+          "Kahramanmaras", "Adapazari", "Trabzon", "Manisa", "Balikesir", "Aydin",
+          "Tekirdag", "Sivas", "Afyon", "Isparta", "Inegol", "Ordu", "Usak",
+          "Corlu", "Kutahya", "Edirne", "Soma", "Rize", "Giresun", "Tokat"
+        ];
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+          const res = await fetch("https://countriesnow.space/api/v0.1/countries/cities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: newNodeLocation.country }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          const data = await res.json();
+          if (data.error === false) {
+            setCities(data.data || []);
+          } else {
+            console.error("API Error:", data.msg);
+            // Use fallback for Turkey if API returns error
+            if (newNodeLocation.country.toLowerCase() === 'turkey') {
+              setCities(turkishCities);
+            } else {
+              setCities([]);
+            }
+          }
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            console.log('City fetch timed out, using fallback cities');
+            // Use fallback cities for Turkey when request times out
+            if (newNodeLocation.country.toLowerCase() === 'turkey') {
+              setCities(turkishCities);
+            } else {
+              setCities([]);
+            }
+          } else {
+            console.error("Failed to fetch cities", err);
+            // Use fallback for Turkey on any error
+            if (newNodeLocation.country.toLowerCase() === 'turkey') {
+              setCities(turkishCities);
+            } else {
+              setCities([]);
+            }
+          }
+        } finally {
+          setLoadingCities(false);
+        }
+      };
+      fetchCitiesForNewNode();
+    } else {
+      setCities([]);
+    }
+  }, [newNodeLocation.country, showLocationSection]);
+
+  // Fetch districts for new node when city changes
+  useEffect(() => {
+    if (newNodeLocation.city && newNodeLocation.country && showLocationSection) {
+      const fetchDistrictsForNewNode = async () => {
+        setLoadingDistricts(true);
+        try {
+          const query = `${newNodeLocation.city}, ${newNodeLocation.country}`;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&featuretype=settlement`
+          );
+          const data = await res.json();
+          
+          const districtSet = new Set();
+          data.forEach(item => {
+            if (item.address) {
+              const district = item.address.suburb || 
+                              item.address.district || 
+                              item.address.neighbourhood || 
+                              item.address.quarter ||
+                              item.address.city_district;
+              if (district && district !== newNodeLocation.city) {
+                districtSet.add(district);
+              }
+            }
+          });
+          
+          if (districtSet.size > 0) {
+            setDistricts(Array.from(districtSet).sort());
+          } else {
+            setDistricts([
+              `${newNodeLocation.city} Central`,
+              `${newNodeLocation.city} North`,
+              `${newNodeLocation.city} South`
+            ]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch districts", err);
+          setDistricts([]);
+        } finally {
+          setLoadingDistricts(false);
+        }
+      };
+      fetchDistrictsForNewNode();
+    } else {
+      setDistricts([]);
+    }
+  }, [newNodeLocation.city, newNodeLocation.country, showLocationSection]);
+
+  // Fetch streets for new node when district changes
+  useEffect(() => {
+    if (newNodeLocation.district && newNodeLocation.city && newNodeLocation.country && showLocationSection) {
+      const fetchStreetsForNewNode = async () => {
+        setLoadingStreets(true);
+        try {
+          const query = `${newNodeLocation.district}, ${newNodeLocation.city}, ${newNodeLocation.country}`;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=20`
+          );
+          const data = await res.json();
+          
+          const streetSet = new Set();
+          data.forEach(item => {
+            if (item.address && item.address.road) {
+              streetSet.add(item.address.road);
+            }
+          });
+          
+          if (streetSet.size > 0) {
+            setStreets(Array.from(streetSet).sort());
+          } else {
+            setStreets([
+              `${newNodeLocation.district} Main Street`,
+              `${newNodeLocation.district} Central Avenue`,
+              `${newNodeLocation.district} Park Road`
+            ]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch streets", err);
+          setStreets([]);
+        } finally {
+          setLoadingStreets(false);
+        }
+      };
+      fetchStreetsForNewNode();
+    } else {
+      setStreets([]);
+    }
+  }, [newNodeLocation.district, newNodeLocation.city, newNodeLocation.country, showLocationSection]);
+
   const handleSearch = async () => {
     await search(query);
   };
@@ -324,11 +671,33 @@ const SpaceDetails = () => {
     if (!entityId) {
       setSelectedEntity(null);
       setEntityProperties([]);
+      // Reset location when no entity is selected
+      setNewNodeLocation({
+        country: '',
+        city: '',
+        district: '',
+        street: '',
+        latitude: null,
+        longitude: null,
+        location_name: ''
+      });
       return;
     }
 
     const entity = searchResults.find((entity) => entity.id === entityId);
     setSelectedEntity(entity);
+    
+    // Reset location for new entity
+    setNewNodeLocation({
+      country: '',
+      city: '',
+      district: '',
+      street: '',
+      latitude: null,
+      longitude: null,
+      location_name: ''
+    });
+    
     try {
       const properties = await fetchProperties(entityId);
       setEntityProperties(properties);
@@ -340,6 +709,77 @@ const SpaceDetails = () => {
 
   const handlePropertySelection = (newSelectedProperties) => {
     setSelectedProperties(newSelectedProperties);
+  };
+
+  const handleLocationChange = (field, value) => {
+    setSpace((prev) => ({ ...prev, [field]: value }));
+    
+    // Reset dependent fields when parent changes
+    if (field === 'country') {
+      setSpace((prev) => ({ ...prev, city: "", district: "", street: "" }));
+      setDistricts([]);
+      setStreets([]);
+    } else if (field === 'city') {
+      setSpace((prev) => ({ ...prev, district: "", street: "" }));
+      setStreets([]);
+    } else if (field === 'district') {
+      setSpace((prev) => ({ ...prev, street: "" }));
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    setUpdatingLocation(true);
+    try {
+      const response = await api.patch(
+        `/spaces/${id}/`,
+        {
+          country: space.country,
+          city: space.city,
+          district: space.district || null,
+          street: space.street || null,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Update the space with the response data
+      setSpace(prev => ({
+        ...prev,
+        country: response.data.country || "",
+        city: response.data.city || "",
+        district: response.data.district || "",
+        street: response.data.street || "",
+      }));
+
+      setIsEditingLocation(false);
+      alert("Location updated successfully!");
+    } catch (error) {
+      console.error("Error updating location:", error);
+      alert("Failed to update location. Please try again.");
+    } finally {
+      setUpdatingLocation(false);
+    }
+  };
+
+  // Node creation location functions
+  const handleNewNodeLocationChange = (field, value) => {
+    setNewNodeLocation((prev) => ({ ...prev, [field]: value }));
+    
+    // Reset dependent fields when parent changes
+    if (field === 'country') {
+      setNewNodeLocation((prev) => ({ ...prev, city: "", district: "", street: "" }));
+      setDistricts([]);
+      setStreets([]);
+    } else if (field === 'city') {
+      setNewNodeLocation((prev) => ({ ...prev, district: "", street: "" }));
+      setStreets([]);
+    } else if (field === 'district') {
+      setNewNodeLocation((prev) => ({ ...prev, street: "" }));
+    }
   };
 
   const handleJoinLeaveSpace = async () => {
@@ -369,6 +809,10 @@ const SpaceDetails = () => {
         tags: spaceResponse.data.tags || [],
         collaborators: spaceResponse.data.collaborators || [],
         creator_username: spaceResponse.data.creator_username,
+        country: spaceResponse.data.country || "",
+        city: spaceResponse.data.city || "",
+        district: spaceResponse.data.district || "",
+        street: spaceResponse.data.street || "",
       });
     } catch (error) {
       console.error("Error joining/leaving space:", error);
@@ -421,11 +865,51 @@ const SpaceDetails = () => {
           },
         }
       );
-      fetchGraphData();
+      
+      // Refresh graph data
+      await fetchGraphData();
+      
+      // If there's a selected node, we need to update it with fresh data
+      if (selectedNode) {
+        // Re-fetch the nodes to get updated data
+        const nodesResponse = await api.get(`/spaces/${id}/nodes/`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        // Find the updated node data
+        const updatedNodeData = nodesResponse.data.find(n => n.id.toString() === selectedNode.id);
+        if (updatedNodeData) {
+          // Create updated node object with new location data
+          const updatedNode = {
+            ...selectedNode,
+            data: {
+              ...selectedNode.data,
+              country: updatedNodeData.country || null,
+              city: updatedNodeData.city || null,
+              district: updatedNodeData.district || null,
+              street: updatedNodeData.street || null,
+              latitude: updatedNodeData.latitude || null,
+              longitude: updatedNodeData.longitude || null,
+              location_name: updatedNodeData.location_name || null,
+            },
+            // Also at top level for backward compatibility
+            country: updatedNodeData.country || null,
+            city: updatedNodeData.city || null,
+            district: updatedNodeData.district || null,
+            street: updatedNodeData.street || null,
+            latitude: updatedNodeData.latitude || null,
+            longitude: updatedNodeData.longitude || null,
+            location_name: updatedNodeData.location_name || null,
+          };
+          setSelectedNode(updatedNode);
+        }
+      }
     } catch (err) {
       console.error("Failed to refresh data after node update:", err);
     }
-  }, [id, fetchGraphData]);
+  }, [id, fetchGraphData, selectedNode]);
 
   const handleEdgeClick = useCallback((event, edge) => {
     setSelectedEdge(edge);
@@ -439,6 +923,22 @@ const SpaceDetails = () => {
     const isSuperuser =
       localStorage.getItem("is_superuser") === "true" ||
       (window.currentUser && window.currentUser.is_superuser);
+    return (
+      (space.creator_username && space.creator_username === username) ||
+      isStaff ||
+      isSuperuser
+    );
+  };
+
+  const canEditSpaceLocation = () => {
+    const username = localStorage.getItem("username");
+    const isStaff =
+      localStorage.getItem("is_staff") === "true" ||
+      (window.currentUser && window.currentUser.is_staff);
+    const isSuperuser =
+      localStorage.getItem("is_superuser") === "true" ||
+      (window.currentUser && window.currentUser.is_superuser);
+    
     return (
       (space.creator_username && space.creator_username === username) ||
       isStaff ||
@@ -494,6 +994,27 @@ const SpaceDetails = () => {
           <h2 style={{ margin: 0 }}>{space.title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
+              onClick={() => setShowSpaceMap(true)}
+              style={{
+                background: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#218838'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#28a745'}
+            >
+              🗺️ Show Space Map
+            </button>
+            <button
               className={isCollaborator ? "leave-button" : "join-button"}
               onClick={handleJoinLeaveSpace}
               data-testid={
@@ -547,6 +1068,214 @@ const SpaceDetails = () => {
           </div>
         </div>
         <p>{space.description}</p>
+        
+        {/* Location Section */}
+        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+            <h4 style={{ margin: 0 }}>Location:</h4>
+            {canEditSpaceLocation() && !isEditingLocation && (
+              <button
+                onClick={() => setIsEditingLocation(true)}
+                style={{
+                  background: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#0056b3'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#007bff'}
+              >
+                Edit Location
+              </button>
+            )}
+          </div>
+          
+          {!isEditingLocation ? (
+            // Display current location
+            <div style={{ 
+              padding: "10px", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "4px",
+              fontSize: "14px",
+              color: "#666"
+            }}>
+              {space.country || space.city || space.district || space.street ? (
+                [space.street, space.district, space.city, space.country]
+                  .filter(Boolean)
+                  .join(', ')
+              ) : (
+                "Location not specified"
+              )}
+            </div>
+          ) : (
+            // Edit location form
+            <div style={{ 
+              padding: "15px", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "4px",
+              border: "1px solid #ddd"
+            }}>
+              {/* Country */}
+              <div style={{ marginBottom: "10px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Country:
+                </label>
+                <select 
+                  value={space.country} 
+                  onChange={(e) => handleLocationChange('country', e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px"
+                  }}
+                  required
+                >
+                  <option value="">-- Select Country --</option>
+                  {countries.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* City */}
+              {space.country && (
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    City:
+                  </label>
+                  <select 
+                    value={space.city} 
+                    onChange={(e) => handleLocationChange('city', e.target.value)}
+                    disabled={loadingCities}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px"
+                    }}
+                    required
+                  >
+                    <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
+                    {cities.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingCities && (
+                    <small style={{ color: "#666", fontSize: "12px" }}>
+                      Fetching cities for {space.country}...
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {/* District */}
+              {space.city && (
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    District (optional):
+                  </label>
+                  <select 
+                    value={space.district} 
+                    onChange={(e) => handleLocationChange('district', e.target.value)}
+                    disabled={loadingDistricts}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px"
+                    }}
+                  >
+                    <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
+                    {districts.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingDistricts && (
+                    <small style={{ color: "#666", fontSize: "12px" }}>
+                      Fetching districts for {space.city}...
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {/* Street */}
+              {space.district && (
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Street (optional):
+                  </label>
+                  <select 
+                    value={space.street} 
+                    onChange={(e) => handleLocationChange('street', e.target.value)}
+                    disabled={loadingStreets}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px"
+                    }}
+                  >
+                    <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
+                    {streets.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingStreets && (
+                    <small style={{ color: "#666", fontSize: "12px" }}>
+                      Fetching streets for {space.district}...
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={handleUpdateLocation}
+                  disabled={updatingLocation || !space.country}
+                  style={{
+                    background: updatingLocation ? '#ccc' : 'var(--color-success)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    cursor: updatingLocation || !space.country ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {updatingLocation ? "Updating..." : "Update Location"}
+                </button>
+                <button
+                  onClick={() => setIsEditingLocation(false)}
+                  disabled={updatingLocation}
+                  style={{
+                    background: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    cursor: updatingLocation ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div style={{ marginTop: "10px", marginBottom: "20px" }}>
           {space.tags.map((tag) => (
             <span
@@ -788,6 +1517,219 @@ const SpaceDetails = () => {
                     initialLabel={edgeProperty.label}
                   />
                 </div>
+
+                {/* Location Section for New Node */}
+                <div style={{ marginTop: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
+                    <h5 style={{ margin: 0 }}>Location (Optional):</h5>
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationSection(!showLocationSection)}
+                      style={{
+                        background: showLocationSection ? '#dc3545' : '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {showLocationSection ? 'Hide Location' : 'Add Location'}
+                    </button>
+                  </div>
+
+                  {showLocationSection && (
+                    <div style={{ display: "grid", gap: "15px" }}>
+                      {/* Country */}
+                      <div>
+                        <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                          Country:
+                        </label>
+                        <select 
+                          value={newNodeLocation.country} 
+                          onChange={(e) => handleNewNodeLocationChange('country', e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "6px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            fontSize: "13px"
+                          }}
+                        >
+                          <option value="">-- Select Country --</option>
+                          {countries.map((c) => (
+                            <option key={c.name} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* City */}
+                      {newNodeLocation.country && (
+                        <div>
+                          <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                            City:
+                          </label>
+                          <select 
+                            value={newNodeLocation.city} 
+                            onChange={(e) => handleNewNodeLocationChange('city', e.target.value)}
+                            disabled={loadingCities}
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              fontSize: "13px"
+                            }}
+                          >
+                            <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
+                            {cities.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                          {loadingCities && (
+                            <small style={{ color: "#666", fontSize: "11px" }}>
+                              Fetching cities for {newNodeLocation.country}...
+                            </small>
+                          )}
+                        </div>
+                      )}
+
+                      {/* District */}
+                      {newNodeLocation.city && (
+                        <div>
+                          <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                            District (optional):
+                          </label>
+                          <select 
+                            value={newNodeLocation.district} 
+                            onChange={(e) => handleNewNodeLocationChange('district', e.target.value)}
+                            disabled={loadingDistricts}
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              fontSize: "13px"
+                            }}
+                          >
+                            <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
+                            {districts.map((d) => (
+                              <option key={d} value={d}>
+                                {d}
+                              </option>
+                            ))}
+                          </select>
+                          {loadingDistricts && (
+                            <small style={{ color: "#666", fontSize: "11px" }}>
+                              Fetching districts for {newNodeLocation.city}...
+                            </small>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Street */}
+                      {newNodeLocation.district && (
+                        <div>
+                          <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                            Street (optional):
+                          </label>
+                          <select 
+                            value={newNodeLocation.street} 
+                            onChange={(e) => handleNewNodeLocationChange('street', e.target.value)}
+                            disabled={loadingStreets}
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              fontSize: "13px"
+                            }}
+                          >
+                            <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
+                            {streets.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                          {loadingStreets && (
+                            <small style={{ color: "#666", fontSize: "11px" }}>
+                              Fetching streets for {newNodeLocation.district}...
+                            </small>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Manual Coordinates */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                        <div>
+                          <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                            Latitude:
+                          </label>
+                          <input 
+                            type="number"
+                            step="any"
+                            value={newNodeLocation.latitude || ''} 
+                            onChange={(e) => handleNewNodeLocationChange('latitude', parseFloat(e.target.value) || null)}
+                            placeholder="e.g., 41.0082"
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              fontSize: "13px"
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                            Longitude:
+                          </label>
+                          <input 
+                            type="number"
+                            step="any"
+                            value={newNodeLocation.longitude || ''} 
+                            onChange={(e) => handleNewNodeLocationChange('longitude', parseFloat(e.target.value) || null)}
+                            placeholder="e.g., 28.9784"
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              fontSize: "13px"
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Location Name */}
+                      <div>
+                        <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                          Location Name (optional):
+                        </label>
+                        <input 
+                          type="text"
+                          value={newNodeLocation.location_name} 
+                          onChange={(e) => handleNewNodeLocationChange('location_name', e.target.value)}
+                          placeholder="Enter location name manually"
+                          style={{
+                            width: "100%",
+                            padding: "6px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            fontSize: "13px"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   style={{ marginTop: "20px" }}
                   disabled={!selectedEntity}
@@ -808,6 +1750,7 @@ const SpaceDetails = () => {
                           edge_label: edgeProperty.label,
                           wikidata_property_id: edgeProperty.id,
                           is_new_node_source: isNewNodeSource,
+                          location: newNodeLocation,
                         },
                         {
                           headers: {
@@ -974,6 +1917,8 @@ const SpaceDetails = () => {
           onNodeDelete={handleNodeDelete}
           onNodeUpdate={handleNodeUpdate}
           spaceId={id}
+          currentUser={localStorage.getItem("username")}
+          spaceCreator={space.creator_username}
         />
       )}
 
@@ -989,6 +1934,15 @@ const SpaceDetails = () => {
         />
       )}
 
+      {/* Space Map Modal */}
+      <SpaceMapModal
+        isOpen={showSpaceMap}
+        onClose={() => setShowSpaceMap(false)}
+        spaceId={id}
+        spaceTitle={space.title}
+      />
+
+      {/* Report Modal */}
       {showReportModal && (
         <ReportModal
           contentId={id}

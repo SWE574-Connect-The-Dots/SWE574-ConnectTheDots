@@ -71,7 +71,23 @@ const useGraphData = (spaceId) => {
         data: {
           label: node.label,
           wikidata_id: node.wikidata_id || null,
+          // Include location data
+          country: node.country || null,
+          city: node.city || null,
+          district: node.district || null,
+          street: node.street || null,
+          latitude: node.latitude || null,
+          longitude: node.longitude || null,
+          location_name: node.location_name || null,
         },
+        // Also include location data at top level for backward compatibility
+        country: node.country || null,
+        city: node.city || null,
+        district: node.district || null,
+        street: node.street || null,
+        latitude: node.latitude || null,
+        longitude: node.longitude || null,
+        location_name: node.location_name || null,
       }));
 
       const edgesDataArray = Array.isArray(edgesData) ? edgesData : [];
