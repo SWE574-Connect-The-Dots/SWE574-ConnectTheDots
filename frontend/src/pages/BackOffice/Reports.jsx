@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import reportsMockData from "../../data/reportsMock.json";
+import api from "../../axiosConfig";
+import { API_ENDPOINTS } from "../../constants/config";
 
 export default function Reports() {
   const [reports, setReports] = useState([]);
@@ -7,6 +9,10 @@ export default function Reports() {
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  // TODO Backend data (not yet wired to UI)
+  const [backendReports, setBackendReports] = useState([]);
+  const [backendReasons, setBackendReasons] = useState(null);
+  const [backendError, setBackendError] = useState(null);
 
   useEffect(() => {
     const normalizedReports = reportsMockData.map((report) => ({
@@ -14,6 +20,34 @@ export default function Reports() {
       itemType: report.itemType === "Discussion" ? "Comment" : report.itemType,
     }));
     setReports(normalizedReports);
+  }, []);
+
+  // TODO: Fetch backend reports and reasons on load (no UI integration yet)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBackendData = async () => {
+      try {
+        setBackendError(null);
+        const [reasonsRes, reportsRes] = await Promise.all([
+          api.get(API_ENDPOINTS.REPORTS_REASONS),
+          api.get(API_ENDPOINTS.REPORTS),
+        ]);
+        if (!isMounted) return;
+        setBackendReasons(reasonsRes.data);
+        setBackendReports(Array.isArray(reportsRes.data) ? reportsRes.data : reportsRes.data?.results || []);
+        // TODO: For now, do not merge into existing UI; keeping mock-driven table
+        console.debug("Loaded backend reasons:", reasonsRes.data);
+        console.debug("Loaded backend reports:", reportsRes.data);
+      } catch (e) {
+        if (!isMounted) return;
+        setBackendError(e?.response?.data || e?.message || "Failed to load reports");
+        console.error("Back-office reports load error:", e);
+      }
+    };
+    fetchBackendData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSort = (field) => {

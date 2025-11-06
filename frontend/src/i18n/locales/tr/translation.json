@@ -21,7 +21,8 @@
     "yes": "Evet",
     "no": "Hayır",
     "processing": "İşleniyor...",
-    "searching": "Aranıyor..."
+    "searching": "Aranıyor...",
+    "report": "Raporla"
   },
   "auth": {
     "login": "Giriş Yap",
@@ -72,7 +73,7 @@
     "join": "KATIL",
     "leave": "AYRIL",
     "confirmDelete": "Silmeyi Onayla",
-    "confirmDeleteMessage": "\"{title}\" alanını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "confirmDeleteMessage": "\"{{title}}\" alanını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     "deleting": "Siliniyor...",
     "title": "Başlık",
     "description": "Açıklama",

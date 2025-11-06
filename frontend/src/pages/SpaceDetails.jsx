@@ -1063,7 +1063,7 @@ const SpaceDetails = () => {
                 cursor: "pointer",
               }}
             >
-              {t("backoffice.reports")}
+              {t("common.report")}
             </button>
           </div>
         </div>
@@ -1945,8 +1945,8 @@ const SpaceDetails = () => {
       {/* Report Modal */}
       {showReportModal && (
         <ReportModal
-          contentId={id}
-          contentType="Space"
+          contentId={parseInt(id, 10)}
+          contentType="space"
           contentTitle={space.title}
           onClose={() => setShowReportModal(false)}
         />

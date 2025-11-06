@@ -21,7 +21,8 @@
     "yes": "Yes",
     "no": "No",
     "processing": "Processing...",
-    "searching": "Searching..."
+    "searching": "Searching...",
+    "report": "Report"
   },
   "auth": {
     "login": "Login",
@@ -72,7 +73,7 @@
     "join": "JOIN",
     "leave": "LEAVE",
     "confirmDelete": "Confirm Delete",
-    "confirmDeleteMessage": "Are you sure you want to delete the space \"{title}\"? This action cannot be undone.",
+    "confirmDeleteMessage": "Are you sure you want to delete the space \"{{title}}\"? This action cannot be undone.",
     "deleting": "Deleting...",
     "title": "Title",
     "description": "Description",
