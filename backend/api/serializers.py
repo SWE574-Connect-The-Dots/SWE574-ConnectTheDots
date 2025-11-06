@@ -374,6 +374,7 @@ class ReportSerializer(serializers.ModelSerializer):
             try:
                 discussion = Discussion.objects.get(id=content_id)
                 space_obj = discussion.space
+                attrs['_discussion_user_id'] = discussion.user_id
             except Discussion.DoesNotExist:
                 raise serializers.ValidationError({'content_id': 'Discussion not found'})
         elif content_type == Report.CONTENT_PROFILE:
@@ -392,6 +393,9 @@ class ReportSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Authentication required')
 
         space_obj = validated_data.pop('_resolved_space', None)
+        discussion_owner_id = validated_data.pop('_discussion_user_id', None)
+        if discussion_owner_id and int(discussion_owner_id) == int(user.id):
+            raise serializers.ValidationError({'content_id': 'You cannot report your own discussion'})
         report = Report.objects.create(
             reporter=user,
             space=space_obj,

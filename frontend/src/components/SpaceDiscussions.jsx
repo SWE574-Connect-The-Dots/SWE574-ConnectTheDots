@@ -201,7 +201,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         }}
                       >
                         <strong>{discussion.username}</strong>
-                        {isLoggedIn && (
+                        {isLoggedIn && discussion.username !== currentUsername && (
                           <button
                             onClick={() => {
                               setReportingDiscussion(discussion);
