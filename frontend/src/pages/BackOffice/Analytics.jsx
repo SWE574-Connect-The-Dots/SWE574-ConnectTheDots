@@ -131,16 +131,34 @@ export default function Analytics() {
         style={{
           display: "flex",
           flexTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-          gap: "20px",
-          marginTop: "30px",
+          gap: "16px",
+          marginTop: "20px",
         }}
-      >
-        <StatCard
-          title="Total Users"
-          value={data.users.total.toLocaleString()}
-          change={`${data.users.growth_rate}%`}
-          changeDirection="up"
-        />
+      > 
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/dc914d3e-a99d-4cb4-b0d6-92d54fb9859a/connectthedots-total-user-growth-analytics?orgId=1&from=1759803126128&to=1762395126128&timezone=browser&refresh=5m&theme=light&panelId=panel-1&__feature.dashboardSceneSolo=true" 
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
         <StatCard
           title="New Users This Month"
           value={data.users.new_this_month.toLocaleString()}
