@@ -216,7 +216,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                             }}
                             title={t("discussion.reportComment")}
                           >
-                            {t("backoffice.reports")}
+                            {t("common.report")}
                           </button>
                         )}
                       </div>

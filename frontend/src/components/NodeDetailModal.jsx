@@ -970,7 +970,7 @@ const NodeDetailModal = ({
                 padding: "5px 10px",
               }}
             >
-              {t("backoffice.reports")}
+              {t("common.report")}
             </button>
             <button onClick={handleModalClose} className="close-button">
               ×

@@ -229,7 +229,7 @@ const Profile = () => {
                 padding: "2px 5px",
               }}
             >
-              {t("backoffice.reports")} {t("profile.profile")}
+              {t("common.report")} {t("profile.profile")}
             </button>
           )}
         </div>

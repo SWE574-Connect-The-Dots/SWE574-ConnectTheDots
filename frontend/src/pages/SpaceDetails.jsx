@@ -1063,7 +1063,7 @@ const SpaceDetails = () => {
                 cursor: "pointer",
               }}
             >
-              {t("backoffice.reports")}
+              {t("common.report")}
             </button>
           </div>
         </div>
