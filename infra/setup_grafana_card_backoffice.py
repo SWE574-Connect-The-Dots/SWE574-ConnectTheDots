@@ -9,21 +9,23 @@ import requests
 import time
 import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-from sympy import false
+# Load environment variables from backend/.env file
+load_dotenv('../backend/.env')
 
-# Grafana configuration
-GRAFANA_URL = "http://localhost:3001"
-GRAFANA_USERNAME = "admin"
-GRAFANA_PASSWORD = "admin"
+# Grafana configuration (from .env file)
+GRAFANA_URL = os.getenv("GRAFANA_URL", "http://localhost:3001")
+GRAFANA_USERNAME = os.getenv("GRAFANA_USERNAME", "admin")
+GRAFANA_PASSWORD = os.getenv("GRAFANA_PASSWORD", "admin")
 
-# PostgreSQL configuration (from docker-compose setup)
+# PostgreSQL configuration (from .env file)
 POSTGRES_CONFIG = {
-    "host": "db",
-    "port": "5432",
-    "database": "mydb",
-    "username": "myuser",
-    "password": "yy"
+    "host": os.getenv("POSTGRES_HOST", "db"),
+    "port": os.getenv("POSTGRES_PORT", "5432"),
+    "database": os.getenv("POSTGRES_DB", "mydb"),
+    "username": os.getenv("POSTGRES_USER", "myuser"),
+    "password": os.getenv("POSTGRES_PASSWORD", "yy")
 }
 
 def wait_for_grafana():
