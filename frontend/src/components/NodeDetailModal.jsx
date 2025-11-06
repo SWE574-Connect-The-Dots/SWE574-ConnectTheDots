@@ -1557,7 +1557,7 @@ const NodeDetailModal = ({
         <div>
           <ReportModal
             contentId={node.id}
-            contentType="Node"
+            contentType="node"
             contentTitle={node.data.label}
             onClose={() => setShowReportModal(false)}
           />

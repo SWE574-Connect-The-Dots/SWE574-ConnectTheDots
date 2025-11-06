@@ -384,9 +384,9 @@ const Profile = () => {
       </div>
       {showReportModal && (
         <ReportModal
-          contentId={username}
-          contentType="Profile"
-          contentTitle={`${username}'s Profile`}
+          contentId={user?.user?.id}
+          contentType="profile"
+          contentTitle={`${user?.user?.username}'s Profile`}
           onClose={() => setShowReportModal(false)}
         />
       )}

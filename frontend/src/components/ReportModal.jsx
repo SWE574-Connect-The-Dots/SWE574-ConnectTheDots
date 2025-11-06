@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
+import api from "../axiosConfig";
+import { API_ENDPOINTS } from "../constants/config";
 import useClickOutside from "../hooks/useClickOutside";
 
 const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
@@ -9,31 +11,31 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [reasonsPayload, setReasonsPayload] = useState(null);
+  const [reasonsLoading, setReasonsLoading] = useState(true);
 
-  const commonReasons = [
-    t("report.inappropriateContent"),
-    t("report.misinformation"),
-    t("report.spam"),
-    t("report.harassment"),
-    t("report.other"),
-  ];
+  useEffect(() => {
+    const fetchReasons = async () => {
+      try {
+        setReasonsLoading(true);
+        const res = await api.get(API_ENDPOINTS.REPORTS_REASONS);
+        setReasonsPayload(res.data);
+      } catch (e) {
+        console.error("Failed to load report reasons", e);
+        setError(t("report.submitFailed"));
+      } finally {
+        setReasonsLoading(false);
+      }
+    };
+    fetchReasons();
+  }, [t]);
 
-  const specificReasons = {
-    Space: [t("report.duplicateSpace"), t("report.misleadingTitle")],
-    Node: [t("report.inaccurateInfo"), t("report.duplicateNode"), t("report.unverifiedSource")],
-    Discussion: [t("report.offTopic"), t("report.offensiveLanguage")],
-    Profile: [t("report.fakeAccount"), t("report.impersonation")],
-  };
-
-  console.log("contentType:", contentType);
-  console.log("specificReasons for this type:", specificReasons[contentType]);
-
-  const reportReasons = [
-    ...commonReasons,
-    ...(specificReasons[contentType] || []),
-  ];
-
-  console.log("All reportReasons:", reportReasons);
+  const options = useMemo(() => {
+    if (!reasonsPayload) return [];
+    const key = String(contentType).toLowerCase();
+    const entries = reasonsPayload?.reasons?.[key] || [];
+    return entries.map(({ code, label }) => ({ code, label }));
+  }, [reasonsPayload, contentType]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,19 +49,22 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
     setError(null);
 
     try {
-      const reportData = {
-        contentId,
-        contentType,
+      const payload = {
+        content_type: String(contentType).toLowerCase(),
+        content_id: contentId,
         reason: reason,
       };
-      console.log("Report data:", reportData);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await api.post(API_ENDPOINTS.REPORTS, payload, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       setSuccess(true);
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, 1500);
     } catch (err) {
       console.error("Error submitting report:", err);
       setError(t("report.submitFailed"));
@@ -123,11 +128,15 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
                   }}
                 >
                   <option value="">{t("report.selectReasonPlaceholder")}</option>
-                  {reportReasons.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
+                  {reasonsLoading ? (
+                    <option disabled>{t("common.loading")}</option>
+                  ) : (
+                    options.map((opt) => (
+                      <option key={opt.code} value={opt.code}>
+                        {opt.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

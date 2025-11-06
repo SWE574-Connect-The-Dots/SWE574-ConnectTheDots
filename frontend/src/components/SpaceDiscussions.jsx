@@ -312,7 +312,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       {reportingDiscussion && (
         <ReportModal
           contentId={reportingDiscussion.id}
-          contentType="Discussion"
+          contentType="discussion"
           contentTitle={`Comment by ${reportingDiscussion.username}`}
           onClose={() => setReportingDiscussion(null)}
         />

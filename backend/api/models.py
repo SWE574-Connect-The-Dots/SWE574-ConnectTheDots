@@ -28,6 +28,8 @@ class Profile(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     location_name = models.CharField(max_length=255, blank=True, null=True)
+    report_count = models.IntegerField(default=0)
+    is_reported = models.BooleanField(default=False)
 
     # optional helper
     def location_display(self):
@@ -90,6 +92,8 @@ class Space(models.Model):
     street = models.CharField(max_length=150, blank=True, null=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    report_count = models.IntegerField(default=0)
+    is_reported = models.BooleanField(default=False)
     
     def __str__(self):
         return self.title
@@ -143,6 +147,8 @@ class Node(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     location_name = models.CharField(max_length=255, blank=True, null=True)
+    report_count = models.IntegerField(default=0)
+    is_reported = models.BooleanField(default=False)
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
@@ -164,6 +170,8 @@ class Discussion(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
+    report_count = models.IntegerField(default=0)
+    is_reported = models.BooleanField(default=False)
     
     def __str__(self):
         return f"Comment by {self.user.username} in {self.space.title}"
@@ -191,4 +199,47 @@ class DiscussionReaction(models.Model):
     def __str__(self):
         label = '👍' if self.value == self.UPVOTE else '👎'
         return f"{self.user.username} {label} discussion {self.discussion_id}"
+
+
+class Report(models.Model):
+    CONTENT_SPACE = 'space'
+    CONTENT_NODE = 'node'
+    CONTENT_DISCUSSION = 'discussion'
+    CONTENT_PROFILE = 'profile'
+    CONTENT_TYPE_CHOICES = [
+        (CONTENT_SPACE, 'Space'),
+        (CONTENT_NODE, 'Node'),
+        (CONTENT_DISCUSSION, 'Discussion'),
+        (CONTENT_PROFILE, 'Profile'),
+    ]
+
+    STATUS_OPEN = 'OPEN'
+    STATUS_DISMISSED = 'DISMISSED'
+    STATUS_ARCHIVED = 'ARCHIVED'
+    STATUS_CHOICES = [
+        (STATUS_OPEN, 'Open'),
+        (STATUS_DISMISSED, 'Dismissed'),
+        (STATUS_ARCHIVED, 'Archived'),
+    ]
+
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES)
+    content_id = models.IntegerField()
+
+    reason = models.CharField(max_length=64)
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['content_type', 'content_id']),
+            models.Index(fields=['space']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Report({self.content_type} #{self.content_id}, {self.reason}, {self.status})"
 

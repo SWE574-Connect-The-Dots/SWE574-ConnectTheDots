@@ -7,6 +7,7 @@ from .views import (
     SpaceViewSet, 
     TagViewSet, 
     ProfileViewSet,
+    ReportViewSet,
     assign_moderator,
     change_user_type,
     remove_moderator,
@@ -18,6 +19,7 @@ router = DefaultRouter()
 router.register(r'spaces', SpaceViewSet, basename='space')
 router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'profiles', ProfileViewSet, basename='profile')
+router.register(r'reports', ReportViewSet, basename='report')
 
 urlpatterns = [
     path('', include(router.urls)),
