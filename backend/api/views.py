@@ -211,7 +211,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
         
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        space = serializer.save(creator=self.request.user)
+        # Ensure the creator is also recorded as a moderator of this space
+        try:
+            SpaceModerator.objects.get_or_create(
+                user=self.request.user,
+                space=space,
+                defaults={'assigned_by': self.request.user}
+            )
+        except Exception:
+            pass
         
     def create(self, request, *args, **kwargs):
         if 'tags' in request.data and isinstance(request.data['tags'], list):
@@ -866,9 +875,10 @@ class ReportViewSet(viewsets.ModelViewSet):
         # Admins can see all
         if user.is_staff or user.is_superuser or user.profile.is_admin():
             return qs
-        # Moderators can only see reports in spaces they moderate, and not profile reports (space is null)
-        if user.profile.is_moderator():
-            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+        # Moderators (either profile flag OR having SpaceModerator rows) can only see reports
+        # in spaces they moderate, and not profile reports (space is null)
+        moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+        if user.profile.is_moderator() or len(moderated_space_ids) > 0:
             return qs.filter(space_id__in=moderated_space_ids).exclude(content_type=Report.CONTENT_PROFILE)
         # Regular users: no listing
         return qs.none()
