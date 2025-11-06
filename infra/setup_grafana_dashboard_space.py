@@ -97,7 +97,7 @@ def create_postgresql_datasource(session):
         print(f"Response: {response.text}")
         return None
 
-def create_user_growth_dashboard(session):
+def create_space_growth_dashboard(session):
     """Create dashboard showing space creation analytics over time"""
     
     # SQL query for daily total spaces (cumulative)
@@ -403,7 +403,7 @@ def main():
         time.sleep(2)
         
         # Create dashboard
-        dashboard = create_user_growth_dashboard(session)
+        dashboard = create_space_growth_dashboard(session)
         if not dashboard:
             print("Failed to create dashboard")
             return False
