@@ -149,7 +149,7 @@ export default function Analytics() {
           }}
         >
           <iframe
-            src="http://localhost:3001/d-solo/dc914d3e-a99d-4cb4-b0d6-92d54fb9859a/connectthedots-total-user-growth-analytics?orgId=1&from=1759803126128&to=1762395126128&timezone=browser&refresh=5m&theme=light&panelId=panel-1&__feature.dashboardSceneSolo=true" 
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-1&__feature.dashboardSceneSolo=true"
             width="100%"
             height="120px"
             frameBorder="0"
@@ -159,18 +159,78 @@ export default function Analytics() {
             }}
           ></iframe>
         </div>
-        <StatCard
-          title="New Users This Month"
-          value={data.users.new_this_month.toLocaleString()}
-        />
-        <StatCard
-          title="Total Spaces"
-          value={data.spaces.total.toLocaleString()}
-        />
-        <StatCard
-          title="New Spaces This Month"
-          value={data.spaces.new_this_month.toLocaleString()}
-        />
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-2&__feature.dashboardSceneSolo=true"
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-3&__feature.dashboardSceneSolo=true"
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-4&__feature.dashboardSceneSolo=true"
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
       </div>
 
       <SectionHeader
@@ -185,22 +245,102 @@ export default function Analytics() {
           marginTop: "30px",
         }}
       >
-        <StatCard
-          title="Total Nodes"
-          value={data.nodes.total.toLocaleString()}
-        />
-        <StatCard
-          title="New Nodes This Month"
-          value={data.nodes.created_this_month.toLocaleString()}
-        />
-        <StatCard
-          title="Total Edges"
-          value={data.edges.total.toLocaleString()}
-        />
-        <StatCard
-          title="New Edges This Month"
-          value={data.edges.created_this_month.toLocaleString()}
-        />
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-5&__feature.dashboardSceneSolo=true"
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-6&__feature.dashboardSceneSolo=true" 
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-7&__feature.dashboardSceneSolo=true"
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
+        <div
+          style={{
+            backgroundColor: "var(--color-white)",
+            borderRadius: "8px",
+            padding: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            width: "220px", 
+            height: "140px",
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <iframe
+            src="http://localhost:3001/d-solo/d5c878d6-2b00-4fce-90e6-4240c4c09d53/connectthedots-back-office-numerics-analytics?orgId=1&from=1759816786925&to=1762408786925&timezone=browser&refresh=5m&theme=light&panelId=panel-8&__feature.dashboardSceneSolo=true" 
+            width="100%"
+            height="120px"
+            frameBorder="0"
+            style={{
+              borderRadius: "8px",
+              border: "none",
+            }}
+          ></iframe>
+        </div>
       </div>
 
       <SectionHeader
