@@ -338,12 +338,15 @@ class DiscussionSerializer(serializers.ModelSerializer):
 
 class ReportSerializer(serializers.ModelSerializer):
     reporter_username = serializers.ReadOnlyField(source='reporter.username')
+    entity_report_count = serializers.SerializerMethodField()
+    entity_is_reported = serializers.SerializerMethodField()
 
     class Meta:
         model = Report
         fields = [
             'id', 'content_type', 'content_id', 'reason', 'status',
-            'space', 'reporter', 'reporter_username', 'created_at', 'updated_at'
+            'space', 'reporter', 'reporter_username', 'created_at', 'updated_at',
+            'entity_report_count', 'entity_is_reported'
         ]
         read_only_fields = ['status', 'space', 'reporter', 'reporter_username', 'created_at', 'updated_at']
 
@@ -402,3 +405,22 @@ class ReportSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return report
+
+    def _get_target_entity(self, obj):
+        if obj.content_type == Report.CONTENT_SPACE:
+            return Space.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_NODE:
+            return Node.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_DISCUSSION:
+            return Discussion.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_PROFILE:
+            return Profile.objects.filter(user__id=obj.content_id).first()
+        return None
+
+    def get_entity_report_count(self, obj):
+        target = self._get_target_entity(obj)
+        return getattr(target, 'report_count', None) if target else None
+
+    def get_entity_is_reported(self, obj):
+        target = self._get_target_entity(obj)
+        return getattr(target, 'is_reported', None) if target else None
