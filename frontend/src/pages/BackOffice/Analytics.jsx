@@ -6,6 +6,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState("monthly");
   const [activeTab, setActiveTab] = useState("users");
+  const [selectedPanel, setSelectedPanel] = useState("panel-1");
 
   useEffect(() => {
     setData(analyticsData);
@@ -280,33 +281,176 @@ export default function Analytics() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "300px",
-          }}
-        >
+        <div>
           {activeTab === "users" && (
-            <div
-              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
-            >
-              <p>User graph will be here.</p>
+            <div>
+              <div style={{ textAlign: "center", marginBottom: "10px" }}>
+                <button
+                  onClick={() => setSelectedPanel(1)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 1 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 1 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(2)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 2 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 2 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(3)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 3 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 3 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Monthly
+                </button>
+              </div>
+
+              <iframe
+                key={selectedPanel} // re-render when panel changes //change ip before pr
+                src={`http://localhost:3001/d-solo/17bba15f-5cf5-4e4f-b26f-4c6130594eb5/connectthedots-user-growth-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                width="100%"
+                height="400"
+                frameBorder="0"
+                style={{ borderRadius: "8px" }}
+              ></iframe>
             </div>
           )}
           {activeTab === "nodes" && (
-            <div
-              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
-            >
-              <p>Node graph will be here.</p>
+            <div>
+              <div style={{ textAlign: "center", marginBottom: "10px" }}>
+                <button
+                  onClick={() => setSelectedPanel(1)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 1 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 1 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(2)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 2 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 2 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(3)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 3 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 3 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Monthly
+                </button>
+              </div>
+
+              <iframe
+                key={selectedPanel} // re-render when panel changes //change ip before pr
+                src={`http://localhost:3001/d-solo/82544b7e-ff84-4bef-8e0c-7f86efca450f/connectthedots-node-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                width="100%"
+                height="400"
+                frameBorder="0"
+                style={{ borderRadius: "8px" }}
+              ></iframe>
             </div>
           )}
           {activeTab === "spaces" && (
-            <div
-              style={{ textAlign: "center", color: "var(--color-gray-400)" }}
-            >
-              <p>Space graph will be here.</p>
+            <div>
+              <div style={{ textAlign: "center", marginBottom: "10px" }}>
+                <button
+                  onClick={() => setSelectedPanel(1)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 1 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 1 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(2)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 2 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 2 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setSelectedPanel(3)}
+                  style={{
+                    padding: "6px 12px",
+                    margin: "0 5px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-gray-300)",
+                    backgroundColor: selectedPanel === 3 ? "var(--color-black)" : "white",
+                    color: selectedPanel === 3 ? "white" : "black",
+                    cursor: "pointer",
+                  }}
+                >
+                  Monthly
+                </button>
+              </div>
+
+              <iframe
+                key={selectedPanel} // re-render when panel changes //change ip before pr
+                src={`http://localhost:3001/d-solo/05f712d2-fe25-452b-95e2-b7168d3c6745/connectthedots-space-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                width="100%"
+                height="400"
+                frameBorder="0"
+                style={{ borderRadius: "8px" }}
+              ></iframe>
             </div>
           )}
         </div>
