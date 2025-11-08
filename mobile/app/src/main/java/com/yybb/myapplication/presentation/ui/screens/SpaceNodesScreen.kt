@@ -1,6 +1,5 @@
 package com.yybb.myapplication.presentation.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +32,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,11 +45,11 @@ import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodesViewModel
 @Composable
 fun SpaceNodesScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToNodeDetails: (String) -> Unit,
     viewModel: SpaceNodesViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredNodes by viewModel.filteredNodes.collectAsState()
-    val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
 
     Scaffold(
@@ -113,13 +111,7 @@ fun SpaceNodesScreen(
                         ) { node ->
                             SpaceNodeCard(
                                 node = node,
-                                onSeeDetails = {
-                                    Toast.makeText(
-                                        context,
-                                        "Node details feature is coming soon.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                                onSeeDetails = { onNavigateToNodeDetails(node.id) }
                             )
                         }
                     }

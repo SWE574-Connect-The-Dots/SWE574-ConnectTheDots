@@ -15,6 +15,7 @@ import com.yybb.myapplication.presentation.ui.screens.EditProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.SpaceNodeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
@@ -68,6 +69,17 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
         ) {
             SpaceNodesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNodeDetails = { nodeId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                }
+            )
+        }
+        composable(
+            route = Screen.SpaceNodeDetails.route,
+            arguments = listOf(navArgument("nodeId") { type = NavType.StringType })
+        ) {
+            SpaceNodeDetailsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

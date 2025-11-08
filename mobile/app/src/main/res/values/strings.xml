@@ -82,5 +82,13 @@
     <string name="see_details_button">See Details</string>
     <string name="space_nodes_no_results">No result found</string>
     <string name="search_node_hint_msg">Search node</string>
+    <string name="node_wikidata_id">Wikidata ID: %1$s</string>
+    <string name="node_properties_title">Node Properties</string>
+    <string name="edit_node_properties_title">Edit Node Properties</string>
+    <string name="node_properties_instruction">Click on a property to select/deselect it</string>
+    <string name="search_property_hint">Search property</string>
+    <string name="save_properties_button">Save Properties</string>
+    <string name="details_tab_label">Details</string>
+    <string name="connections_tab_label">Connections</string>
 
 </resources>
