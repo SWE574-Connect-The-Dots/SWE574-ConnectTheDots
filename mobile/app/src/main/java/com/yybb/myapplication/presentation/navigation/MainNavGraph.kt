@@ -15,6 +15,7 @@ import com.yybb.myapplication.presentation.ui.screens.EditProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.EditProfileViewModel
@@ -54,9 +55,20 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                         navController.popBackStack()
                     }
                 },
+                onNavigateToSpaceNodes = { spaceId ->
+                    navController.navigate(Screen.SpaceNodes.createRoute(spaceId))
+                },
                 onNavigateToProfile = { username ->
                     navController.navigate(Screen.Profile.createRoute(username))
                 }
+            )
+        }
+        composable(
+            route = Screen.SpaceNodes.route,
+            arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
+        ) {
+            SpaceNodesScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.EditProfile.route) {
