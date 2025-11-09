@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
-from .models import Profile, Space, Tag, Discussion, DiscussionReaction
+from .models import Profile, Space, Tag, Discussion, DiscussionReaction, Node, Report
+from .reporting import ALLOWED_REASON_CODES
 from datetime import date
 from rest_framework import serializers
 
@@ -333,3 +334,93 @@ class DiscussionSerializer(serializers.ModelSerializer):
         if not reaction:
             return None
         return 'up' if reaction.value == DiscussionReaction.UPVOTE else 'down'
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    reporter_username = serializers.ReadOnlyField(source='reporter.username')
+    entity_report_count = serializers.SerializerMethodField()
+    entity_is_reported = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Report
+        fields = [
+            'id', 'content_type', 'content_id', 'reason', 'status',
+            'space', 'reporter', 'reporter_username', 'created_at', 'updated_at',
+            'entity_report_count', 'entity_is_reported'
+        ]
+        read_only_fields = ['status', 'space', 'reporter', 'reporter_username', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        content_type = attrs.get('content_type')
+        content_id = attrs.get('content_id')
+        reason = attrs.get('reason')
+
+        if content_type not in ALLOWED_REASON_CODES:
+            raise serializers.ValidationError({'content_type': 'Invalid content_type'})
+
+        if reason not in ALLOWED_REASON_CODES[content_type]:
+            raise serializers.ValidationError({'reason': 'Invalid reason for content_type'})
+
+        space_obj = None
+        if content_type == Report.CONTENT_SPACE:
+            try:
+                space_obj = Space.objects.get(id=content_id)
+            except Space.DoesNotExist:
+                raise serializers.ValidationError({'content_id': 'Space not found'})
+        elif content_type == Report.CONTENT_NODE:
+            try:
+                node = Node.objects.get(id=content_id)
+                space_obj = node.space
+            except Node.DoesNotExist:
+                raise serializers.ValidationError({'content_id': 'Node not found'})
+        elif content_type == Report.CONTENT_DISCUSSION:
+            try:
+                discussion = Discussion.objects.get(id=content_id)
+                space_obj = discussion.space
+                attrs['_discussion_user_id'] = discussion.user_id
+            except Discussion.DoesNotExist:
+                raise serializers.ValidationError({'content_id': 'Discussion not found'})
+        elif content_type == Report.CONTENT_PROFILE:
+            try:
+                Profile.objects.get(user__id=content_id)
+            except Profile.DoesNotExist:
+                raise serializers.ValidationError({'content_id': 'Profile not found'})
+
+        attrs['_resolved_space'] = space_obj
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user if request and request.user and not request.user.is_anonymous else None
+        if not user:
+            raise serializers.ValidationError('Authentication required')
+
+        space_obj = validated_data.pop('_resolved_space', None)
+        discussion_owner_id = validated_data.pop('_discussion_user_id', None)
+        if discussion_owner_id and int(discussion_owner_id) == int(user.id):
+            raise serializers.ValidationError({'content_id': 'You cannot report your own discussion'})
+        report = Report.objects.create(
+            reporter=user,
+            space=space_obj,
+            **validated_data
+        )
+        return report
+
+    def _get_target_entity(self, obj):
+        if obj.content_type == Report.CONTENT_SPACE:
+            return Space.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_NODE:
+            return Node.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_DISCUSSION:
+            return Discussion.objects.filter(id=obj.content_id).first()
+        if obj.content_type == Report.CONTENT_PROFILE:
+            return Profile.objects.filter(user__id=obj.content_id).first()
+        return None
+
+    def get_entity_report_count(self, obj):
+        target = self._get_target_entity(obj)
+        return getattr(target, 'report_count', None) if target else None
+
+    def get_entity_is_reported(self, obj):
+        target = self._get_target_entity(obj)
+        return getattr(target, 'is_reported', None) if target else None

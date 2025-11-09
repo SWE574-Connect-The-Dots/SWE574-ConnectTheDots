@@ -201,7 +201,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         }}
                       >
                         <strong>{discussion.username}</strong>
-                        {isLoggedIn && (
+                        {isLoggedIn && discussion.username !== currentUsername && (
                           <button
                             onClick={() => {
                               setReportingDiscussion(discussion);
@@ -216,7 +216,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                             }}
                             title={t("discussion.reportComment")}
                           >
-                            {t("backoffice.reports")}
+                            {t("common.report")}
                           </button>
                         )}
                       </div>
@@ -312,7 +312,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       {reportingDiscussion && (
         <ReportModal
           contentId={reportingDiscussion.id}
-          contentType="Discussion"
+          contentType="discussion"
           contentTitle={`Comment by ${reportingDiscussion.username}`}
           onClose={() => setReportingDiscussion(null)}
         />

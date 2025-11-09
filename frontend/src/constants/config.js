@@ -14,6 +14,8 @@ export const API_ENDPOINTS = {
   PROFILE_ME: "/profiles/me/",
   UPDATE_PROFILE: "/profiles/update_profile/",
   PROFILE: (username) => `/profiles/${username}/user_profile/`,
+  REPORTS: "/reports/",
+  REPORTS_REASONS: "/reports/reasons/",
 };
 
 export const GRAPH_CONFIG = {

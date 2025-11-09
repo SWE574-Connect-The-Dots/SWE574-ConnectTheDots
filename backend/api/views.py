@@ -10,13 +10,51 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report
 from .graph import SpaceGraph
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer
 from .wikidata import get_wikidata_properties, extract_location_from_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
+from .reporting import REASON_CODES, REASONS_VERSION
 from django.core.cache import cache
 from django.http import JsonResponse
+
+def _recompute_entity_reports(content_type, content_id):
+    """Recalculate report_count and is_reported based on OPEN reports only."""
+    open_count = Report.objects.filter(content_type=content_type, content_id=content_id, status=Report.STATUS_OPEN).count()
+    is_reported = open_count > 0
+    if content_type == Report.CONTENT_SPACE:
+        try:
+            obj = Space.objects.get(id=content_id)
+            obj.report_count = open_count
+            obj.is_reported = is_reported
+            obj.save(update_fields=['report_count', 'is_reported'])
+        except Space.DoesNotExist:
+            pass
+    elif content_type == Report.CONTENT_NODE:
+        try:
+            obj = Node.objects.get(id=content_id)
+            obj.report_count = open_count
+            obj.is_reported = is_reported
+            obj.save(update_fields=['report_count', 'is_reported'])
+        except Node.DoesNotExist:
+            pass
+    elif content_type == Report.CONTENT_DISCUSSION:
+        try:
+            obj = Discussion.objects.get(id=content_id)
+            obj.report_count = open_count
+            obj.is_reported = is_reported
+            obj.save(update_fields=['report_count', 'is_reported'])
+        except Discussion.DoesNotExist:
+            pass
+    elif content_type == Report.CONTENT_PROFILE:
+        try:
+            obj = Profile.objects.get(user__id=content_id)
+            obj.report_count = open_count
+            obj.is_reported = is_reported
+            obj.save(update_fields=['report_count', 'is_reported'])
+        except Profile.DoesNotExist:
+            pass
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -173,7 +211,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
         
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        space = serializer.save(creator=self.request.user)
+        # Ensure the creator is also recorded as a moderator of this space
+        try:
+            SpaceModerator.objects.get_or_create(
+                user=self.request.user,
+                space=space,
+                defaults={'assigned_by': self.request.user}
+            )
+        except Exception:
+            pass
         
     def create(self, request, *args, **kwargs):
         if 'tags' in request.data and isinstance(request.data['tags'], list):
@@ -816,6 +863,68 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Profile.objects.all()
+
+class ReportViewSet(viewsets.ModelViewSet):
+    queryset = Report.objects.all().order_by('-created_at')
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        # Admins can see all
+        if user.is_staff or user.is_superuser or user.profile.is_admin():
+            return qs
+        # Moderators (either profile flag OR having SpaceModerator rows) can only see reports
+        # in spaces they moderate, and not profile reports (space is null)
+        moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+        if user.profile.is_moderator() or len(moderated_space_ids) > 0:
+            return qs.filter(space_id__in=moderated_space_ids).exclude(content_type=Report.CONTENT_PROFILE)
+        # Regular users: no listing
+        return qs.none()
+
+    def perform_create(self, serializer):
+        report = serializer.save()
+        _recompute_entity_reports(report.content_type, report.content_id)
+
+    def partial_update(self, request, *args, **kwargs):
+        report = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in [Report.STATUS_OPEN, Report.STATUS_DISMISSED, Report.STATUS_ARCHIVED]:
+            return Response({'error': 'Invalid status'}, status=400)
+
+        user = request.user
+        # Admins can update any; moderators only within their spaces and not profile reports
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            if not user.profile.is_moderator():
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if report.content_type == Report.CONTENT_PROFILE:
+                return Response({'error': 'Profile reports can only be updated by admins'}, status=403)
+            if not SpaceModerator.objects.filter(user=user, space=report.space).exists():
+                return Response({'error': 'You are not a moderator of this space'}, status=403)
+
+        report.status = new_status
+        report.save(update_fields=['status', 'updated_at'])
+        _recompute_entity_reports(report.content_type, report.content_id)
+        serializer = self.get_serializer(report)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='reasons')
+    def reasons(self, request):
+        """Return all reasons for all content types, including common ones per type."""
+        from .reporting import REASON_CODES
+        def combine(content_type):
+            return REASON_CODES['common'] + REASON_CODES[content_type]
+        payload = {
+            'version': REASONS_VERSION,
+            'reasons': {
+                'space': combine('space'),
+                'node': combine('node'),
+                'discussion': combine('discussion'),
+                'profile': combine('profile'),
+            }
+        }
+        return Response(payload)
 
 # Authorization Management Views
 

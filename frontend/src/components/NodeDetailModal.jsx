@@ -970,7 +970,7 @@ const NodeDetailModal = ({
                 padding: "5px 10px",
               }}
             >
-              {t("backoffice.reports")}
+              {t("common.report")}
             </button>
             <button onClick={handleModalClose} className="close-button">
               ×
@@ -1557,7 +1557,7 @@ const NodeDetailModal = ({
         <div>
           <ReportModal
             contentId={node.id}
-            contentType="Node"
+            contentType="node"
             contentTitle={node.data.label}
             onClose={() => setShowReportModal(false)}
           />
