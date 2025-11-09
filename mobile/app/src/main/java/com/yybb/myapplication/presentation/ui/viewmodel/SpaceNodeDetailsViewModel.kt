@@ -30,6 +30,11 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val isChecked: Boolean
     )
 
+    data class NodeOption(
+        val id: String,
+        val name: String
+    )
+
     private val nodeId: String = checkNotNull(savedStateHandle["nodeId"])
 
     private val nodeDetails: NodeDetailsMock = nodeDetailsMap[nodeId] ?: nodeDetailsMap.values.first()
@@ -50,6 +55,26 @@ class SpaceNodeDetailsViewModel @Inject constructor(
                 isChecked = nodeDetails.defaultProperties.contains(property)
             )
         }
+    )
+
+    private val _availableConnectionNodes = MutableStateFlow(
+        nodeDetailsMap
+            .filterKeys { it != nodeId }
+            .map { entry ->
+                NodeOption(
+                    id = entry.key,
+                    name = entry.value.name
+                )
+            }
+    )
+    val availableConnectionNodes: StateFlow<List<NodeOption>> = _availableConnectionNodes.asStateFlow()
+
+    val reportReasons: List<String> = listOf(
+        "Incorrect or misleading information",
+        "Offensive or inappropriate content",
+        "Duplicate node",
+        "Spam or promotional content",
+        "Other"
     )
 
     private val _searchQuery = MutableStateFlow("")
@@ -108,6 +133,11 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             .filter { it.isChecked }
             .map { it.label }
         _nodeProperties.value = selected
+    }
+
+    fun searchEdgeLabelOptions(query: String): List<String> {
+        if (query.isBlank()) return emptyList()
+        return nodeDetails.availableProperties.filter { it.contains(query, ignoreCase = true) }
     }
 
     companion object {

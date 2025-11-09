@@ -90,5 +90,33 @@
     <string name="save_properties_button">Save Properties</string>
     <string name="details_tab_label">Details</string>
     <string name="connections_tab_label">Connections</string>
-
+    <string name="delete_node_title">Delete Node</string>
+    <string name="delete_node_confirmation">Are you sure you want to delete the node "%1$s"? This action cannot be taken back.</string>
+    <string name="add_connection_title">Add Connection</string>
+    <string name="add_connection_placeholder">Add connection action coming soon.</string>
+    <string name="report_node_title">Report Node</string>
+    <string name="report_node_placeholder">Report action coming soon.</string>
+    <string name="report_node_dialog_title">Report Node</string>
+    <string name="report_node_dialog_node_label">Node: %1$s</string>
+    <string name="report_node_dialog_reason_label">Reason for report:</string>
+    <string name="report_node_dialog_reason_placeholder">select a reason</string>
+    <string name="report_node_dialog_reason_error">Please select a reason.</string>
+    <string name="report_node_dialog_cancel">Cancel</string>
+    <string name="report_node_dialog_submit">Submit Report</string>
+    <string name="report_node_submitted">Report submitted for %1$s (%2$s)</string>
+    <string name="yes_button">Yes</string>
+    <string name="no_button">No</string>
+    <string name="add_edge_title">Add Edge</string>
+    <string name="add_edge_select_node_label">Connect to node</string>
+    <string name="add_edge_select_node_placeholder">select a node</string>
+    <string name="add_edge_select_node_error">Please select a node.</string>
+    <string name="add_edge_label_label">Edge Label</string>
+    <string name="add_edge_label_placeholder">Search for a property or enter a custom label...</string>
+    <string name="add_edge_label_error">Please enter an edge label.</string>
+    <string name="add_edge_no_results">No matching properties found. You can still use your custom label.</string>
+    <string name="add_edge_search_results_title">Select from results:</string>
+    <string name="add_edge_button">Add edge</string>
+    <string name="edge_direction_placeholder_forward">source -&gt; target</string>
+    <string name="edge_direction_placeholder_reverse">target -&gt; source</string>
+    <string name="edge_added_toast">Edge added with direction %1$s and description %2$s</string>
 </resources>
