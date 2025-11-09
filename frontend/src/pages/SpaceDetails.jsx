@@ -1,10 +1,8 @@
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "../contexts/TranslationContext";
-import ReactFlow, { Controls, Background } from "reactflow";
-import "reactflow/dist/style.css";
 import api from "../axiosConfig";
-import CircularNode from "../components/CircularNode";
+import SpaceGraph from "../components/SpaceGraph";
 import NodeDetailModal from "../components/NodeDetailModal";
 import "../components/NodeDetailModal.css";
 import useGraphData from "../hooks/useGraphData";
@@ -89,9 +87,6 @@ const propertySelectionStyles = `
 }
 `;
 
-const nodeTypes = {
-  circular: CircularNode,
-};
 
 const getPropertyLabelWithId = (prop) => {
   const label =
@@ -1321,23 +1316,14 @@ const SpaceDetails = () => {
               background: "#f8f9fa",
             }}
           >
-            {graphLoading ? (
-              <div>Loading graph...</div>
-            ) : graphError ? (
-              <div>Error: {graphError}</div>
-            ) : (
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                onNodeClick={handleNodeClick}
-                onEdgeClick={handleEdgeClick}
-                fitView
-              >
-                <Background />
-                <Controls />
-              </ReactFlow>
-            )}
+            <SpaceGraph
+              nodes={nodes}
+              edges={edges}
+              loading={graphLoading}
+              error={graphError}
+              onNodeClick={handleNodeClick}
+              onEdgeClick={handleEdgeClick}
+            />
           </div>
         </div>
 
