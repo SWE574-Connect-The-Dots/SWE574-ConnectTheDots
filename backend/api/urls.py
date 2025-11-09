@@ -12,6 +12,7 @@ from .views import (
     remove_moderator,
     get_user_permissions,
     list_users_by_type,
+    dashboard_stats,
 )
 
 router = DefaultRouter()
@@ -31,4 +32,7 @@ urlpatterns = [
     path('auth/remove-moderator/', remove_moderator, name='remove_moderator'),
     path('auth/permissions/', get_user_permissions, name='get_user_permissions'),
     path('auth/users/', list_users_by_type, name='list_users_by_type'),
+    
+    # Dashboard endpoint
+    path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
 ]

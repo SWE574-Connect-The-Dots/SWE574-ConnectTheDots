@@ -1075,3 +1075,42 @@ def list_users_by_type(request):
     
     except Profile.DoesNotExist:
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_stats(request):
+    """Get dashboard statistics for admin overview"""
+    try:
+        # Check if user has admin permissions
+        profile = Profile.objects.get(user=request.user)
+        if not (profile.is_admin() or profile.is_moderator()):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get total counts
+        total_users = User.objects.count()
+        total_spaces = Space.objects.count()
+        total_graph_nodes = Node.objects.count()
+        
+        # Simplified active discussions count - just count all discussions for now
+        total_discussions = Discussion.objects.count()
+        
+        # For now, use total discussions as active discussions
+        active_discussions = total_discussions
+        
+        # Get additional useful stats
+        total_edges = Edge.objects.count()
+        
+        return Response({
+            'totalUsers': total_users,
+            'totalSpaces': total_spaces,
+            'totalGraphNodes': total_graph_nodes,
+            'activeDiscussions': active_discussions,
+            'totalEdges': total_edges,
+            'totalDiscussions': total_discussions
+        })
+        
+    except Profile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Dashboard stats error: {str(e)}")  # Add logging
+        return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

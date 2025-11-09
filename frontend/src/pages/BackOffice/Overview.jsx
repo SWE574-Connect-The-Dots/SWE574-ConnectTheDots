@@ -1,13 +1,49 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import api from "../../axiosConfig";
 
 export default function BackOffice() {
   const navigate = useNavigate();
-  const stats = {
-    totalUsers: 156,
-    totalSpaces: 87,
-    totalGraphNodes: 435,
-    activeDiscussions: 23,
-  };
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalSpaces: 0,
+    totalGraphNodes: 0,
+    activeDiscussions: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch dashboard statistics from API
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/dashboard/stats/');
+        setStats(response.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching dashboard stats:', err);
+        console.error('Error response:', err.response?.data);
+        console.error('Error status:', err.response?.status);
+        
+        let errorMessage = 'Failed to load dashboard statistics';
+        if (err.response?.status === 403) {
+          errorMessage = 'Permission denied - Admin access required';
+        } else if (err.response?.status === 404) {
+          errorMessage = 'Dashboard endpoint not found';
+        } else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error;
+        }
+        
+        setError(errorMessage);
+        // Keep default values on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
 
   const topSpaces = [
     {
@@ -43,6 +79,19 @@ export default function BackOffice() {
 
       <div style={{ marginTop: "30px" }}>
         <h3>Platform Overview</h3>
+        
+        {error && (
+          <div style={{
+            backgroundColor: "#fee2e2",
+            border: "1px solid #fca5a5",
+            color: "#dc2626",
+            padding: "10px",
+            borderRadius: "6px",
+            marginBottom: "20px"
+          }}>
+            {error}
+          </div>
+        )}
 
         <div
           style={{
@@ -64,7 +113,7 @@ export default function BackOffice() {
               Total Users
             </h3>
             <p style={{ fontSize: "28px", fontWeight: "bold", margin: "0" }}>
-              {stats.totalUsers}
+              {loading ? "..." : stats.totalUsers}
             </p>
           </div>
 
@@ -80,7 +129,7 @@ export default function BackOffice() {
               Total Spaces
             </h3>
             <p style={{ fontSize: "28px", fontWeight: "bold", margin: "0" }}>
-              {stats.totalSpaces}
+              {loading ? "..." : stats.totalSpaces}
             </p>
           </div>
 
@@ -96,7 +145,7 @@ export default function BackOffice() {
               Graph Nodes
             </h3>
             <p style={{ fontSize: "28px", fontWeight: "bold", margin: "0" }}>
-              {stats.totalGraphNodes}
+              {loading ? "..." : stats.totalGraphNodes}
             </p>
           </div>
 
@@ -112,7 +161,7 @@ export default function BackOffice() {
               Active Discussions
             </h3>
             <p style={{ fontSize: "28px", fontWeight: "bold", margin: "0" }}>
-              {stats.activeDiscussions}
+              {loading ? "..." : stats.activeDiscussions}
             </p>
           </div>
         </div>
