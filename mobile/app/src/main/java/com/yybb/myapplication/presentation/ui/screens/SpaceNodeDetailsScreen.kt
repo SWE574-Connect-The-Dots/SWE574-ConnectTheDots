@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -54,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,6 +77,7 @@ import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewMode
 @Composable
 fun SpaceNodeDetailsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToNodeDetails: (String) -> Unit,
     viewModel: SpaceNodeDetailsViewModel = hiltViewModel()
 ) {
     val nodeName by viewModel.nodeName.collectAsState()
@@ -85,6 +88,9 @@ fun SpaceNodeDetailsScreen(
     val layoutDirection = LocalLayoutDirection.current
     val context = LocalContext.current
     val availableNodes by viewModel.availableConnectionNodes.collectAsState()
+    val nodeConnections by viewModel.nodeConnections.collectAsState()
+    val connectionSearchQuery by viewModel.connectionSearchQuery.collectAsState()
+    val filteredConnections by viewModel.filteredConnections.collectAsState()
     val reportReasons = viewModel.reportReasons
 
     var isFabExpanded by remember { mutableStateOf(false) }
@@ -197,7 +203,7 @@ fun SpaceNodeDetailsScreen(
         }
     ) { innerPadding ->
         val bottomPadding = (innerPadding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
-        var selectedTabIndex by remember { mutableIntStateOf(0) }
+        var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
         val tabLabels = listOf(
             stringResource(id = R.string.details_tab_label),
             stringResource(id = R.string.connections_tab_label)
@@ -233,7 +239,17 @@ fun SpaceNodeDetailsScreen(
                     filteredOptions = filteredProperties
                 )
 
-                else -> ConnectionsContent()
+                else -> ConnectionsContent(
+                    connections = filteredConnections,
+                    searchQuery = connectionSearchQuery,
+                    onSearchQueryChange = viewModel::updateConnectionSearchQuery,
+                    hasAnyConnections = nodeConnections.isNotEmpty(),
+                    onConnectionClick = { nodeId ->
+                        viewModel.resetConnectionSearchQuery()
+                        selectedTabIndex = 1
+                        onNavigateToNodeDetails(nodeId)
+                    }
+                )
             }
         }
     }
@@ -388,19 +404,96 @@ private fun PropertySelectionList(
 }
 
 @Composable
-private fun ConnectionsContent() {
+private fun ConnectionsContent(
+    connections: List<SpaceNodeDetailsViewModel.NodeConnection>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    hasAnyConnections: Boolean,
+    onConnectionClick: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Will be added soon",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(text = stringResource(id = R.string.search_connections_hint))
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null
+                )
+            },
+            singleLine = true
         )
+
+        if (connections.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                val message = if (hasAnyConnections) {
+                    stringResource(id = R.string.space_node_connections_no_results)
+                } else {
+                    stringResource(id = R.string.space_node_no_connections)
+                }
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = connections,
+                    key = { it.targetNodeId }
+                ) { connection ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onConnectionClick(connection.targetNodeId) },
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    id = R.string.space_node_title_format,
+                                    connection.targetNodeName
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(
+                                    id = R.string.edge_description_label,
+                                    connection.edgeDescription
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

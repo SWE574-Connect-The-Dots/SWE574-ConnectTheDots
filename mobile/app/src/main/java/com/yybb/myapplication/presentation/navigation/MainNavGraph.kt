@@ -80,7 +80,10 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             arguments = listOf(navArgument("nodeId") { type = NavType.StringType })
         ) {
             SpaceNodeDetailsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNodeDetails = { nodeId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                }
             )
         }
         composable(Screen.EditProfile.route) {

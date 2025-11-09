@@ -119,4 +119,8 @@
     <string name="edge_direction_placeholder_forward">source -&gt; target</string>
     <string name="edge_direction_placeholder_reverse">target -&gt; source</string>
     <string name="edge_added_toast">Edge added with direction %1$s and description %2$s</string>
+    <string name="space_node_no_connections">No connections yet</string>
+    <string name="edge_description_label">Edge description: %1$s</string>
+    <string name="search_connections_hint">Search connections</string>
+    <string name="space_node_connections_no_results">No connections match your search</string>
 </resources>
