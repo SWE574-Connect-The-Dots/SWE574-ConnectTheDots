@@ -215,11 +215,16 @@ export default function BackOffice() {
                 </p>
                 
                 <div style={{ 
-                  display: "flex", 
-                  gap: "20px",
-                  alignItems: "center"
+                  display: "grid", 
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "15px",
+                  marginBottom: "15px"
                 }}>
-                  <div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
                     <span style={{ 
                       fontWeight: "bold", 
                       color: "#2ecc71",
@@ -229,14 +234,17 @@ export default function BackOffice() {
                     </span>
                     <span style={{ 
                       color: "#666", 
-                      marginLeft: "5px",
-                      fontSize: "14px"
+                      fontSize: "13px"
                     }}>
                       collaborators
                     </span>
                   </div>
                   
-                  <div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
                     <span style={{ 
                       fontWeight: "bold", 
                       color: "#e74c3c",
@@ -246,10 +254,49 @@ export default function BackOffice() {
                     </span>
                     <span style={{ 
                       color: "#666", 
-                      marginLeft: "5px",
-                      fontSize: "14px"
+                      fontSize: "13px"
                     }}>
                       nodes
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
+                    <span style={{ 
+                      fontWeight: "bold", 
+                      color: "#3498db",
+                      fontSize: "16px"
+                    }}>
+                      {space.edge_count || 0}
+                    </span>
+                    <span style={{ 
+                      color: "#666", 
+                      fontSize: "13px"
+                    }}>
+                      edges
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
+                    <span style={{ 
+                      fontWeight: "bold", 
+                      color: "#9b59b6",
+                      fontSize: "16px"
+                    }}>
+                      {space.discussion_count || 0}
+                    </span>
+                    <span style={{ 
+                      color: "#666", 
+                      fontSize: "13px"
+                    }}>
+                      discussions
                     </span>
                   </div>
                 </div>
