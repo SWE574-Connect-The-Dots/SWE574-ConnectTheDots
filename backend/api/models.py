@@ -138,6 +138,7 @@ class Property(models.Model):
 class Node(models.Model):
     label = models.CharField(max_length=255)
     wikidata_id = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     space = models.ForeignKey(Space, on_delete=models.CASCADE)
     country = models.CharField(max_length=100, blank=True, null=True)
@@ -153,6 +154,7 @@ class Node(models.Model):
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
     target = models.ForeignKey(Node, related_name='target_edges', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
     relation_property = models.CharField(max_length=255)
     wikidata_property_id = models.CharField(max_length=50, blank=True, null=True)
     
