@@ -1,8 +1,10 @@
 package com.yybb.myapplication.presentation.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.SpaceNode
+import com.yybb.myapplication.data.repository.SpaceNodesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,74 +14,56 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SpaceNodesViewModel @Inject constructor() : ViewModel() {
+class SpaceNodesViewModel @Inject constructor(
+    private val spaceNodesRepository: SpaceNodesRepository,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val mockNodes = listOf(
-        SpaceNode(
-            id = "1",
-            name = "Airport",
-            description = "Primary international airport hub for the city.",
-            connectionCount = 3
-        ),
-        SpaceNode(
-            id = "2",
-            name = "Railway Station",
-            description = "Central station linking regional and intercity trains.",
-            connectionCount = 2
-        ),
-        SpaceNode(
-            id = "3",
-            name = "City Center",
-            description = "Main downtown district with commercial landmarks.",
-            connectionCount = 5
-        ),
-        SpaceNode(
-            id = "4",
-            name = "Museum",
-            description = "Historic museum showcasing cultural artifacts.",
-            connectionCount = 1
-        ),
-        SpaceNode(
-            id = "5",
-            name = "University",
-            description = "Leading academic campus with research facilities.",
-            connectionCount = 4
-        ),
-        SpaceNode(
-            id = "6",
-            name = "Library",
-            description = "Public library providing community learning spaces.",
-            connectionCount = 2
-        ),
-        SpaceNode(
-            id = "7",
-            name = "Park",
-            description = "Urban park with walking trails and recreation areas.",
-            connectionCount = 3
-        ),
-        SpaceNode(
-            id = "8",
-            name = "Sports Arena",
-            description = "Multipurpose arena hosting sporting and music events.",
-            connectionCount = 2
-        )
-    )
-
-    private val _nodes = MutableStateFlow(mockNodes)
+    private val _nodes = MutableStateFlow<List<SpaceNode>>(emptyList())
     val nodes: StateFlow<List<SpaceNode>> = _nodes.asStateFlow()
 
     private val _filteredNodes = MutableStateFlow<List<SpaceNode>>(emptyList())
     val filteredNodes: StateFlow<List<SpaceNode>> = _filteredNodes.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     init {
         observeFilters()
+        fetchSpaceNodes()
     }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+    }
+
+    fun retry() {
+        fetchSpaceNodes()
+    }
+
+    private fun fetchSpaceNodes() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+
+            val result = spaceNodesRepository.getSpaceNodes(spaceId)
+            result.onSuccess { nodes ->
+                _nodes.value = nodes
+            }.onFailure { throwable ->
+                _nodes.value = emptyList()
+                _errorMessage.value = throwable.message
+            }
+
+            _isLoading.value = false
+        }
     }
 
     private fun observeFilters() {
@@ -98,8 +82,12 @@ class SpaceNodesViewModel @Inject constructor() : ViewModel() {
         }
         val normalizedQuery = query.trim()
         return nodes.filter { node ->
-            node.name.contains(normalizedQuery, ignoreCase = true) ||
-                node.description.contains(normalizedQuery, ignoreCase = true)
+            node.label.contains(normalizedQuery, ignoreCase = true) ||
+                node.locationName?.contains(normalizedQuery, ignoreCase = true) == true ||
+                node.city?.contains(normalizedQuery, ignoreCase = true) == true ||
+                node.country?.contains(normalizedQuery, ignoreCase = true) == true ||
+                node.district?.contains(normalizedQuery, ignoreCase = true) == true ||
+                node.street?.contains(normalizedQuery, ignoreCase = true) == true
         }
     }
 }

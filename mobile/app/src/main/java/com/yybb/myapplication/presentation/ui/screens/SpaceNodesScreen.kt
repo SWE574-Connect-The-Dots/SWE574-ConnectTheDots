@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,11 +46,13 @@ import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodesViewModel
 @Composable
 fun SpaceNodesScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToNodeDetails: (String) -> Unit,
+    onNavigateToNodeDetails: (String, String, String?) -> Unit,
     viewModel: SpaceNodesViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredNodes by viewModel.filteredNodes.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     val layoutDirection = LocalLayoutDirection.current
 
     Scaffold(
@@ -83,10 +86,30 @@ fun SpaceNodesScreen(
                 onQueryChange = viewModel::onSearchQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 16.dp),
+                enabled = !isLoading
             )
 
-            if (filteredNodes.isEmpty()) {
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 32.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                errorMessage != null -> {
+                    SpaceNodesError(
+                        message = errorMessage ?: stringResource(R.string.space_nodes_error_message),
+                        onRetry = viewModel::retry
+                    )
+                }
+
+                filteredNodes.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -99,7 +122,9 @@ fun SpaceNodesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-            } else {
+                }
+
+                else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -111,10 +136,11 @@ fun SpaceNodesScreen(
                         ) { node ->
                             SpaceNodeCard(
                                 node = node,
-                                onSeeDetails = { onNavigateToNodeDetails(node.id) }
+                                onSeeDetails = { onNavigateToNodeDetails(node.id.toString(), node.label, node.wikidataId) }
                             )
                         }
                     }
+                }
             }
         }
     }
@@ -141,20 +167,15 @@ private fun SpaceNodeCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                Text(
+                    text = node.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.space_node_title_format, node.name),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    ConnectionBadge(count = node.connectionCount)
-                }
+                        .padding(end = 12.dp)
+                )
                 Button(
                     onClick = onSeeDetails,
                     shape = MaterialTheme.shapes.medium,
@@ -171,12 +192,29 @@ private fun SpaceNodeCard(
 }
 
 @Composable
-private fun ConnectionBadge(count: Int) {
-    Text(
-        text = stringResource(id = R.string.space_node_connections, count),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-    )
+private fun SpaceNodesError(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Button(onClick = onRetry) {
+            Text(
+                text = stringResource(R.string.retry_button_label),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,12 +222,14 @@ private fun ConnectionBadge(count: Int) {
 fun SearchNode(
     query: String,
     onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier,
+        enabled = enabled,
         placeholder = {
             Text(
                 text = stringResource(id = R.string.search_node_hint_msg),

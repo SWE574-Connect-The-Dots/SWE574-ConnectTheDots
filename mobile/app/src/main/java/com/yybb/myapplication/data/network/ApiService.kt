@@ -10,6 +10,9 @@ import com.yybb.myapplication.data.network.dto.ProfileResponse
 import com.yybb.myapplication.data.network.dto.RegisterRequest
 import com.yybb.myapplication.data.network.dto.SpaceDetailsResponse
 import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
+import com.yybb.myapplication.data.network.dto.NodePropertyResponse
+import com.yybb.myapplication.data.network.dto.NodeWikidataPropertyResponse
+import com.yybb.myapplication.data.network.dto.SpaceNodeResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.TagResponse
@@ -82,4 +85,16 @@ interface ApiService {
         @Path("discussionId") discussionId: String,
         @Body request: VoteDiscussionRequest
     ): Response<VoteDiscussionResponse>
+
+    @GET("api/spaces/{id}/nodes/")
+    suspend fun getSpaceNodes(@Path("id") id: String): Response<List<SpaceNodeResponse>>
+
+    @GET("api/spaces/{id}/nodes/{nodeId}/properties/")
+    suspend fun getNodeProperties(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+    ): Response<List<NodePropertyResponse>>
+
+    @GET("api/spaces/wikidata-entity-properties/{propertyId}/")
+    suspend fun getWikidataPropertiesNode(@Path("propertyId") propertyId: String): Response<List<NodeWikidataPropertyResponse>>
 }

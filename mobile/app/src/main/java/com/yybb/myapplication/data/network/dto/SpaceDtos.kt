@@ -1,5 +1,6 @@
 package com.yybb.myapplication.data.network.dto
 
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
 
 data class SpaceDto(
@@ -96,6 +97,45 @@ data class AddDiscussionRequest(
 data class SpaceMembershipResponse(
     val message: String,
     val success: Boolean
+)
+
+data class SpaceNodeResponse(
+    val id: Int,
+    val label: String,
+    @SerializedName("wikidata_id")
+    val wikidataId: String?,
+    val country: String?,
+    val city: String?,
+    val district: String?,
+    val street: String?,
+    val latitude: String?,
+    val longitude: String?,
+    @SerializedName("location_name")
+    val locationName: String?
+)
+
+data class NodePropertyResponse(
+    @SerializedName("statement_id")
+    val statementId: String,
+    @SerializedName("property_id")
+    val propertyId: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    @SerializedName("property_value")
+    val propertyValue: JsonElement?,
+    val display: String?
+)
+
+data class NodeWikidataPropertyResponse(
+    @SerializedName("statement_id")
+    val statementId: String,
+    @SerializedName("property")
+    val propertyId: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    @SerializedName("value")
+    val propertyValue: JsonElement?,
+    val display: String?
 )
 
 // Vote Discussion Request

@@ -3,6 +3,8 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yybb.myapplication.data.model.NodeProperty
+import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,9 +14,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SpaceNodeDetailsViewModel @Inject constructor(
+    private val spaceNodeDetailsRepository: SpaceNodeDetailsRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -26,7 +30,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     )
 
     data class PropertyOption(
-        val label: String,
+        val property: NodeProperty,
         val isChecked: Boolean
     )
 
@@ -41,27 +45,20 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val edgeDescription: String
     )
 
+    private val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
     private val nodeId: String = checkNotNull(savedStateHandle["nodeId"])
+    private val nodeLabelArg: String? = savedStateHandle["nodeLabel"]
+    private val nodeWikidataIdArg: String? = savedStateHandle["nodeWikidataId"]
 
     private val nodeDetails: NodeDetailsMock = nodeDetailsMap[nodeId] ?: nodeDetailsMap.values.first()
 
-    private val _nodeName = MutableStateFlow(nodeDetails.name)
+    private val _nodeName = MutableStateFlow(nodeLabelArg ?: nodeDetails.name)
     val nodeName: StateFlow<String> = _nodeName.asStateFlow()
 
-    private val _wikidataId = MutableStateFlow(nodeDetails.wikidataId)
-    val wikidataId: StateFlow<String> = _wikidataId.asStateFlow()
-
-    private val _nodeProperties = MutableStateFlow(nodeDetails.defaultProperties)
-    val nodeProperties: StateFlow<List<String>> = _nodeProperties.asStateFlow()
-
-    private val _propertyOptions = MutableStateFlow(
-        nodeDetails.availableProperties.map { property ->
-            PropertyOption(
-                label = property,
-                isChecked = nodeDetails.defaultProperties.contains(property)
-            )
-        }
+    private val _wikidataId = MutableStateFlow(
+        nodeWikidataIdArg?.takeUnless { it.isBlank() } ?: nodeDetails.wikidataId
     )
+    val wikidataId: StateFlow<String> = _wikidataId.asStateFlow()
 
     private val _availableConnectionNodes = MutableStateFlow(
         nodeDetailsMap
@@ -80,6 +77,21 @@ class SpaceNodeDetailsViewModel @Inject constructor(
 
     private val _connectionSearchQuery = MutableStateFlow("")
     val connectionSearchQuery: StateFlow<String> = _connectionSearchQuery.asStateFlow()
+
+    private val _propertyOptions = MutableStateFlow<List<PropertyOption>>(emptyList())
+    val propertyOptions: StateFlow<List<PropertyOption>> = _propertyOptions.asStateFlow()
+
+    private val _apiNodeProperties = MutableStateFlow<List<NodeProperty>>(emptyList())
+    val apiNodeProperties: StateFlow<List<NodeProperty>> = _apiNodeProperties.asStateFlow()
+
+    private val _isNodePropertiesLoading = MutableStateFlow(false)
+    val isNodePropertiesLoading: StateFlow<Boolean> = _isNodePropertiesLoading.asStateFlow()
+
+    private val _isWikidataPropertiesLoading = MutableStateFlow(false)
+    val isWikidataPropertiesLoading: StateFlow<Boolean> = _isWikidataPropertiesLoading.asStateFlow()
+
+    private val _nodePropertiesError = MutableStateFlow<String?>(null)
+    val nodePropertiesError: StateFlow<String?> = _nodePropertiesError.asStateFlow()
 
     val filteredConnections: StateFlow<List<NodeConnection>> =
         combine(_connectionSearchQuery, _nodeConnections) { query, connections ->
@@ -114,7 +126,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             if (query.isBlank()) {
                 options
             } else {
-                options.filter { it.label.contains(query, ignoreCase = true) }
+                options.filter { option -> option.property.display.contains(query, ignoreCase = true) }
             }
         }.stateIn(
             scope = viewModelScope,
@@ -123,7 +135,13 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         )
 
     init {
-        // No-op, flows initialized
+        fetchNodeProperties()
+        fetchWikidataProperties()
+    }
+
+    fun retryNodeProperties() {
+        fetchNodeProperties()
+        fetchWikidataProperties()
     }
 
     fun updateSearchQuery(query: String) {
@@ -138,26 +156,11 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         _connectionSearchQuery.value = ""
     }
 
-    fun togglePropertySelection(propertyLabel: String) {
+    fun togglePropertySelection(statementId: String) {
         _propertyOptions.update { options ->
             options.map { option ->
-                if (option.label == propertyLabel) {
+                if (option.property.statementId == statementId) {
                     option.copy(isChecked = !option.isChecked)
-                } else {
-                    option
-                }
-            }
-        }
-    }
-
-    fun removeProperty(propertyLabel: String) {
-        _nodeProperties.update { properties ->
-            properties.filterNot { it == propertyLabel }
-        }
-        _propertyOptions.update { options ->
-            options.map { option ->
-                if (option.label == propertyLabel) {
-                    option.copy(isChecked = false)
                 } else {
                     option
                 }
@@ -168,13 +171,106 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     fun saveSelectedProperties() {
         val selected = _propertyOptions.value
             .filter { it.isChecked }
-            .map { it.label }
-        _nodeProperties.value = selected
+            .map { it.property }
+        _apiNodeProperties.value = selected
+        syncPropertyOptionsWithSelectedProperties()
     }
 
     fun searchEdgeLabelOptions(query: String): List<String> {
         if (query.isBlank()) return emptyList()
-        return nodeDetails.availableProperties.filter { it.contains(query, ignoreCase = true) }
+        val options = _propertyOptions.value
+        return if (options.isNotEmpty()) {
+            options.map { it.property.display }
+                .filter { it.contains(query, ignoreCase = true) }
+        } else {
+            nodeDetails.availableProperties.filter { it.contains(query, ignoreCase = true) }
+        }
+    }
+
+    private fun fetchNodeProperties() {
+        viewModelScope.launch {
+            _isNodePropertiesLoading.value = true
+            _nodePropertiesError.value = null
+
+            val result = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
+            result.onSuccess { properties ->
+                _apiNodeProperties.value = properties
+                syncPropertyOptionsWithSelectedProperties()
+            }.onFailure { throwable ->
+                _apiNodeProperties.value = emptyList()
+                _nodePropertiesError.value = throwable.message
+            }
+
+            _isNodePropertiesLoading.value = false
+        }
+    }
+
+    private fun fetchWikidataProperties() {
+        viewModelScope.launch {
+            _isWikidataPropertiesLoading.value = true
+            val entityId = _wikidataId.value
+            if (entityId.isBlank()) {
+                _propertyOptions.value = _apiNodeProperties.value.map { property ->
+                    PropertyOption(
+                        property = property,
+                        isChecked = true
+                    )
+                }
+                _isWikidataPropertiesLoading.value = false
+                return@launch
+            }
+
+            val result = spaceNodeDetailsRepository.getWikidataEntityProperties(entityId)
+            result.onSuccess { properties ->
+                updatePropertyOptionsWithCatalog(properties)
+                _isWikidataPropertiesLoading.value = false
+            }.onFailure {
+                // fallback to current selections if catalog fails
+                _propertyOptions.value = _apiNodeProperties.value.map { property ->
+                    PropertyOption(
+                        property = property,
+                        isChecked = true
+                    )
+                }
+                _isWikidataPropertiesLoading.value = false
+            }
+        }
+    }
+
+    fun removeApiProperty(statementId: String) {
+        _apiNodeProperties.update { properties ->
+            properties.filterNot { it.statementId == statementId }
+        }
+        _propertyOptions.update { options ->
+            options.map { option ->
+                if (option.property.statementId == statementId) {
+                    option.copy(isChecked = false)
+                } else {
+                    option
+                }
+            }
+        }
+    }
+
+    private fun syncPropertyOptionsWithSelectedProperties() {
+        val selectedIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        _propertyOptions.update { options ->
+            options.map { option ->
+                option.copy(isChecked = selectedIds.contains(option.property.statementId))
+            }
+        }
+    }
+
+    private fun updatePropertyOptionsWithCatalog(catalogProperties: List<NodeProperty>) {
+        val merged = (catalogProperties + _apiNodeProperties.value)
+            .distinctBy { it.statementId }
+        val selectedIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        _propertyOptions.value = merged.map { property ->
+            PropertyOption(
+                property = property,
+                isChecked = selectedIds.contains(property.statementId)
+            )
+        }
     }
 
     companion object {

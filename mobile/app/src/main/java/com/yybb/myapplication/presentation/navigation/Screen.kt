@@ -13,8 +13,12 @@ sealed class Screen(val route: String) {
     object SpaceNodes : Screen("space_nodes/{spaceId}") {
         fun createRoute(spaceId: Int) = "space_nodes/$spaceId"
     }
-    object SpaceNodeDetails : Screen("space_node_details/{nodeId}") {
-        fun createRoute(nodeId: String) = "space_node_details/$nodeId"
+    object SpaceNodeDetails : Screen("space_node_details/{spaceId}/{nodeId}/{nodeLabel}/{nodeWikidataId}") {
+        fun createRoute(spaceId: String, nodeId: String, nodeLabel: String, nodeWikidataId: String?): String {
+            val encodedLabel = android.net.Uri.encode(nodeLabel)
+            val encodedWikidata = android.net.Uri.encode(nodeWikidataId ?: "")
+            return "space_node_details/$spaceId/$nodeId/$encodedLabel/$encodedWikidata"
+        }
     }
     object CreateSpace : Screen("create_space")
     object EditProfile : Screen("edit_profile")

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -28,15 +29,16 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +48,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -66,10 +67,13 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.TAG_ICON_SIZE
+import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel.NodeOption
 
@@ -77,12 +81,11 @@ import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewMode
 @Composable
 fun SpaceNodeDetailsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToNodeDetails: (String) -> Unit,
+    onNavigateToNodeDetails: (String, String, String?) -> Unit,
     viewModel: SpaceNodeDetailsViewModel = hiltViewModel()
 ) {
     val nodeName by viewModel.nodeName.collectAsState()
     val wikidataId by viewModel.wikidataId.collectAsState()
-    val nodeProperties by viewModel.nodeProperties.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredProperties by viewModel.filteredOptions.collectAsState()
     val layoutDirection = LocalLayoutDirection.current
@@ -91,6 +94,9 @@ fun SpaceNodeDetailsScreen(
     val nodeConnections by viewModel.nodeConnections.collectAsState()
     val connectionSearchQuery by viewModel.connectionSearchQuery.collectAsState()
     val filteredConnections by viewModel.filteredConnections.collectAsState()
+    val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
+    val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
+    val nodePropertiesError by viewModel.nodePropertiesError.collectAsState()
     val reportReasons = viewModel.reportReasons
 
     var isFabExpanded by remember { mutableStateOf(false) }
@@ -202,7 +208,7 @@ fun SpaceNodeDetailsScreen(
             )
         }
     ) { innerPadding ->
-        val bottomPadding = (innerPadding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
+        val bottomPadding = innerPadding.calculateBottomPadding() - 48.dp
         var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
         val tabLabels = listOf(
             stringResource(id = R.string.details_tab_label),
@@ -212,9 +218,9 @@ fun SpaceNodeDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    start = innerPadding.calculateStartPadding(layoutDirection) + 16.dp,
-                    end = innerPadding.calculateEndPadding(layoutDirection) + 16.dp,
-                    top = innerPadding.calculateTopPadding() + 12.dp,
+                    start = innerPadding.calculateStartPadding(layoutDirection) + 8.dp,
+                    end = innerPadding.calculateEndPadding(layoutDirection) + 8.dp,
+                    top = innerPadding.calculateTopPadding() -5.dp,
                     bottom = bottomPadding
                 )
         ) {
@@ -229,12 +235,35 @@ fun SpaceNodeDetailsScreen(
             }
             when (selectedTabIndex) {
                 0 -> DetailsContent(
-                    nodeProperties = nodeProperties,
+                    apiNodeProperties = apiNodeProperties,
+                    isLoadingProperties = isNodePropertiesLoading,
+                    propertiesError = nodePropertiesError,
+                    onRetryProperties = viewModel::retryNodeProperties,
+                    onPropertyValueClick = { property ->
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.node_property_value_click_message,
+                                property.valueText
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    onPropertyRemove = { property ->
+                        viewModel.removeApiProperty(property.statementId)
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.node_property_removed_message,
+                                property.display
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
                     wikidataId = wikidataId,
                     searchQuery = searchQuery,
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onToggleProperty = viewModel::togglePropertySelection,
-                    onRemoveProperty = viewModel::removeProperty,
                     onSaveProperties = viewModel::saveSelectedProperties,
                     filteredOptions = filteredProperties
                 )
@@ -244,10 +273,10 @@ fun SpaceNodeDetailsScreen(
                     searchQuery = connectionSearchQuery,
                     onSearchQueryChange = viewModel::updateConnectionSearchQuery,
                     hasAnyConnections = nodeConnections.isNotEmpty(),
-                    onConnectionClick = { nodeId ->
+                    onConnectionClick = { nodeId, nodeLabel ->
                         viewModel.resetConnectionSearchQuery()
                         selectedTabIndex = 1
-                        onNavigateToNodeDetails(nodeId)
+                        onNavigateToNodeDetails(nodeId, nodeLabel, null)
                     }
                 )
             }
@@ -257,12 +286,16 @@ fun SpaceNodeDetailsScreen(
 
 @Composable
 private fun DetailsContent(
-    nodeProperties: List<String>,
+    apiNodeProperties: List<NodeProperty>,
+    isLoadingProperties: Boolean,
+    propertiesError: String?,
+    onRetryProperties: () -> Unit,
+    onPropertyValueClick: (NodeProperty) -> Unit,
+    onPropertyRemove: (NodeProperty) -> Unit,
     wikidataId: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onToggleProperty: (String) -> Unit,
-    onRemoveProperty: (String) -> Unit,
     onSaveProperties: () -> Unit,
     filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>
 ) {
@@ -288,11 +321,58 @@ private fun DetailsContent(
             }
         }
 
-        items(nodeProperties) { property ->
-            NodePropertyRow(
-                property = property,
-                onRemove = { onRemoveProperty(property) }
-            )
+        item {
+            when {
+                isLoadingProperties -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                propertiesError != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = propertiesError,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Button(onClick = onRetryProperties) {
+                            Text(text = stringResource(id = R.string.retry_button_label))
+                        }
+                    }
+                }
+
+                apiNodeProperties.isEmpty() -> {
+                    Text(
+                        text = stringResource(id = R.string.node_properties_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                else -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        apiNodeProperties.forEach { property ->
+                            NodePropertyDisplayRow(
+                                property = property,
+                                onValueClick = onPropertyValueClick,
+                                onRemoveClick = onPropertyRemove
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         item {
@@ -323,7 +403,8 @@ private fun DetailsContent(
                 )
                 PropertySelectionList(
                     options = filteredOptions,
-                    onToggleProperty = onToggleProperty
+                    onToggleProperty = onToggleProperty,
+                    onValueClick = onPropertyValueClick
                 )
                 Button(
                     onClick = onSaveProperties,
@@ -338,27 +419,30 @@ private fun DetailsContent(
 }
 
 @Composable
-private fun NodePropertyRow(
-    property: String,
-    onRemove: () -> Unit
+private fun NodePropertyDisplayRow(
+    property: NodeProperty,
+    onValueClick: (NodeProperty) -> Unit,
+    onRemoveClick: (NodeProperty) -> Unit
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = property,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
+        PropertyDisplayText(
+            property = property,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            onValueClick = onValueClick
         )
         IconButton(
-            onClick = onRemove,
+            onClick = { onRemoveClick(property) },
             modifier = Modifier.size(38.dp)
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_delete_bin),
-                contentDescription = "Remove tag",
+                contentDescription = "Remove property",
                 modifier = Modifier.size(TAG_ICON_SIZE.dp)
             )
         }
@@ -368,7 +452,8 @@ private fun NodePropertyRow(
 @Composable
 private fun PropertySelectionList(
     options: List<SpaceNodeDetailsViewModel.PropertyOption>,
-    onToggleProperty: (String) -> Unit
+    onToggleProperty: (String) -> Unit,
+    onValueClick: (NodeProperty) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -383,19 +468,22 @@ private fun PropertySelectionList(
     ) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(options) { option ->
-                androidx.compose.foundation.layout.Row(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = option.isChecked,
-                        onCheckedChange = { onToggleProperty(option.label) }
+                        onCheckedChange = { onToggleProperty(option.property.statementId) }
                     )
-                    Text(
-                        text = option.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
+                    PropertyDisplayText(
+                        property = option.property,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 8.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        onValueClick = onValueClick
                     )
                 }
             }
@@ -404,12 +492,77 @@ private fun PropertySelectionList(
 }
 
 @Composable
+private fun PropertyDisplayText(
+    property: NodeProperty,
+    modifier: Modifier = Modifier,
+    textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
+    onValueClick: ((NodeProperty) -> Unit)? = null
+) {
+    val displayText = property.display.ifBlank { "${property.propertyLabel}: ${property.valueText}" }
+    val colonIndex = displayText.indexOf(':')
+    val isClickable = property.isEntity && colonIndex != -1 && onValueClick != null
+
+    if (!isClickable) {
+        Text(
+            text = displayText,
+            style = textStyle,
+            modifier = modifier
+        )
+        return
+    }
+
+    val prefix = displayText.substring(0, colonIndex + 1)
+    val suffix = displayText.substring(colonIndex + 1)
+    val firstNonSpaceIndex = suffix.indexOfFirst { !it.isWhitespace() }
+    val leadingSpaces = if (firstNonSpaceIndex == -1) suffix else suffix.substring(0, firstNonSpaceIndex)
+    val valuePart = if (firstNonSpaceIndex == -1) "" else suffix.substring(firstNonSpaceIndex)
+
+    val annotatedText = buildAnnotatedString {
+        append(prefix)
+        if (suffix.isNotEmpty()) {
+            append(leadingSpaces)
+            if (valuePart.isNotEmpty()) {
+                val start = length
+                append(valuePart)
+                addStyle(
+                    style = SpanStyle(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+                    start = start,
+                    end = length
+                )
+                addStringAnnotation(
+                    tag = "ENTITY_VALUE",
+                    annotation = property.entityId ?: property.valueText,
+                    start = start,
+                    end = length
+                )
+            }
+        }
+    }
+
+    ClickableText(
+        text = annotatedText,
+        style = textStyle,
+        modifier = modifier,
+        onClick = { offset ->
+            val annotations = annotatedText.getStringAnnotations(
+                tag = "ENTITY_VALUE",
+                start = offset,
+                end = offset
+            )
+            if (annotations.isNotEmpty()) {
+                onValueClick?.invoke(property)
+            }
+        }
+    )
+}
+
+@Composable
 private fun ConnectionsContent(
     connections: List<SpaceNodeDetailsViewModel.NodeConnection>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     hasAnyConnections: Boolean,
-    onConnectionClick: (String) -> Unit
+    onConnectionClick: (String, String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -462,7 +615,7 @@ private fun ConnectionsContent(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onConnectionClick(connection.targetNodeId) },
+                            .clickable { onConnectionClick(connection.targetNodeId, connection.targetNodeName) },
                         shape = RoundedCornerShape(8.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {

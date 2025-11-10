@@ -67,22 +67,29 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
         composable(
             route = Screen.SpaceNodes.route,
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
-        ) {
+        ) { backStackEntry ->
+            val spaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
             SpaceNodesScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNodeDetails = { nodeId ->
-                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(spaceId, nodeId, nodeLabel, wikidataId))
                 }
             )
         }
         composable(
             route = Screen.SpaceNodeDetails.route,
-            arguments = listOf(navArgument("nodeId") { type = NavType.StringType })
-        ) {
+            arguments = listOf(
+                navArgument("spaceId") { type = NavType.StringType },
+                navArgument("nodeId") { type = NavType.StringType },
+                navArgument("nodeLabel") { type = NavType.StringType },
+                navArgument("nodeWikidataId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val currentSpaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
             SpaceNodeDetailsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNodeDetails = { nodeId ->
-                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
                 }
             )
         }
