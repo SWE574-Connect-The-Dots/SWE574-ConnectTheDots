@@ -84,6 +84,7 @@ data class Collaborator(
 fun SpaceDetailsScreen(
     viewModel: SpaceDetailsViewModel = hiltViewModel(),
     onNavigateToNext: () -> Unit = {},
+    onNavigateToSpaceNodes: (Int) -> Unit = {},
     onNavigateBack: () -> Unit,
     onNavigateToProfile: (String) -> Unit = {},
 ) {
@@ -368,31 +369,25 @@ fun SpaceDetailsScreen(
 
                     // See Space Graph Button
                     Button(
-                onClick = {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Clicked on see space graph button",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                },
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_eye),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = context.getString(R.string.see_space_graph),
-                    color = Color.White,
-                    fontSize = 14.sp
-                )
-            }
+                        onClick = { onNavigateToSpaceNodes(currentSpace.id) },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_eye),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = context.getString(R.string.see_space_graph),
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
 
             // Discussion Section
             Text(
