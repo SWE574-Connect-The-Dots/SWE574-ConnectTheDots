@@ -225,14 +225,14 @@ export default function BackOffice() {
                       color: "#2ecc71",
                       fontSize: "16px"
                     }}>
-                      {space.contributor_count || 0}
+                      {space.collaborator_count || 0}
                     </span>
                     <span style={{ 
                       color: "#666", 
                       marginLeft: "5px",
                       fontSize: "14px"
                     }}>
-                      contributors
+                      collaborators
                     </span>
                   </div>
                   
