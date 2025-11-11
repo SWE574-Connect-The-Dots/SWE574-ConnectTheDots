@@ -87,6 +87,7 @@
     <string name="node_wikidata_id">Wikidata ID: %1$s</string>
     <string name="node_properties_title">Node Properties</string>
     <string name="space_node_properties_error">Failed to load node properties</string>
+    <string name="space_node_update_properties_error">Failed to update node properties</string>
     <string name="space_node_edit_properties_error">Failed to load available properties</string>
     <string name="node_property_value_click_message">Clicked property value for %1$s</string>
     <string name="node_properties_empty">No properties available</string>
@@ -127,7 +128,11 @@
     <string name="edge_direction_placeholder_reverse">target -&gt; source</string>
     <string name="edge_added_toast">Edge added with direction %1$s and description %2$s</string>
     <string name="space_node_no_connections">No connections yet</string>
+    <string name="space_node_connections_error">Failed to load node connections</string>
     <string name="edge_description_label">Edge description: %1$s</string>
+    <string name="edge_role_source">Current node is the source</string>
+    <string name="edge_role_target">Current node is the target</string>
+    <string name="edge_details_placeholder_toast">Edge details for \"%1$s\" coming soon.</string>
     <string name="search_connections_hint">Search connections</string>
     <string name="space_node_connections_no_results">No connections match your search</string>
 </resources>

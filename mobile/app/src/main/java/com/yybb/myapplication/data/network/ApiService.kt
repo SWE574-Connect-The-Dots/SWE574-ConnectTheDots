@@ -12,10 +12,13 @@ import com.yybb.myapplication.data.network.dto.SpaceDetailsResponse
 import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
 import com.yybb.myapplication.data.network.dto.NodePropertyResponse
 import com.yybb.myapplication.data.network.dto.NodeWikidataPropertyResponse
+import com.yybb.myapplication.data.network.dto.SpaceEdgeResponse
 import com.yybb.myapplication.data.network.dto.SpaceNodeResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.TagResponse
+import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
+import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionResponse
@@ -89,6 +92,9 @@ interface ApiService {
     @GET("api/spaces/{id}/nodes/")
     suspend fun getSpaceNodes(@Path("id") id: String): Response<List<SpaceNodeResponse>>
 
+    @GET("api/spaces/{id}/edges/")
+    suspend fun getSpaceEdges(@Path("id") id: String): Response<List<SpaceEdgeResponse>>
+
     @GET("api/spaces/{id}/nodes/{nodeId}/properties/")
     suspend fun getNodeProperties(
         @Path("id") id: String,
@@ -97,4 +103,11 @@ interface ApiService {
 
     @GET("api/spaces/wikidata-entity-properties/{propertyId}/")
     suspend fun getWikidataPropertiesNode(@Path("propertyId") propertyId: String): Response<List<NodeWikidataPropertyResponse>>
+
+    @PUT("api/spaces/{id}/nodes/{nodeId}/update-properties/")
+    suspend fun updateNodeProperties(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+        @Body request: UpdateNodePropertiesRequest
+    ): Response<UpdateNodePropertiesResponse>
 }

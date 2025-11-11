@@ -114,6 +114,15 @@ data class SpaceNodeResponse(
     val locationName: String?
 )
 
+data class SpaceEdgeResponse(
+    val id: Int,
+    val source: Int,
+    val target: Int,
+    val label: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String?
+)
+
 data class NodePropertyResponse(
     @SerializedName("statement_id")
     val statementId: String,
@@ -122,6 +131,18 @@ data class NodePropertyResponse(
     @SerializedName("property_label")
     val propertyLabel: String,
     @SerializedName("property_value")
+    val propertyValue: JsonElement?,
+    val display: String?
+)
+
+data class UpdateNodePropertyRequest(
+    @SerializedName("statement_id")
+    val statementId: String,
+    @SerializedName("property")
+    val propertyId: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    @SerializedName("value")
     val propertyValue: JsonElement?,
     val display: String?
 )
@@ -136,6 +157,24 @@ data class NodeWikidataPropertyResponse(
     @SerializedName("value")
     val propertyValue: JsonElement?,
     val display: String?
+)
+
+data class UpdateNodePropertiesRequest(
+    @SerializedName("selected_properties")
+    val selectedProperties: List<UpdateNodePropertyItem>
+)
+
+data class UpdateNodePropertyItem(
+    @SerializedName("statement_id")
+    val statementId: String,
+    val property: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    val value: JsonElement?
+)
+
+data class UpdateNodePropertiesResponse(
+    val message: String
 )
 
 // Vote Discussion Request

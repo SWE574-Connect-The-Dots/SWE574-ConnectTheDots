@@ -40,9 +40,9 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     )
 
     data class NodeConnection(
-        val targetNodeId: String,
-        val targetNodeName: String,
-        val edgeDescription: String
+        val edgeId: String,
+        val label: String,
+        val isSource: Boolean
     )
 
     private val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
@@ -72,7 +72,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     )
     val availableConnectionNodes: StateFlow<List<NodeOption>> = _availableConnectionNodes.asStateFlow()
 
-    private val _nodeConnections = MutableStateFlow(connectionsMap[nodeId] ?: emptyList())
+    private val _nodeConnections = MutableStateFlow<List<NodeConnection>>(emptyList())
     val nodeConnections: StateFlow<List<NodeConnection>> = _nodeConnections.asStateFlow()
 
     private val _connectionSearchQuery = MutableStateFlow("")
@@ -90,6 +90,9 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private val _isWikidataPropertiesLoading = MutableStateFlow(false)
     val isWikidataPropertiesLoading: StateFlow<Boolean> = _isWikidataPropertiesLoading.asStateFlow()
 
+    private val _isUpdatingNodeProperties = MutableStateFlow(false)
+    val isUpdatingNodeProperties: StateFlow<Boolean> = _isUpdatingNodeProperties.asStateFlow()
+
     private val _nodePropertiesError = MutableStateFlow<String?>(null)
     val nodePropertiesError: StateFlow<String?> = _nodePropertiesError.asStateFlow()
 
@@ -100,8 +103,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             } else {
                 val normalized = query.trim()
                 connections.filter { connection ->
-                    connection.targetNodeName.contains(normalized, ignoreCase = true) ||
-                        connection.edgeDescription.contains(normalized, ignoreCase = true)
+                    connection.label.contains(normalized, ignoreCase = true)
                 }
             }
         }.stateIn(
@@ -137,6 +139,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     init {
         fetchNodeProperties()
         fetchWikidataProperties()
+        fetchNodeConnections()
     }
 
     fun retryNodeProperties() {
@@ -172,8 +175,27 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val selected = _propertyOptions.value
             .filter { it.isChecked }
             .map { it.property }
-        _apiNodeProperties.value = selected
-        syncPropertyOptionsWithSelectedProperties()
+
+        viewModelScope.launch {
+            _isUpdatingNodeProperties.value = true
+            _nodePropertiesError.value = null
+
+            val updateResult = spaceNodeDetailsRepository.updateNodeProperties(spaceId, nodeId, selected)
+            updateResult.onSuccess {
+                val refreshResult = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
+                refreshResult.onSuccess { properties ->
+                    _apiNodeProperties.value = properties
+                    syncPropertyOptionsWithSelectedProperties()
+                }.onFailure { throwable ->
+                    _apiNodeProperties.value = emptyList()
+                    _nodePropertiesError.value = throwable.message
+                }
+            }.onFailure { throwable ->
+                _nodePropertiesError.value = throwable.message
+            }
+
+            _isUpdatingNodeProperties.value = false
+        }
     }
 
     fun searchEdgeLabelOptions(query: String): List<String> {
@@ -270,6 +292,26 @@ class SpaceNodeDetailsViewModel @Inject constructor(
                 property = property,
                 isChecked = selectedIds.contains(property.statementId)
             )
+        }
+    }
+
+    private fun fetchNodeConnections() {
+        viewModelScope.launch {
+            val result = spaceNodeDetailsRepository.getSpaceEdges(spaceId)
+            result.onSuccess { edges ->
+                val filtered = edges.filter { edge ->
+                    edge.source.toString() == nodeId || edge.target.toString() == nodeId
+                }.map { edge ->
+                    NodeConnection(
+                        edgeId = edge.id.toString(),
+                        label = edge.label.ifBlank { edge.id.toString() },
+                        isSource = edge.source.toString() == nodeId
+                    )
+                }
+                _nodeConnections.value = filtered
+            }.onFailure {
+                _nodeConnections.value = emptyList()
+            }
         }
     }
 
@@ -412,81 +454,6 @@ class SpaceNodeDetailsViewModel @Inject constructor(
                     "Seating Capacity: 25000",
                     "Hosts concerts"
                 )
-            )
-        )
-
-        private val connectionsMap: Map<String, List<NodeConnection>> = mapOf(
-            "1" to listOf(
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "Airport supports high-speed rail transfers for Railway Station passengers."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Airport provides shuttle services directly to City Center."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "Airport collaborates with the Museum on aviation history exhibits."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Airport hosts University-led research on transportation innovation."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "Airport archives are mirrored at the Library for public access."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "Airport green initiatives support tree planting efforts in the Park."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "Airport manages charter flights for major Sports Arena events.")
-            ),
-            "2" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "Railway Station offers direct train lines connecting to the Airport terminals."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Railway Station serves commuters traveling towards City Center business districts."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "Railway Station provides weekend tour lines to the Museum district."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Railway Station commuter services link students to the University campus."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "Railway Station offers luggage storage near the Library entrance."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "Railway Station organizes seasonal excursions to the Park."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "Railway Station charters group travel to large Sports Arena events.")
-            ),
-            "3" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "City Center tourist routes originate from Airport arrivals."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "City Center relies on Railway Station for peak commuter inflows."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "City Center cultural pathways guide visitors to the Museum exhibits."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "City Center hosts University student showcases in public plazas."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "City Center literature festivals partner with the Library archives."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "City Center weekend markets connect to Park recreational areas."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "City Center fan experiences precede Sports Arena championship games.")
-            ),
-            "4" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "Museum loans aviation artifacts displayed at the Airport welcome hall."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "Museum pop-up kiosks appear in Railway Station concourses during exhibits."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Museum partners with City Center events for shared cultural programs."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Museum collaborates with University research teams on historical archives."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "Museum and Library co-curate themed reading lists for exhibits."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "Museum outdoor installations extend into the Park pathways."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "Museum hosts pre-event history tours for Sports Arena audiences.")
-            ),
-            "5" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "University aviation programs coordinate internships at the Airport."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "University student transit passes include access via the Railway Station."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "University cultural festivals extend into City Center venues."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "University history departments curate exhibits within the Museum."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "University research findings are archived at the Library."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "University wellness events frequently take place in the Park."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "University athletic teams host championship games at the Sports Arena.")
-            ),
-            "6" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "Library digitization labs process Airport historical flight logs."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "Library reading programs advertise in Railway Station waiting areas."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Library mobile kiosks appear in City Center during book festivals."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "Library and Museum share archival preservation workshops."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Library provides extended research hours for University scholars."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "Library hosts outdoor reading circles in the Park."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "Library curates sports history displays at the Sports Arena.")
-            ),
-            "7" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "Park shuttle stops receive visitors directly from the Airport."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "Park festival trains depart from Railway Station platforms."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Park weekend markets are promoted through City Center events."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "Park sculpture trails connect to Museum art residencies."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Park environmental studies involve University volunteer programs."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "Park literacy days feature pop-up libraries run by the Library."),
-                NodeConnection("8", nodeDetailsMap["8"]?.name ?: "Sports Arena", "Park fitness trails are used by teams training for Sports Arena events.")
-            ),
-            "8" to listOf(
-                NodeConnection("1", nodeDetailsMap["1"]?.name ?: "Airport", "Sports Arena manages international athlete arrivals through the Airport."),
-                NodeConnection("2", nodeDetailsMap["2"]?.name ?: "Railway Station", "Sports Arena coordinates fan express routes from the Railway Station."),
-                NodeConnection("3", nodeDetailsMap["3"]?.name ?: "City Center", "Sports Arena events boost nightlife across City Center neighborhoods."),
-                NodeConnection("4", nodeDetailsMap["4"]?.name ?: "Museum", "Sports Arena co-hosts memorabilia exhibits with the Museum."),
-                NodeConnection("5", nodeDetailsMap["5"]?.name ?: "University", "Sports Arena collaborates with University athletic departments for tournaments."),
-                NodeConnection("6", nodeDetailsMap["6"]?.name ?: "Library", "Sports Arena archives sports records with the Library's digital collections."),
-                NodeConnection("7", nodeDetailsMap["7"]?.name ?: "Park", "Sports Arena wellness campaigns host outdoor sessions in the Park.")
             )
         )
     }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,6 +98,7 @@ fun SpaceNodeDetailsScreen(
     val filteredConnections by viewModel.filteredConnections.collectAsState()
     val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
     val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
+    val isUpdatingNodeProperties by viewModel.isUpdatingNodeProperties.collectAsState()
     val nodePropertiesError by viewModel.nodePropertiesError.collectAsState()
     val reportReasons = viewModel.reportReasons
 
@@ -265,7 +268,8 @@ fun SpaceNodeDetailsScreen(
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onToggleProperty = viewModel::togglePropertySelection,
                     onSaveProperties = viewModel::saveSelectedProperties,
-                    filteredOptions = filteredProperties
+                    filteredOptions = filteredProperties,
+                    isSavingProperties = isUpdatingNodeProperties
                 )
 
                 else -> ConnectionsContent(
@@ -273,10 +277,15 @@ fun SpaceNodeDetailsScreen(
                     searchQuery = connectionSearchQuery,
                     onSearchQueryChange = viewModel::updateConnectionSearchQuery,
                     hasAnyConnections = nodeConnections.isNotEmpty(),
-                    onConnectionClick = { nodeId, nodeLabel ->
-                        viewModel.resetConnectionSearchQuery()
-                        selectedTabIndex = 1
-                        onNavigateToNodeDetails(nodeId, nodeLabel, null)
+                    onSeeDetailsClick = { connection ->
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.edge_details_placeholder_toast,
+                                connection.label
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             }
@@ -297,7 +306,8 @@ private fun DetailsContent(
     onSearchQueryChange: (String) -> Unit,
     onToggleProperty: (String) -> Unit,
     onSaveProperties: () -> Unit,
-    filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>
+    filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>,
+    isSavingProperties: Boolean
 ) {
     LazyColumn(
         modifier = Modifier
@@ -408,9 +418,19 @@ private fun DetailsContent(
                 )
                 Button(
                     onClick = onSaveProperties,
+                    enabled = !isSavingProperties,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    if (isSavingProperties) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     Text(text = stringResource(id = R.string.save_properties_button))
                 }
             }
@@ -562,7 +582,7 @@ private fun ConnectionsContent(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     hasAnyConnections: Boolean,
-    onConnectionClick: (String, String) -> Unit
+    onSeeDetailsClick: (SpaceNodeDetailsViewModel.NodeConnection) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -610,38 +630,49 @@ private fun ConnectionsContent(
             ) {
                 items(
                     items = connections,
-                    key = { it.targetNodeId }
+                    key = { it.edgeId }
                 ) { connection ->
                     Card(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onConnectionClick(connection.targetNodeId, connection.targetNodeName) },
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Text(
-                                text = stringResource(
-                                    id = R.string.space_node_title_format,
-                                    connection.targetNodeName
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(
-                                    id = R.string.edge_description_label,
-                                    connection.edgeDescription
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        id = R.string.edge_description_label,
+                                        connection.label
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = if (connection.isSource) {
+                                        stringResource(id = R.string.edge_role_source)
+                                    } else {
+                                        stringResource(id = R.string.edge_role_target)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Button(
+                                onClick = { onSeeDetailsClick(connection) },
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Text(text = stringResource(id = R.string.see_details_button))
+                            }
                         }
                     }
                 }
