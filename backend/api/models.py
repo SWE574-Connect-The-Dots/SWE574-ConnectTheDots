@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from uuid import uuid4
 
 class Profile(models.Model):
     # User types
@@ -245,3 +246,48 @@ class Report(models.Model):
     def __str__(self):
         return f"Report({self.content_type} #{self.content_id}, {self.reason}, {self.status})"
 
+
+# AS2 compatible model
+class Activity(models.Model):
+
+    as2_id = models.CharField(max_length=255, blank=True, null=True)
+    type = models.CharField(max_length=64)
+    actor = models.CharField(max_length=255)
+    object = models.CharField(max_length=255)
+    target = models.CharField(max_length=255, blank=True, null=True)
+    summary = models.TextField(blank=True, default="")
+    published = models.DateTimeField(default=timezone.now)
+
+    to = models.JSONField(blank=True, default=list)
+    cc = models.JSONField(blank=True, default=list)
+
+    payload = models.JSONField(blank=True, default=dict)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['published']),
+            models.Index(fields=['type']),
+            models.Index(fields=['actor']),
+            models.Index(fields=['object']),
+        ]
+
+    def __str__(self):
+        return f"Activity({self.type} {self.object} by {self.actor})"
+
+
+def record_activity(*, actor_user, type: str, object: str, target=None,
+                    summary: str = "", to=None, cc=None, payload=None):
+
+    actor_str = getattr(actor_user, 'username', str(actor_user)) if actor_user else 'system'
+    act = Activity.objects.create(
+        as2_id=str(uuid4()),
+        type=type,
+        actor=actor_str,
+        object=object,
+        target=target,
+        summary=summary or "",
+        to=to or [],
+        cc=cc or [],
+        payload=payload or {},
+    )
+    return act
