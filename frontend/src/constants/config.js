@@ -7,7 +7,7 @@ export const API_ENDPOINTS = {
   ADD_DISCUSSION: (spaceId) => `/spaces/${spaceId}/discussions/add/`,
   DISCUSSION_REACT: (spaceId, discussionId) => `/spaces/${spaceId}/discussions/${discussionId}/react/`,
   WIKIDATA_SEARCH: "/spaces/wikidata-search/",
-  WIKIDATA_PROPERTY_SEARCH: "/spaces/wikidata-property-search",
+  WIKIDATA_PROPERTY_SEARCH: "/spaces/wikidata-property-search/",
   WIKIDATA_PROPERTIES: (entityId) =>
     `/spaces/wikidata-entity-properties/${entityId}/`,
   SEARCH: "/search/",

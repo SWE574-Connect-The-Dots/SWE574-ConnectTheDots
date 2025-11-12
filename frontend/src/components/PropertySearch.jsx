@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
 import useWikidataPropertySearch from "../hooks/useWikidataPropertySearch";
@@ -13,6 +13,7 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   });
   const { searchResults, loading, search, clearSearch } =
     useWikidataPropertySearch();
+  const isSelectingEdgeRef = useRef(false);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -21,6 +22,11 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   }, [selectedProperty, onSelect]);
 
   useEffect(() => {
+    if (isSelectingEdgeRef.current) {
+      isSelectingEdgeRef.current = false;
+      return;
+    }
+
     const debounceTimer = setTimeout(() => {
       if (searchTerm.length > 2) {
         search(searchTerm);
@@ -39,6 +45,7 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   };
 
   const handleSelectProperty = (property) => {
+    isSelectingEdgeRef.current = true;
     setSearchTerm(property.label);
     setSelectedProperty(property);
     clearSearch();
