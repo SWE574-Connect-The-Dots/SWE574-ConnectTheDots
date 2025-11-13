@@ -17,6 +17,8 @@ import com.yybb.myapplication.data.network.dto.toWikidataProperty
 import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.AddEdgeRequest
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
+import com.yybb.myapplication.data.network.dto.AddNodeRequest
+import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
 import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
@@ -132,7 +134,7 @@ class SpaceNodeDetailsRepository @Inject constructor(
         }
     }
 
-    suspend fun searchWikidataEdgeLabels(query: String): Result<List<WikidataProperty>> {
+    suspend fun searchWikidataProperties(query: String): Result<List<WikidataProperty>> {
         return withContext(Dispatchers.IO) {
             try {
                 val token = sessionManager.authToken.first()
@@ -163,6 +165,43 @@ class SpaceNodeDetailsRepository @Inject constructor(
                 Result.failure(e)
             }
         }
+    }
+
+    suspend fun searchWikidataEntities(query: String): Result<List<WikidataProperty>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val response = apiService.searchWikidataEntities(query)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body.map { it.toWikidataProperty() })
+                    } else {
+                        Result.failure(
+                            Exception(context.getString(R.string.add_edge_property_search_error))
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "${context.getString(R.string.add_edge_property_search_error)}: ${
+                                response.errorBody()?.string()
+                            }"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun searchWikidataEdgeLabels(query: String): Result<List<WikidataProperty>> {
+        return searchWikidataProperties(query)
     }
 
     suspend fun updateNodeProperties(
@@ -383,6 +422,40 @@ class SpaceNodeDetailsRepository @Inject constructor(
                             "${context.getString(R.string.space_node_edit_properties_error)}: ${
                                 response.errorBody()?.string()
                             }"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun addNode(
+        spaceId: String,
+        request: AddNodeRequest
+    ): Result<AddNodeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val response = apiService.addNode(spaceId, request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body)
+                    } else {
+                        Result.failure(
+                            Exception("Failed to create node: Empty response")
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "Failed to create node: ${response.errorBody()?.string()}"
                         )
                     )
                 }

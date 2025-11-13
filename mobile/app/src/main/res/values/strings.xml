@@ -146,4 +146,17 @@
     <string name="space_node_connections_no_results">No connections match your search</string>
     <string name="node_details_error_title">Error</string>
     <string name="node_details_error_message">Failed to load node details. Please try again later.</string>
+    <string name="add_node_title">Add New Node</string>
+    <string name="node_title_label">Node Title</string>
+    <string name="search_wikidata_hint">Search Wikidata…</string>
+    <string name="select_entity_placeholder">--- Select an entity ---</string>
+    <string name="selected_entity_label">Selected Entity: %1$s</string>
+    <string name="property_selection_instruction">Click on a property to select/deselect it</string>
+    <string name="edge_direction_label">Edge Direction:</string>
+    <string name="connect_to_node_label">Connect To Node:</string>
+    <string name="edge_label_label">Edge Label:</string>
+    <string name="create_node_button">Create Node</string>
+    <string name="creating_node_message">Creating node...</string>
+    <string name="loading_properties_message">Loading properties…</string>
+    <string name="loading_nodes_message">Loading nodes…</string>
 </resources>

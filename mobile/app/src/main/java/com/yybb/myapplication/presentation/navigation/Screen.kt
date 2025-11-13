@@ -13,6 +13,9 @@ sealed class Screen(val route: String) {
     object SpaceNodes : Screen("space_nodes/{spaceId}") {
         fun createRoute(spaceId: Int) = "space_nodes/$spaceId"
     }
+    object AddNode : Screen("add_node/{spaceId}") {
+        fun createRoute(spaceId: Int) = "add_node/$spaceId"
+    }
     object SpaceNodeDetails : Screen("space_node_details/{spaceId}/{nodeId}/{nodeLabel}/{nodeWikidataId}") {
         fun createRoute(spaceId: String, nodeId: String, nodeLabel: String, nodeWikidataId: String?): String {
             val encodedLabel = android.net.Uri.encode(nodeLabel)

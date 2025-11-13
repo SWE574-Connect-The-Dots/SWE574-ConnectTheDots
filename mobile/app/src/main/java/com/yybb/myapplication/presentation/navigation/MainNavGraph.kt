@@ -15,6 +15,7 @@ import com.yybb.myapplication.presentation.ui.screens.EditProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.AddNodeScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
@@ -73,7 +74,20 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
                     navController.navigate(Screen.SpaceNodeDetails.createRoute(spaceId, nodeId, nodeLabel, wikidataId))
+                },
+                onNavigateToAddNode = {
+                    navController.navigate(Screen.AddNode.createRoute(spaceId.toInt()))
                 }
+            )
+        }
+        composable(
+            route = Screen.AddNode.route,
+            arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val spaceId = backStackEntry.arguments?.getString("spaceId") ?: ""
+            AddNodeScreen(
+                navController = navController,
+                spaceId = spaceId
             )
         }
         composable(

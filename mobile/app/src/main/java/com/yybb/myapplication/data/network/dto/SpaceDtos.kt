@@ -158,18 +158,6 @@ data class NodePropertyResponse(
     val display: String?
 )
 
-data class UpdateNodePropertyRequest(
-    @SerializedName("statement_id")
-    val statementId: String,
-    @SerializedName("property")
-    val propertyId: String,
-    @SerializedName("property_label")
-    val propertyLabel: String,
-    @SerializedName("value")
-    val propertyValue: JsonElement?,
-    val display: String?
-)
-
 data class NodeWikidataPropertyResponse(
     @SerializedName("statement_id")
     val statementId: String,
@@ -201,6 +189,62 @@ data class UpdateNodePropertiesResponse(
 )
 
 data class DeleteNodeResponse(
+    val message: String
+)
+
+data class AddNodeRequest(
+    @SerializedName("related_node_id")
+    val relatedNodeId: String?,
+    @SerializedName("wikidata_entity")
+    val wikidataEntity: AddNodeWikidataEntity,
+    @SerializedName("edge_label")
+    val edgeLabel: String,
+    @SerializedName("is_new_node_source")
+    val isNewNodeSource: Boolean,
+    val location: AddNodeLocation,
+    @SerializedName("selected_properties")
+    val selectedProperties: List<AddNodeProperty>
+)
+
+data class AddNodeWikidataEntity(
+    val id: String,
+    val label: String,
+    val description: String? = null,
+    val url: String? = null,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String? = null
+)
+
+data class AddNodeLocation(
+    val country: String? = null,
+    val city: String? = null,
+    val district: String? = null,
+    val street: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerializedName("location_name")
+    val locationName: String? = null
+)
+
+data class AddNodeProperty(
+    @SerializedName("statement_id")
+    val statementId: String,
+    val property: String,
+    val display: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    val value: AddNodePropertyValue,
+    @SerializedName("wikidata_entity")
+    val wikidataEntity: AddNodeWikidataEntity
+)
+
+data class AddNodePropertyValue(
+    val type: String,
+    val id: String? = null,
+    val text: String
+)
+
+data class AddNodeResponse(
     val message: String
 )
 

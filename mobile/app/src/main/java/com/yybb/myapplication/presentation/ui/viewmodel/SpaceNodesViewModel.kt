@@ -36,14 +36,21 @@ class SpaceNodesViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private var isFirstResume = true
+
     init {
         observeFilters()
         fetchSpaceNodes()
     }
     
     fun onScreenResumed() {
-        // Only refresh if not already loading to avoid duplicate requests
-        if (!_isLoading.value && _nodes.value.isNotEmpty()) {
+        // Skip the first resume to avoid duplicate call with init block
+        if (isFirstResume) {
+            isFirstResume = false
+            return
+        }
+        // Only refresh if not currently loading
+        if (!_isLoading.value) {
             fetchSpaceNodes()
         }
     }

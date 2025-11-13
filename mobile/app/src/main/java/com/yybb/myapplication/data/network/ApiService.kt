@@ -3,6 +3,8 @@ package com.yybb.myapplication.data.network
 import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
 import com.yybb.myapplication.data.network.dto.AddEdgeRequest
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
+import com.yybb.myapplication.data.network.dto.AddNodeRequest
+import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
@@ -128,11 +130,22 @@ interface ApiService {
         @Query("q") query: String
     ): Response<List<WikidataPropertyDto>>
 
+    @GET("api/spaces/wikidata-search/")
+    suspend fun searchWikidataEntities(
+        @Query("q") query: String
+    ): Response<List<WikidataPropertyDto>>
+
     @POST("api/spaces/{id}/edges/add/")
     suspend fun addEdgeToSpaceGraph(
         @Path("id") id: String,
         @Body request: AddEdgeRequest
     ): Response<AddEdgeResponse>
+
+    @POST("api/spaces/{id}/add-node/")
+    suspend fun addNode(
+        @Path("id") id: String,
+        @Body request: AddNodeRequest
+    ): Response<AddNodeResponse>
 
     @POST("api/spaces/{id}/snapshots/create/")
     suspend fun createSnapshot(
@@ -145,4 +158,10 @@ interface ApiService {
         @Path("id") id: String,
         @Path("nodeId") nodeId: String
     ): Response<DeleteNodeResponse>
+
+    @POST("api/spaces/{id}/add-node/")
+    suspend fun addNode(
+        @Path("id") id: String,
+        //TODO: implement payload
+    ): Response<AddNodeResponse>
 }
