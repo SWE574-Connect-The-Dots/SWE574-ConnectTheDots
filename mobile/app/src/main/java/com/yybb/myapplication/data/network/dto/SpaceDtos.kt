@@ -200,6 +200,10 @@ data class UpdateNodePropertiesResponse(
     val message: String
 )
 
+data class DeleteNodeResponse(
+    val message: String
+)
+
 // Vote Discussion Request
 data class VoteDiscussionRequest(
     val value: String // "up" or "down"

@@ -18,6 +18,7 @@ import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.dto.AddEdgeRequest
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
+import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertyItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -314,6 +315,39 @@ class SpaceNodeDetailsRepository @Inject constructor(
                     Result.failure(
                         Exception(
                             "${context.getString(R.string.create_snapshot_service_error)}: ${
+                                response.errorBody()?.string()
+                            }"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteNode(spaceId: String, nodeId: String): Result<DeleteNodeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val response = apiService.deleteNode(spaceId, nodeId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body)
+                    } else {
+                        Result.failure(
+                            Exception(context.getString(R.string.delete_node_service_error))
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "${context.getString(R.string.delete_node_service_error)}: ${
                                 response.errorBody()?.string()
                             }"
                         )

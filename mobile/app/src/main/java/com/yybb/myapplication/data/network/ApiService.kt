@@ -6,6 +6,7 @@ import com.yybb.myapplication.data.network.dto.AddEdgeResponse
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
+import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
 import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.LoginResponse
@@ -138,4 +139,10 @@ interface ApiService {
         @Path("id") id: String,
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Response<CreateSnapshotResponse>
+
+    @DELETE("api/spaces/{id}/nodes/{nodeId}/")
+    suspend fun deleteNode(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String
+    ): Response<DeleteNodeResponse>
 }

@@ -120,12 +120,17 @@ fun SpaceNodeDetailsScreen(
     val isCreatingEdge by viewModel.isCreatingEdge.collectAsState()
     val edgeCreationError by viewModel.edgeCreationError.collectAsState()
     val edgeCreationSuccess by viewModel.edgeCreationSuccess.collectAsState()
+    val criticalError by viewModel.criticalError.collectAsState()
+    val isDeletingNode by viewModel.isDeletingNode.collectAsState()
+    val deleteNodeError by viewModel.deleteNodeError.collectAsState()
+    val deleteNodeSuccess by viewModel.deleteNodeSuccess.collectAsState()
     val reportReasons = viewModel.reportReasons
 
     var isFabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(selectedTabIndex) {
@@ -134,9 +139,46 @@ fun SpaceNodeDetailsScreen(
         }
     }
 
+    LaunchedEffect(criticalError) {
+        if (criticalError != null) {
+            showErrorDialog = true
+        }
+    }
+
+    if (showErrorDialog && criticalError != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showErrorDialog = false
+                viewModel.clearCriticalError()
+                onNavigateBack()
+            },
+            title = { Text(text = stringResource(id = R.string.node_details_error_title)) },
+            text = {
+                Text(
+                    text = criticalError ?: stringResource(id = R.string.node_details_error_message)
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showErrorDialog = false
+                        viewModel.clearCriticalError()
+                        onNavigateBack()
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.ok_button))
+                }
+            }
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { 
+                if (!isDeletingNode) {
+                    showDeleteDialog = false
+                }
+            },
             title = { Text(text = stringResource(id = R.string.delete_node_title)) },
             text = {
                 Text(
@@ -147,14 +189,20 @@ fun SpaceNodeDetailsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onNavigateBack()
-                }) {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteNode()
+                    },
+                    enabled = !isDeletingNode
+                ) {
                     Text(text = stringResource(id = R.string.yes_button))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                    enabled = !isDeletingNode
+                ) {
                     Text(text = stringResource(id = R.string.no_button))
                 }
             }
@@ -205,6 +253,35 @@ fun SpaceNodeDetailsScreen(
 
     if (isDeletingNodeProperty) {
         LoadingDialog(message = stringResource(id = R.string.deleting_node_property_message))
+    }
+
+    if (isDeletingNode) {
+        LoadingDialog(message = stringResource(id = R.string.deleting_node_message))
+    }
+
+    LaunchedEffect(deleteNodeSuccess) {
+        if (deleteNodeSuccess) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.delete_node_success_message),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.clearDeleteNodeSuccess()
+            showDeleteDialog = false
+            onNavigateBack()
+        }
+    }
+
+    LaunchedEffect(deleteNodeError) {
+        deleteNodeError?.let { error ->
+            Toast.makeText(
+                context,
+                error,
+                Toast.LENGTH_LONG
+            ).show()
+            viewModel.clearDeleteNodeError()
+            showDeleteDialog = false
+        }
     }
 
     LaunchedEffect(nodePropertyDeletionMessage) {

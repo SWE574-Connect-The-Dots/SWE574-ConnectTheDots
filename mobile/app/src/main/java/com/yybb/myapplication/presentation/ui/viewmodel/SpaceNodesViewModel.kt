@@ -40,12 +40,23 @@ class SpaceNodesViewModel @Inject constructor(
         observeFilters()
         fetchSpaceNodes()
     }
+    
+    fun onScreenResumed() {
+        // Only refresh if not already loading to avoid duplicate requests
+        if (!_isLoading.value && _nodes.value.isNotEmpty()) {
+            fetchSpaceNodes()
+        }
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
     }
 
     fun retry() {
+        fetchSpaceNodes()
+    }
+
+    fun refresh() {
         fetchSpaceNodes()
     }
 

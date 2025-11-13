@@ -24,13 +24,6 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    data class NodeDetailsMock(
-        val name: String,
-        val wikidataId: String,
-        val availableProperties: List<String>,
-        val defaultProperties: List<String>
-    )
-
     data class PropertyOption(
         val property: NodeProperty,
         val isChecked: Boolean
@@ -60,15 +53,20 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private val nodeLabelArg: String? = savedStateHandle["nodeLabel"]
     private val nodeWikidataIdArg: String? = savedStateHandle["nodeWikidataId"]
 
-    private val nodeDetails: NodeDetailsMock = nodeDetailsMap[nodeId] ?: nodeDetailsMap.values.first()
-
-    private val _nodeName = MutableStateFlow(nodeLabelArg ?: nodeDetails.name)
+    private val _nodeName = MutableStateFlow(nodeLabelArg ?: "")
     val nodeName: StateFlow<String> = _nodeName.asStateFlow()
 
     private val _wikidataId = MutableStateFlow(
-        nodeWikidataIdArg?.takeUnless { it.isBlank() } ?: nodeDetails.wikidataId
+        nodeWikidataIdArg?.takeUnless { it.isBlank() } ?: ""
     )
     val wikidataId: StateFlow<String> = _wikidataId.asStateFlow()
+
+    private val _criticalError = MutableStateFlow<String?>(null)
+    val criticalError: StateFlow<String?> = _criticalError.asStateFlow()
+
+    fun clearCriticalError() {
+        _criticalError.value = null
+    }
 
     private val _availableConnectionNodes = MutableStateFlow<List<NodeOption>>(emptyList())
     val availableConnectionNodes: StateFlow<List<NodeOption>> = _availableConnectionNodes.asStateFlow()
@@ -124,6 +122,15 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private val _edgeCreationSuccess = MutableStateFlow<EdgeCreationResult?>(null)
     val edgeCreationSuccess: StateFlow<EdgeCreationResult?> = _edgeCreationSuccess.asStateFlow()
 
+    private val _isDeletingNode = MutableStateFlow(false)
+    val isDeletingNode: StateFlow<Boolean> = _isDeletingNode.asStateFlow()
+
+    private val _deleteNodeError = MutableStateFlow<String?>(null)
+    val deleteNodeError: StateFlow<String?> = _deleteNodeError.asStateFlow()
+
+    private val _deleteNodeSuccess = MutableStateFlow<Boolean>(false)
+    val deleteNodeSuccess: StateFlow<Boolean> = _deleteNodeSuccess.asStateFlow()
+
     val filteredConnections: StateFlow<List<NodeConnection>> =
         combine(_connectionSearchQuery, _nodeConnections) { query, connections ->
             if (query.isBlank()) {
@@ -165,10 +172,15 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         )
 
     init {
-        fetchAvailableConnectionNodes()
-        fetchNodeProperties()
-        fetchWikidataProperties()
-        fetchNodeConnections()
+        // Validate required data
+        if (nodeLabelArg.isNullOrBlank()) {
+            _criticalError.value = "Node name is required but not provided"
+        } else {
+            fetchAvailableConnectionNodes()
+            fetchNodeProperties()
+            fetchWikidataProperties()
+            fetchNodeConnections()
+        }
     }
 
     fun retryNodeProperties() {
@@ -232,16 +244,23 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             _isNodePropertiesLoading.value = true
             _nodePropertiesError.value = null
 
+            val isInitialLoad = _apiNodeProperties.value.isEmpty()
             val result = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
             result.onSuccess { properties ->
                 _apiNodeProperties.value = properties
                 syncPropertyOptionsWithSelectedProperties()
+                _isNodePropertiesLoading.value = false
             }.onFailure { throwable ->
                 _apiNodeProperties.value = emptyList()
-                _nodePropertiesError.value = throwable.message
+                if (isInitialLoad) {
+                    // Critical error on initial load - show error dialog
+                    _criticalError.value = throwable.message ?: "Failed to load node properties"
+                } else {
+                    // Non-critical error on subsequent loads
+                    _nodePropertiesError.value = throwable.message
+                }
+                _isNodePropertiesLoading.value = false
             }
-
-            _isNodePropertiesLoading.value = false
         }
     }
 
@@ -325,17 +344,8 @@ class SpaceNodeDetailsViewModel @Inject constructor(
                     }
                 _availableConnectionNodes.value = options
             }.onFailure {
-                if (_availableConnectionNodes.value.isEmpty()) {
-                    val fallback = nodeDetailsMap
-                        .filterKeys { key -> key != nodeId }
-                        .map { (id, details) ->
-                            NodeOption(
-                                id = id,
-                                name = details.name
-                            )
-                        }
-                    _availableConnectionNodes.value = fallback
-                }
+                // Don't use fallback - just keep empty list
+                _availableConnectionNodes.value = emptyList()
             }
         }
     }
@@ -439,6 +449,41 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
+    fun deleteNode() {
+        if (_isDeletingNode.value) return
+
+        viewModelScope.launch {
+            _isDeletingNode.value = true
+            _deleteNodeError.value = null
+            _deleteNodeSuccess.value = false
+
+            val deleteResult = spaceNodeDetailsRepository.deleteNode(spaceId, nodeId)
+            val deleteResponse = deleteResult.getOrElse { throwable ->
+                _deleteNodeError.value = throwable.message
+                _isDeletingNode.value = false
+                return@launch
+            }
+
+            val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+            val snapshotResponse = snapshotResult.getOrElse { throwable ->
+                _deleteNodeError.value = throwable.message
+                _isDeletingNode.value = false
+                return@launch
+            }
+
+            _deleteNodeSuccess.value = true
+            _isDeletingNode.value = false
+        }
+    }
+
+    fun clearDeleteNodeError() {
+        _deleteNodeError.value = null
+    }
+
+    fun clearDeleteNodeSuccess() {
+        _deleteNodeSuccess.value = false
+    }
+
     fun clearNodePropertyDeletionMessage() {
         _nodePropertyDeletionMessage.value = null
     }
@@ -488,147 +533,5 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
-    companion object {
-        private val nodeDetailsMap = mapOf(
-            "1" to NodeDetailsMock(
-                name = "Airport",
-                wikidataId = "Q4808437",
-                availableProperties = listOf(
-                    "Location: Istanbul",
-                    "Founded In: 2010 January",
-                    "Long Name: Istanbul Sabiha Gokcen Uluslararasi Havalimani",
-                    "Size: 100000 m2",
-                    "Has flight capacity: 500",
-                    "Has parking capacity: 1200",
-                    "Has helipad",
-                    "Supports international flights",
-                    "Has VIP lounge"
-                ),
-                defaultProperties = listOf(
-                    "Location: Istanbul",
-                    "Founded In: 2010 January",
-                    "Long Name: Istanbul Sabiha Gokcen Uluslararasi Havalimani"
-                )
-            ),
-            "2" to NodeDetailsMock(
-                name = "Railway Station",
-                wikidataId = "Q123456",
-                availableProperties = listOf(
-                    "Location: Istanbul",
-                    "Platforms: 8",
-                    "Built In: 1920",
-                    "Has high-speed rail service",
-                    "Offers luggage storage",
-                    "Connected to metro line"
-                ),
-                defaultProperties = listOf(
-                    "Location: Istanbul",
-                    "Platforms: 8",
-                    "Has high-speed rail service"
-                )
-            ),
-            "3" to NodeDetailsMock(
-                name = "City Center",
-                wikidataId = "Q654321",
-                availableProperties = listOf(
-                    "Location: Downtown",
-                    "Has public square",
-                    "Main shopping district",
-                    "Historic landmark nearby",
-                    "Hosts cultural events"
-                ),
-                defaultProperties = listOf(
-                    "Location: Downtown",
-                    "Main shopping district",
-                    "Hosts cultural events"
-                )
-            ),
-            "4" to NodeDetailsMock(
-                name = "Museum",
-                wikidataId = "Q234567",
-                availableProperties = listOf(
-                    "Location: Historical district",
-                    "Founded In: 1950",
-                    "Collection Size: 20000 artifacts",
-                    "Hosts guided tours",
-                    "Has cafe",
-                    "Open daily"
-                ),
-                defaultProperties = listOf(
-                    "Location: Historical district",
-                    "Collection Size: 20000 artifacts",
-                    "Hosts guided tours"
-                )
-            ),
-            "5" to NodeDetailsMock(
-                name = "University",
-                wikidataId = "Q345678",
-                availableProperties = listOf(
-                    "Location: Campus Avenue",
-                    "Founded In: 1975",
-                    "Student Population: 25000",
-                    "Research Centers: 12",
-                    "Offers graduate programs",
-                    "Has student housing"
-                ),
-                defaultProperties = listOf(
-                    "Location: Campus Avenue",
-                    "Student Population: 25000",
-                    "Offers graduate programs"
-                )
-            ),
-            "6" to NodeDetailsMock(
-                name = "Library",
-                wikidataId = "Q456789",
-                availableProperties = listOf(
-                    "Location: Main Street",
-                    "Founded In: 1985",
-                    "Book Collection: 150000",
-                    "Has reading rooms",
-                    "Provides digital archives",
-                    "Open on weekends"
-                ),
-                defaultProperties = listOf(
-                    "Location: Main Street",
-                    "Book Collection: 150000",
-                    "Provides digital archives"
-                )
-            ),
-            "7" to NodeDetailsMock(
-                name = "Park",
-                wikidataId = "Q567890",
-                availableProperties = listOf(
-                    "Location: Riverside",
-                    "Size: 80 hectares",
-                    "Has playground",
-                    "Hosts festivals",
-                    "Has walking trails",
-                    "Pet friendly"
-                ),
-                defaultProperties = listOf(
-                    "Location: Riverside",
-                    "Has playground",
-                    "Has walking trails"
-                )
-            ),
-            "8" to NodeDetailsMock(
-                name = "Sports Arena",
-                wikidataId = "Q678901",
-                availableProperties = listOf(
-                    "Location: Arena Boulevard",
-                    "Seating Capacity: 25000",
-                    "Supports indoor events",
-                    "Has VIP suites",
-                    "Hosts concerts",
-                    "Has training facilities"
-                ),
-                defaultProperties = listOf(
-                    "Location: Arena Boulevard",
-                    "Seating Capacity: 25000",
-                    "Hosts concerts"
-                )
-            )
-        )
-    }
 }
 

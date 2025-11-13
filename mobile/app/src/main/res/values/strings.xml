@@ -102,6 +102,9 @@
     <string name="connections_tab_label">Connections</string>
     <string name="delete_node_title">Delete Node</string>
     <string name="delete_node_confirmation">Are you sure you want to delete the node "%1$s"? This action cannot be taken back.</string>
+    <string name="delete_node_service_error">Failed to delete node.</string>
+    <string name="delete_node_success_message">Node deleted successfully</string>
+    <string name="deleting_node_message">Deleting node...</string>
     <string name="add_connection_title">Add Connection</string>
     <string name="add_connection_placeholder">Add connection action coming soon.</string>
     <string name="report_node_title">Report Node</string>
@@ -141,4 +144,6 @@
     <string name="edge_details_placeholder_toast">Edge details for \"%1$s\" coming soon.</string>
     <string name="search_connections_hint">Search connections</string>
     <string name="space_node_connections_no_results">No connections match your search</string>
+    <string name="node_details_error_title">Error</string>
+    <string name="node_details_error_message">Failed to load node details. Please try again later.</string>
 </resources>
