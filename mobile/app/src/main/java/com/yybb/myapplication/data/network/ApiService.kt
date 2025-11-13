@@ -1,8 +1,11 @@
 package com.yybb.myapplication.data.network
 
 import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
+import com.yybb.myapplication.data.network.dto.AddEdgeRequest
+import com.yybb.myapplication.data.network.dto.AddEdgeResponse
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
+import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
 import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.LoginResponse
@@ -22,6 +25,7 @@ import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionResponse
+import com.yybb.myapplication.data.network.dto.WikidataPropertyDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -110,4 +114,28 @@ interface ApiService {
         @Path("nodeId") nodeId: String,
         @Body request: UpdateNodePropertiesRequest
     ): Response<UpdateNodePropertiesResponse>
+
+    @DELETE("api/spaces/{id}/nodes/{nodeId}/properties/{statementId}/")
+    suspend fun deleteNodeProperty(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+        @Path("statementId") statementId: String
+    ): Response<UpdateNodePropertiesResponse>
+
+    @GET("api/spaces/wikidata-property-search/")
+    suspend fun searchWikidataProperties(
+        @Query("q") query: String
+    ): Response<List<WikidataPropertyDto>>
+
+    @POST("api/spaces/{id}/edges/add/")
+    suspend fun addEdgeToSpaceGraph(
+        @Path("id") id: String,
+        @Body request: AddEdgeRequest
+    ): Response<AddEdgeResponse>
+
+    @POST("api/spaces/{id}/snapshots/create/")
+    suspend fun createSnapshot(
+        @Path("id") id: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<CreateSnapshotResponse>
 }

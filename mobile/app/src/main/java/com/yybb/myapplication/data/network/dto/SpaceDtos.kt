@@ -123,6 +123,29 @@ data class SpaceEdgeResponse(
     val wikidataPropertyId: String?
 )
 
+data class AddEdgeRequest(
+    @SerializedName("source_id")
+    val sourceId: String,
+    @SerializedName("target_id")
+    val targetId: String,
+    val label: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String
+)
+
+data class AddEdgeResponse(
+    val message: String,
+    @SerializedName("edge_id")
+    val edgeId: Int
+)
+
+data class CreateSnapshotResponse(
+    @SerializedName("snapshot_id")
+    val snapshotId: Int,
+    @SerializedName("created_at")
+    val createdAt: String
+)
+
 data class NodePropertyResponse(
     @SerializedName("statement_id")
     val statementId: String,

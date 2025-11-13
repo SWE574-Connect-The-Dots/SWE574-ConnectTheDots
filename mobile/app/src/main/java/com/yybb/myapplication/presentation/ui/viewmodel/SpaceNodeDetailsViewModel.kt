@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.NodeProperty
+import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +47,14 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val isSource: Boolean
     )
 
+    data class EdgeCreationResult(
+        val edgeId: Int,
+        val snapshotId: Int,
+        val isForwardDirection: Boolean,
+        val connectedNodeName: String,
+        val label: String
+    )
+
     private val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
     private val nodeId: String = checkNotNull(savedStateHandle["nodeId"])
     private val nodeLabelArg: String? = savedStateHandle["nodeLabel"]
@@ -60,16 +70,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     )
     val wikidataId: StateFlow<String> = _wikidataId.asStateFlow()
 
-    private val _availableConnectionNodes = MutableStateFlow(
-        nodeDetailsMap
-            .filterKeys { it != nodeId }
-            .map { entry ->
-                NodeOption(
-                    id = entry.key,
-                    name = entry.value.name
-                )
-            }
-    )
+    private val _availableConnectionNodes = MutableStateFlow<List<NodeOption>>(emptyList())
     val availableConnectionNodes: StateFlow<List<NodeOption>> = _availableConnectionNodes.asStateFlow()
 
     private val _nodeConnections = MutableStateFlow<List<NodeConnection>>(emptyList())
@@ -93,8 +94,35 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private val _isUpdatingNodeProperties = MutableStateFlow(false)
     val isUpdatingNodeProperties: StateFlow<Boolean> = _isUpdatingNodeProperties.asStateFlow()
 
+    private val _isDeletingNodeProperty = MutableStateFlow(false)
+    val isDeletingNodeProperty: StateFlow<Boolean> = _isDeletingNodeProperty.asStateFlow()
+
     private val _nodePropertiesError = MutableStateFlow<String?>(null)
     val nodePropertiesError: StateFlow<String?> = _nodePropertiesError.asStateFlow()
+
+    private val _nodePropertyDeletionMessage = MutableStateFlow<String?>(null)
+    val nodePropertyDeletionMessage: StateFlow<String?> = _nodePropertyDeletionMessage.asStateFlow()
+
+    private val _nodePropertyDeletionError = MutableStateFlow<String?>(null)
+    val nodePropertyDeletionError: StateFlow<String?> = _nodePropertyDeletionError.asStateFlow()
+
+    private val _edgeLabelSearchResults = MutableStateFlow<List<WikidataProperty>>(emptyList())
+    val edgeLabelSearchResults: StateFlow<List<WikidataProperty>> = _edgeLabelSearchResults.asStateFlow()
+
+    private val _isEdgeLabelSearching = MutableStateFlow(false)
+    val isEdgeLabelSearching: StateFlow<Boolean> = _isEdgeLabelSearching.asStateFlow()
+
+    private val _edgeLabelSearchError = MutableStateFlow<String?>(null)
+    val edgeLabelSearchError: StateFlow<String?> = _edgeLabelSearchError.asStateFlow()
+
+    private val _isCreatingEdge = MutableStateFlow(false)
+    val isCreatingEdge: StateFlow<Boolean> = _isCreatingEdge.asStateFlow()
+
+    private val _edgeCreationError = MutableStateFlow<String?>(null)
+    val edgeCreationError: StateFlow<String?> = _edgeCreationError.asStateFlow()
+
+    private val _edgeCreationSuccess = MutableStateFlow<EdgeCreationResult?>(null)
+    val edgeCreationSuccess: StateFlow<EdgeCreationResult?> = _edgeCreationSuccess.asStateFlow()
 
     val filteredConnections: StateFlow<List<NodeConnection>> =
         combine(_connectionSearchQuery, _nodeConnections) { query, connections ->
@@ -137,6 +165,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         )
 
     init {
+        fetchAvailableConnectionNodes()
         fetchNodeProperties()
         fetchWikidataProperties()
         fetchNodeConnections()
@@ -198,17 +227,6 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
-    fun searchEdgeLabelOptions(query: String): List<String> {
-        if (query.isBlank()) return emptyList()
-        val options = _propertyOptions.value
-        return if (options.isNotEmpty()) {
-            options.map { it.property.display }
-                .filter { it.contains(query, ignoreCase = true) }
-        } else {
-            nodeDetails.availableProperties.filter { it.contains(query, ignoreCase = true) }
-        }
-    }
-
     private fun fetchNodeProperties() {
         viewModelScope.launch {
             _isNodePropertiesLoading.value = true
@@ -259,19 +277,174 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
-    fun removeApiProperty(statementId: String) {
-        _apiNodeProperties.update { properties ->
-            properties.filterNot { it.statementId == statementId }
+    fun deleteNodeProperty(property: NodeProperty) {
+        viewModelScope.launch {
+            if (_isDeletingNodeProperty.value) return@launch
+
+            _isDeletingNodeProperty.value = true
+            _nodePropertyDeletionMessage.value = null
+            _nodePropertyDeletionError.value = null
+
+            val deleteResult =
+                spaceNodeDetailsRepository.deleteNodeProperty(spaceId, nodeId, property.statementId)
+            deleteResult.onSuccess {
+                val refreshResult = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
+                refreshResult.onSuccess { properties ->
+                    _apiNodeProperties.value = properties
+                    syncPropertyOptionsWithSelectedProperties()
+                    _nodePropertyDeletionMessage.value = property.display.ifBlank {
+                        if (property.propertyLabel.isNotBlank() && property.valueText.isNotBlank()) {
+                            "${property.propertyLabel}: ${property.valueText}"
+                        } else {
+                            property.propertyLabel.ifBlank { property.statementId }
+                        }
+                    }
+                }.onFailure { throwable ->
+                    _nodePropertyDeletionError.value = throwable.message
+                }
+            }.onFailure { throwable ->
+                _nodePropertyDeletionError.value = throwable.message
+            }
+
+            _isDeletingNodeProperty.value = false
         }
-        _propertyOptions.update { options ->
-            options.map { option ->
-                if (option.property.statementId == statementId) {
-                    option.copy(isChecked = false)
-                } else {
-                    option
+    }
+
+    private fun fetchAvailableConnectionNodes() {
+        viewModelScope.launch {
+            val result = spaceNodeDetailsRepository.getSpaceNodes(spaceId)
+            result.onSuccess { nodes ->
+                val options = nodes
+                    .filter { node -> node.id.toString() != nodeId }
+                    .sortedBy { it.label.lowercase() }
+                    .map { node ->
+                        NodeOption(
+                            id = node.id.toString(),
+                            name = node.label
+                        )
+                    }
+                _availableConnectionNodes.value = options
+            }.onFailure {
+                if (_availableConnectionNodes.value.isEmpty()) {
+                    val fallback = nodeDetailsMap
+                        .filterKeys { key -> key != nodeId }
+                        .map { (id, details) ->
+                            NodeOption(
+                                id = id,
+                                name = details.name
+                            )
+                        }
+                    _availableConnectionNodes.value = fallback
                 }
             }
         }
+    }
+
+    private var edgeLabelSearchJob: Job? = null
+
+    fun searchEdgeLabelOptions(query: String) {
+        val normalized = query.trim()
+        edgeLabelSearchJob?.cancel()
+
+        if (normalized.length < 3) {
+            _isEdgeLabelSearching.value = false
+            _edgeLabelSearchResults.value = emptyList()
+            _edgeLabelSearchError.value = null
+            return
+        }
+
+        edgeLabelSearchJob = viewModelScope.launch {
+            _isEdgeLabelSearching.value = true
+            _edgeLabelSearchError.value = null
+
+            val result = spaceNodeDetailsRepository.searchWikidataEdgeLabels(normalized)
+            result.onSuccess { properties ->
+                _edgeLabelSearchResults.value = properties
+            }.onFailure { throwable ->
+                _edgeLabelSearchResults.value = emptyList()
+                _edgeLabelSearchError.value = throwable.message
+            }
+
+            _isEdgeLabelSearching.value = false
+        }
+    }
+
+    fun resetEdgeLabelSearch() {
+        edgeLabelSearchJob?.cancel()
+        _isEdgeLabelSearching.value = false
+        _edgeLabelSearchResults.value = emptyList()
+        _edgeLabelSearchError.value = null
+    }
+
+    fun clearEdgeLabelSearchError() {
+        _edgeLabelSearchError.value = null
+    }
+
+    fun clearEdgeCreationError() {
+        _edgeCreationError.value = null
+    }
+
+    fun clearEdgeCreationSuccess() {
+        _edgeCreationSuccess.value = null
+    }
+
+    fun addEdge(
+        selectedNode: NodeOption,
+        isForwardDirection: Boolean,
+        label: String,
+        wikidataPropertyId: String
+    ) {
+        if (_isCreatingEdge.value) return
+
+        viewModelScope.launch {
+            _isCreatingEdge.value = true
+            _edgeCreationError.value = null
+            _edgeCreationSuccess.value = null
+
+            val trimmedLabel = label.trim()
+            val sourceId = if (isForwardDirection) nodeId else selectedNode.id
+            val targetId = if (isForwardDirection) selectedNode.id else nodeId
+
+            val addResult = spaceNodeDetailsRepository.addEdgeToSpaceGraph(
+                spaceId = spaceId,
+                sourceId = sourceId,
+                targetId = targetId,
+                label = trimmedLabel,
+                wikidataPropertyId = wikidataPropertyId
+            )
+
+            val addResponse = addResult.getOrElse { throwable ->
+                _edgeCreationError.value = throwable.message
+                _isCreatingEdge.value = false
+                return@launch
+            }
+
+            val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+            val snapshotResponse = snapshotResult.getOrElse { throwable ->
+                _edgeCreationError.value = throwable.message
+                _isCreatingEdge.value = false
+                return@launch
+            }
+
+            fetchNodeConnections()
+            _edgeCreationSuccess.value = EdgeCreationResult(
+                edgeId = addResponse.edgeId,
+                snapshotId = snapshotResponse.snapshotId,
+                isForwardDirection = isForwardDirection,
+                connectedNodeName = selectedNode.name,
+                label = trimmedLabel
+            )
+
+            _isCreatingEdge.value = false
+        }
+    }
+
+    fun clearNodePropertyDeletionMessage() {
+        _nodePropertyDeletionMessage.value = null
+    }
+
+    fun clearNodePropertyDeletionError() {
+        _nodePropertyDeletionError.value = null
     }
 
     private fun syncPropertyOptionsWithSelectedProperties() {

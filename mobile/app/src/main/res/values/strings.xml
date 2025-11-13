@@ -88,10 +88,12 @@
     <string name="node_properties_title">Node Properties</string>
     <string name="space_node_properties_error">Failed to load node properties</string>
     <string name="space_node_update_properties_error">Failed to update node properties</string>
+    <string name="space_node_delete_property_error">Failed to delete node property</string>
     <string name="space_node_edit_properties_error">Failed to load available properties</string>
     <string name="node_property_value_click_message">Clicked property value for %1$s</string>
     <string name="node_properties_empty">No properties available</string>
     <string name="node_property_removed_message">Removed property %1$s</string>
+    <string name="deleting_node_property_message">Deleting node property...</string>
     <string name="edit_node_properties_title">Edit Node Properties</string>
     <string name="node_properties_instruction">Click on a property to select/deselect it</string>
     <string name="search_property_hint">Search property</string>
@@ -123,10 +125,14 @@
     <string name="add_edge_label_error">Please enter an edge label.</string>
     <string name="add_edge_no_results">No matching properties found. You can still use your custom label.</string>
     <string name="add_edge_search_results_title">Select from results:</string>
+    <string name="searching_label">Searching...</string>
+    <string name="add_edge_property_search_error">Unable to search Wikidata properties. Try again shortly.</string>
     <string name="add_edge_button">Add edge</string>
     <string name="edge_direction_placeholder_forward">source -&gt; target</string>
     <string name="edge_direction_placeholder_reverse">target -&gt; source</string>
     <string name="edge_added_toast">Edge added with direction %1$s and description %2$s</string>
+    <string name="add_edge_service_error">Failed to add edge.</string>
+    <string name="create_snapshot_service_error">Failed to create snapshot.</string>
     <string name="space_node_no_connections">No connections yet</string>
     <string name="space_node_connections_error">Failed to load node connections</string>
     <string name="edge_description_label">Edge description: %1$s</string>

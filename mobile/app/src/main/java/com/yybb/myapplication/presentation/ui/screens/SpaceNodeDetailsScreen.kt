@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,9 +41,9 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,7 +68,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,8 +85,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.TAG_ICON_SIZE
 import com.yybb.myapplication.data.model.NodeProperty
+import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel.NodeOption
+import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,13 +110,29 @@ fun SpaceNodeDetailsScreen(
     val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
     val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
     val isUpdatingNodeProperties by viewModel.isUpdatingNodeProperties.collectAsState()
+    val isDeletingNodeProperty by viewModel.isDeletingNodeProperty.collectAsState()
     val nodePropertiesError by viewModel.nodePropertiesError.collectAsState()
+    val nodePropertyDeletionMessage by viewModel.nodePropertyDeletionMessage.collectAsState()
+    val nodePropertyDeletionError by viewModel.nodePropertyDeletionError.collectAsState()
+    val edgeLabelSearchResults by viewModel.edgeLabelSearchResults.collectAsState()
+    val isEdgeLabelSearching by viewModel.isEdgeLabelSearching.collectAsState()
+    val edgeLabelSearchError by viewModel.edgeLabelSearchError.collectAsState()
+    val isCreatingEdge by viewModel.isCreatingEdge.collectAsState()
+    val edgeCreationError by viewModel.edgeCreationError.collectAsState()
+    val edgeCreationSuccess by viewModel.edgeCreationSuccess.collectAsState()
     val reportReasons = viewModel.reportReasons
 
     var isFabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+
+    LaunchedEffect(selectedTabIndex) {
+        if (isFabExpanded) {
+            isFabExpanded = false
+        }
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -121,8 +148,6 @@ fun SpaceNodeDetailsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    showDeleteDialog = false
-                    isFabExpanded = false
                     onNavigateBack()
                 }) {
                     Text(text = stringResource(id = R.string.yes_button))
@@ -140,25 +165,25 @@ fun SpaceNodeDetailsScreen(
         AddEdgeDialog(
             currentNodeName = nodeName,
             availableNodes = availableNodes,
-            onDismiss = { showAddEdgeDialog = false },
-            onAddEdge = { selectedNode, isForward, description ->
+            edgeLabelSearchResults = edgeLabelSearchResults,
+            isEdgeLabelSearching = isEdgeLabelSearching,
+            isSavingEdge = isCreatingEdge,
+            edgeLabelSearchError = edgeLabelSearchError,
+            onDismiss = {
+                viewModel.resetEdgeLabelSearch()
                 showAddEdgeDialog = false
-                val directionText = if (isForward) {
-                    "$nodeName -> ${selectedNode.name}"
-                } else {
-                    "${selectedNode.name} -> $nodeName"
-                }
-                Toast.makeText(
-                    context,
-                    context.getString(
-                        R.string.edge_added_toast,
-                        directionText,
-                        description
-                    ),
-                    Toast.LENGTH_SHORT
-                ).show()
             },
-            onSearchEdgeLabel = viewModel::searchEdgeLabelOptions
+            onAddEdge = { selectedNode, isForward, description, propertyId ->
+                viewModel.addEdge(
+                    selectedNode = selectedNode,
+                    isForwardDirection = isForward,
+                    label = description,
+                    wikidataPropertyId = propertyId
+                )
+            },
+            onEdgeLabelQueryChange = viewModel::searchEdgeLabelOptions,
+            onEdgeLabelSearchCleared = viewModel::resetEdgeLabelSearch,
+            onEdgeLabelSearchErrorConsumed = viewModel::clearEdgeLabelSearchError
         )
     }
 
@@ -178,6 +203,65 @@ fun SpaceNodeDetailsScreen(
         )
     }
 
+    if (isDeletingNodeProperty) {
+        LoadingDialog(message = stringResource(id = R.string.deleting_node_property_message))
+    }
+
+    LaunchedEffect(nodePropertyDeletionMessage) {
+        nodePropertyDeletionMessage?.let { message ->
+            Toast.makeText(
+                context,
+                context.getString(R.string.node_property_removed_message, message),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.clearNodePropertyDeletionMessage()
+        }
+    }
+
+    LaunchedEffect(nodePropertyDeletionError) {
+        nodePropertyDeletionError?.let { error ->
+            Toast.makeText(
+                context,
+                error,
+                Toast.LENGTH_LONG
+            ).show()
+            viewModel.clearNodePropertyDeletionError()
+        }
+    }
+
+    LaunchedEffect(edgeCreationError) {
+        edgeCreationError?.let { error ->
+            Toast.makeText(
+                context,
+                error,
+                Toast.LENGTH_LONG
+            ).show()
+            viewModel.clearEdgeCreationError()
+        }
+    }
+
+    LaunchedEffect(edgeCreationSuccess) {
+        edgeCreationSuccess?.let { result ->
+            val directionText = if (result.isForwardDirection) {
+                "$nodeName -> ${result.connectedNodeName}"
+            } else {
+                "${result.connectedNodeName} -> $nodeName"
+            }
+            Toast.makeText(
+                context,
+                context.getString(
+                    R.string.edge_added_toast,
+                    directionText,
+                    result.label
+                ),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.resetEdgeLabelSearch()
+            viewModel.clearEdgeCreationSuccess()
+            showAddEdgeDialog = false
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -193,26 +277,33 @@ fun SpaceNodeDetailsScreen(
             )
         },
         floatingActionButton = {
-            NodeDetailsFab(
-                isExpanded = isFabExpanded,
-                onToggle = { isFabExpanded = !isFabExpanded },
-                onDelete = {
-                    isFabExpanded = false
-                    showDeleteDialog = true
-                },
-                onAddConnection = {
-                    isFabExpanded = false
-                    showAddEdgeDialog = true
-                },
-                onReport = {
-                    isFabExpanded = false
-                    showReportDialog = true
+            when (selectedTabIndex) {
+                0 -> {
+                    NodeActionsFab(
+                        isExpanded = isFabExpanded,
+                        onToggle = { isFabExpanded = !isFabExpanded },
+                        onDelete = {
+                            isFabExpanded = false
+                            showDeleteDialog = true
+                        },
+                        onReport = {
+                            isFabExpanded = false
+                            showReportDialog = true
+                        }
+                    )
                 }
-            )
+
+                else -> {
+                    ConnectionFab(
+                        modifier = Modifier
+                            .padding(bottom = 1.dp, end = 1.dp),
+                        onClick = { showAddEdgeDialog = true }
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         val bottomPadding = innerPadding.calculateBottomPadding() - 48.dp
-        var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
         val tabLabels = listOf(
             stringResource(id = R.string.details_tab_label),
             stringResource(id = R.string.connections_tab_label)
@@ -252,17 +343,7 @@ fun SpaceNodeDetailsScreen(
                             Toast.LENGTH_SHORT
                         ).show()
                     },
-                    onPropertyRemove = { property ->
-                        viewModel.removeApiProperty(property.statementId)
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.node_property_removed_message,
-                                property.display
-                            ),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
+                    onPropertyRemove = viewModel::deleteNodeProperty,
                     wikidataId = wikidataId,
                     searchQuery = searchQuery,
                     onSearchQueryChange = viewModel::updateSearchQuery,
@@ -686,9 +767,15 @@ private fun ConnectionsContent(
 private fun AddEdgeDialog(
     currentNodeName: String,
     availableNodes: List<NodeOption>,
+    edgeLabelSearchResults: List<WikidataProperty>,
+    isEdgeLabelSearching: Boolean,
+    isSavingEdge: Boolean,
+    edgeLabelSearchError: String?,
     onDismiss: () -> Unit,
-    onAddEdge: (NodeOption, Boolean, String) -> Unit,
-    onSearchEdgeLabel: (String) -> List<String>
+    onAddEdge: (NodeOption, Boolean, String, String) -> Unit,
+    onEdgeLabelQueryChange: (String) -> Unit,
+    onEdgeLabelSearchCleared: () -> Unit,
+    onEdgeLabelSearchErrorConsumed: () -> Unit
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     var selectedNode by remember { mutableStateOf<NodeOption?>(null) }
@@ -696,11 +783,20 @@ private fun AddEdgeDialog(
 
     var edgeLabel by remember { mutableStateOf("") }
     var edgeLabelError by remember { mutableStateOf(false) }
-
-    var searchResults by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedProperty by remember { mutableStateOf<WikidataProperty?>(null) }
     var showResults by remember { mutableStateOf(false) }
 
     var isForwardDirection by remember { mutableStateOf(true) }
+
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val clearFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(edgeLabelSearchError) {
+        if (edgeLabelSearchError != null) {
+            showResults = true
+        }
+    }
 
     val directionText = when {
         selectedNode == null && isForwardDirection -> stringResource(id = R.string.edge_direction_placeholder_forward)
@@ -710,12 +806,17 @@ private fun AddEdgeDialog(
     }
 
     AlertDialog(
+        modifier = Modifier
+            .fillMaxWidth(0.95f),
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         confirmButton = {},
         title = null,
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 420.dp, max = 600.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -787,34 +888,41 @@ private fun AddEdgeDialog(
                     )
                     OutlinedTextField(
                         value = edgeLabel,
-                        onValueChange = {
-                            edgeLabel = it
+                        onValueChange = { input ->
+                            edgeLabel = input
                             edgeLabelError = false
-                            showResults = false
+                            selectedProperty = null
+                            val normalized = input.trim()
+                            if (normalized.length >= 3) {
+                                showResults = true
+                                onEdgeLabelQueryChange(normalized)
+                            } else {
+                                showResults = false
+                                onEdgeLabelSearchCleared()
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        enabled = !isEdgeLabelSearching && !isSavingEdge,
                         placeholder = {
                             Text(text = stringResource(id = R.string.add_edge_label_placeholder))
                         },
-                        isError = edgeLabelError
-                    )
-                    Button(
-                        onClick = {
-                            val input = edgeLabel.trim()
-                            if (input.isEmpty()) {
-                                edgeLabelError = true
-                                showResults = false
-                            } else {
-                                searchResults = onSearchEdgeLabel(input)
-                                showResults = true
+                        isError = edgeLabelError,
+                        trailingIcon = {
+                            if (isEdgeLabelSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
                             }
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = stringResource(id = R.string.search_button))
-                    }
+                        }
+                    )
+                    Spacer(
+                        modifier = Modifier
+                            .size(0.dp)
+                            .focusRequester(clearFocusRequester)
+                            .focusable()
+                    )
                     if (edgeLabelError) {
                         Text(
                             text = stringResource(id = R.string.add_edge_label_error),
@@ -823,54 +931,125 @@ private fun AddEdgeDialog(
                         )
                     }
                     if (showResults) {
-                        if (searchResults.isEmpty()) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.add_edge_no_results),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
-                        } else {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(id = R.string.add_edge_search_results_title),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    searchResults.forEach { result ->
-                                        Card(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = MaterialTheme.colorScheme.outline,
-                                                    shape = MaterialTheme.shapes.small
-                                                )
-                                                .clickable {
-                                                    edgeLabel = result
-                                                    showResults = false
-                                                },
-                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            when {
+                                isEdgeLabelSearching -> {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Text(
+                                            text = stringResource(id = R.string.searching_label),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+
+                                edgeLabelSearchError != null -> {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = edgeLabelSearchError,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        TextButton(
+                                            onClick = {
+                                                onEdgeLabelSearchErrorConsumed()
+                                                onEdgeLabelQueryChange(edgeLabel.trim())
+                                            }
                                         ) {
-                                            Text(
-                                                text = result,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                modifier = Modifier
-                                                    .padding(12.dp)
-                                            )
+                                            Text(text = stringResource(id = R.string.retry_button_label))
+                                        }
+                                    }
+                                }
+
+                                edgeLabelSearchResults.isEmpty() -> {
+                                    Text(
+                                        text = stringResource(id = R.string.add_edge_no_results),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    )
+                                }
+
+                                else -> {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(id = R.string.add_edge_search_results_title),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        LazyColumn(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.heightIn(max = 220.dp)
+                                        ) {
+                                            items(
+                                                items = edgeLabelSearchResults,
+                                                key = { it.id }
+                                            ) { result ->
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .border(
+                                                            width = 1.dp,
+                                                            color = MaterialTheme.colorScheme.outline,
+                                                            shape = MaterialTheme.shapes.small
+                                                        )
+                                                        .clickable {
+                                                            edgeLabel = result.label
+                                                            selectedProperty = result
+                                                            edgeLabelError = false
+                                                            showResults = false
+                                                            onEdgeLabelSearchCleared()
+                                                            keyboardController?.hide()
+                                                            focusManager.clearFocus(force = true)
+                                                            clearFocusRequester.requestFocus()
+                                                        },
+                                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(12.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "${result.label} (${result.id})",
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        if (result.description.isNotBlank()) {
+                                                            Text(
+                                                                text = result.description,
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -897,28 +1076,40 @@ private fun AddEdgeDialog(
                     }
                 }
 
+                val canSave = selectedNode != null &&
+                    selectedProperty != null &&
+                    edgeLabel.isNotBlank() &&
+                    !isSavingEdge
+
                 Button(
                     onClick = {
+                        if (isSavingEdge) return@Button
                         val node = selectedNode
+                        val property = selectedProperty
                         val label = edgeLabel.trim()
                         val hasNodeError = node == null
-                        val hasLabelError = label.isEmpty()
+                        val hasLabelError = label.isEmpty() || property == null
 
                         selectedNodeError = hasNodeError
                         edgeLabelError = hasLabelError
 
-                        if (!hasNodeError && !hasLabelError && node != null) {
-                            onAddEdge(node, isForwardDirection, label)
+                        if (!hasNodeError && !hasLabelError && node != null && property != null) {
+                            onAddEdge(node, isForwardDirection, label, property.id)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
-                    )
+                    enabled = canSave
                 ) {
-                    Text(text = stringResource(id = R.string.add_edge_button))
+                    if (isSavingEdge) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Text(text = stringResource(id = R.string.add_edge_button))
+                    }
                 }
             }
         }
@@ -1058,16 +1249,41 @@ private fun ReportNodeDialog(
 }
 
 @Composable
-private fun NodeDetailsFab(
+private fun ConnectionFab(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        modifier = modifier,
+        containerColor = colorResource(id = R.color.button_join),
+        contentColor = Color.White
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = stringResource(id = R.string.add_connection_title),
+            tint = Color.White
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(id = R.string.add_connection_title),
+            color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun NodeActionsFab(
     isExpanded: Boolean,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
-    onAddConnection: () -> Unit,
     onReport: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .padding(bottom = 24.dp, end = 16.dp)
     ) {
         if (isExpanded) {
             NodeActionFab(
@@ -1075,12 +1291,6 @@ private fun NodeDetailsFab(
                 label = stringResource(id = R.string.delete_node_title),
                 containerColor = colorResource(id = R.color.button_leave),
                 onClick = onDelete
-            )
-            NodeActionFab(
-                icon = Icons.Default.Add,
-                label = stringResource(id = R.string.add_connection_title),
-                containerColor = colorResource(id = R.color.button_join),
-                onClick = onAddConnection
             )
             NodeActionFab(
                 icon = Icons.Default.Flag,
@@ -1118,9 +1328,12 @@ private fun NodeActionFab(
                 tint = Color.White
             )
         },
-        text = { Text(text = label, color = Color.White) },
+        text = {
+            Text(text = label, color = Color.White)
+        },
         containerColor = containerColor,
-        contentColor = Color.White
+        contentColor = Color.White,
+        modifier = Modifier.padding(horizontal = 4.dp)
     )
 }
 
