@@ -238,8 +238,9 @@ class AddNodeViewModel @Inject constructor(
             return
         }
 
-        if (edgeLabel.isBlank()) {
-            _createNodeError.value = "Please enter an edge label"
+        // Edge label is only required if connecting to another node
+        if (relatedNodeId != null && edgeLabel.isBlank()) {
+            _createNodeError.value = "Please enter an edge label when connecting to another node"
             return
         }
 

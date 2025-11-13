@@ -420,36 +420,6 @@ fun AddNodeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Edge Direction
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(R.string.edge_direction_label),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                val directionText = if (isForwardDirection) {
-                    "Existing -> new"
-                } else {
-                    "new -> Existing"
-                }
-                Button(
-                    onClick = { isForwardDirection = !isForwardDirection },
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isForwardDirection)
-                            colorResource(id = R.color.button_join)
-                        else
-                            colorResource(id = R.color.button_leave),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = directionText)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Connect To Node Dropdown
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -462,14 +432,14 @@ fun AddNodeScreen(
                     onExpandedChange = { connectToNodeDropdownExpanded = !connectToNodeDropdownExpanded }
                 ) {
                     OutlinedTextField(
-                        value = selectedConnectToNode?.label ?: "",
+                        value = selectedConnectToNode?.label ?: stringResource(R.string.select_a_node_default),
                         onValueChange = { },
                         readOnly = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
                         placeholder = {
-                            Text(stringResource(R.string.select_entity_placeholder))
+                            Text(stringResource(R.string.select_a_node_default))
                         },
                         trailingIcon = {
                             androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(
@@ -481,6 +451,15 @@ fun AddNodeScreen(
                         expanded = connectToNodeDropdownExpanded,
                         onDismissRequest = { connectToNodeDropdownExpanded = false }
                     ) {
+                        // Default option: "Select a node"
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.select_a_node_default)) },
+                            onClick = {
+                                selectedConnectToNode = null
+                                connectToNodeDropdownExpanded = false
+                            }
+                        )
+                        // Available nodes
                         availableNodes.forEach { node ->
                             DropdownMenuItem(
                                 text = { Text(node.label) },
@@ -494,10 +473,42 @@ fun AddNodeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Only show edge direction and edge label if a node is selected for connection
+            if (selectedConnectToNode != null) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Edge Label
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Edge Direction
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.edge_direction_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    val directionText = if (isForwardDirection) {
+                        "Existing -> new"
+                    } else {
+                        "new -> Existing"
+                    }
+                    Button(
+                        onClick = { isForwardDirection = !isForwardDirection },
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isForwardDirection)
+                                colorResource(id = R.color.button_join)
+                            else
+                                colorResource(id = R.color.button_leave),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = directionText)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Edge Label
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.edge_label_label),
                     style = MaterialTheme.typography.bodyMedium,
@@ -653,11 +664,16 @@ fun AddNodeScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Create Node Button
-            val canCreateNode = selectedEntity != null && edgeLabel.isNotBlank() && !isCreatingNode
+            // Edge label is only required if connecting to another node
+            val requiresEdgeLabel = selectedConnectToNode != null
+            val canCreateNode = selectedEntity != null && 
+                    (!requiresEdgeLabel || edgeLabel.isNotBlank()) && 
+                    !isCreatingNode
 
             Button(
                 onClick = {

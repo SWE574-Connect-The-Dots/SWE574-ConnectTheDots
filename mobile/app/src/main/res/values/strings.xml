@@ -154,6 +154,7 @@
     <string name="property_selection_instruction">Click on a property to select/deselect it</string>
     <string name="edge_direction_label">Edge Direction:</string>
     <string name="connect_to_node_label">Connect To Node:</string>
+    <string name="select_a_node_default">Select a node</string>
     <string name="edge_label_label">Edge Label:</string>
     <string name="create_node_button">Create Node</string>
     <string name="creating_node_message">Creating node...</string>
