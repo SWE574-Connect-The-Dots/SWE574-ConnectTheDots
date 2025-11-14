@@ -578,12 +578,12 @@ class AuthorizationWorkflowTest(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         
         # Assign user1 as moderator of both spaces
-        response1 = self.client.post('/api/auth/assign-moderator/', {
+        self.client.post('/api/auth/assign-moderator/', {
             'user_id': self.regular_user1.id,
             'space_id': self.space1.id
         })
         
-        response2 = self.client.post('/api/auth/assign-moderator/', {
+        self.client.post('/api/auth/assign-moderator/', {
             'user_id': self.regular_user1.id,
             'space_id': self.space2.id
         })
@@ -621,3 +621,113 @@ class AuthorizationWorkflowTest(APITestCase):
         
         self.regular_user1.profile.refresh_from_db()
         self.assertEqual(self.regular_user1.profile.user_type, Profile.USER)
+
+class AdminDashboardAccessTest(APITestCase):
+    """Test admin dashboard access for space creators and moderators"""
+    
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            email='admin@test.com',
+            password='testpass123'
+        )
+        self.admin_user.profile.user_type = Profile.ADMIN
+        self.admin_user.profile.save()
+        
+        self.moderator_user = User.objects.create_user(
+            username='moderator',
+            email='moderator@test.com',
+            password='testpass123'
+        )
+        self.moderator_user.profile.user_type = Profile.MODERATOR
+        self.moderator_user.profile.save()
+        
+        self.space_creator = User.objects.create_user(
+            username='creator',
+            email='creator@test.com',
+            password='testpass123'
+        )
+        
+        self.regular_user = User.objects.create_user(
+            username='regular',
+            email='regular@test.com',
+            password='testpass123'
+        )
+        
+        self.space = Space.objects.create(
+            title='Test Space',
+            description='A test space',
+            creator=self.space_creator
+        )
+        
+        # Assign moderator to space
+        SpaceModerator.objects.create(
+            user=self.moderator_user,
+            space=self.space,
+            assigned_by=self.admin_user
+        )
+    
+    def test_can_access_admin_dashboard_field_admin(self):
+        """Test can_access_admin_dashboard field returns True for admin"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['can_access_admin_dashboard'])
+    
+    def test_can_access_admin_dashboard_field_space_creator(self):
+        """Test can_access_admin_dashboard field returns True for space creator"""
+        self.client.force_authenticate(user=self.space_creator)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['can_access_admin_dashboard'])
+    
+    def test_can_access_admin_dashboard_field_moderator_with_spaces(self):
+        """Test can_access_admin_dashboard field returns True for moderator with spaces"""
+        self.client.force_authenticate(user=self.moderator_user)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['can_access_admin_dashboard'])
+    
+    def test_can_access_admin_dashboard_field_moderator_without_spaces(self):
+        """Test can_access_admin_dashboard field returns False for moderator without spaces"""
+        # Create a moderator without any moderated spaces
+        moderator_no_spaces = User.objects.create_user(
+            username='moderator_no_spaces',
+            email='mod2@test.com',
+            password='testpass123'
+        )
+        moderator_no_spaces.profile.user_type = Profile.MODERATOR
+        moderator_no_spaces.profile.save()
+        
+        self.client.force_authenticate(user=moderator_no_spaces)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['can_access_admin_dashboard'])
+    
+    def test_can_access_admin_dashboard_field_regular_user(self):
+        """Test can_access_admin_dashboard field returns False for regular user"""
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['can_access_admin_dashboard'])
+    
+    def test_moderator_loses_access_after_removal_from_all_spaces(self):
+        """Test moderator loses admin dashboard access after being removed from all spaces"""
+        # Moderator has access while moderating a space
+        self.client.force_authenticate(user=self.moderator_user)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['can_access_admin_dashboard'])
+        
+        # Remove moderator from space
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.delete('/api/auth/remove-moderator/', {
+            'user_id': self.moderator_user.id,
+            'space_id': self.space.id
+        })
+        
+        # Check can_access_admin_dashboard field - should now be False
+        self.client.force_authenticate(user=self.moderator_user)
+        response = self.client.get('/api/profiles/me/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['can_access_admin_dashboard'])

@@ -294,6 +294,10 @@ const CreateSpace = () => {
         }
       );
 
+      if (window.refreshCurrentUser) {
+        window.refreshCurrentUser();
+      }
+
       navigate(`/spaces/${response.data.id}`);
     } catch (err) {
       setError(err.response?.data?.message || t('errors.failedToCreateSpace'));

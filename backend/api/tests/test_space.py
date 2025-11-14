@@ -41,6 +41,29 @@ class SpaceModelTest(TestCase):
         )
         spaces = Space.objects.all()
         self.assertEqual(spaces.first(), space2)
+    
+    def test_space_creator_gets_admin_dashboard_access(self):
+        """Test that creating a space grants admin dashboard access"""
+        from api.serializers import ProfileSerializer
+        
+        # Create a new user without any spaces
+        new_user = User.objects.create_user(username='newuser', password='testpass')
+        
+        # User initially has no spaces
+        profile_serializer = ProfileSerializer(new_user.profile)
+        self.assertFalse(profile_serializer.data['can_access_admin_dashboard'])
+        
+        # Create a space
+        new_space = Space.objects.create(
+            title='New Space',
+            description='New space description',
+            creator=new_user
+        )
+        
+        # Refresh profile and check access
+        new_user.profile.refresh_from_db()
+        profile_serializer = ProfileSerializer(new_user.profile)
+        self.assertTrue(profile_serializer.data['can_access_admin_dashboard'])
 
 class SpaceAPITest(APITestCase):
     def setUp(self):
