@@ -37,7 +37,9 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     data class NodeConnection(
         val edgeId: String,
         val label: String,
-        val isSource: Boolean
+        val isSource: Boolean,
+        val sourceId: String,
+        val targetId: String
     )
 
     data class EdgeCreationResult(
@@ -49,7 +51,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     )
 
     private val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
-    private val nodeId: String = checkNotNull(savedStateHandle["nodeId"])
+    val nodeId: String = checkNotNull(savedStateHandle["nodeId"])
     private val nodeLabelArg: String? = savedStateHandle["nodeLabel"]
     private val nodeWikidataIdArg: String? = savedStateHandle["nodeWikidataId"]
 
@@ -523,7 +525,9 @@ class SpaceNodeDetailsViewModel @Inject constructor(
                     NodeConnection(
                         edgeId = edge.id.toString(),
                         label = edge.label.ifBlank { edge.id.toString() },
-                        isSource = edge.source.toString() == nodeId
+                        isSource = edge.source.toString() == nodeId,
+                        sourceId = edge.source.toString(),
+                        targetId = edge.target.toString()
                     )
                 }
                 _nodeConnections.value = filtered

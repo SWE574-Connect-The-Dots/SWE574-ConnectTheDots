@@ -95,6 +95,7 @@ import androidx.compose.ui.window.DialogProperties
 fun SpaceNodeDetailsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNodeDetails: (String, String, String?) -> Unit,
+    onNavigateToEdgeDetails: (String, String, String, String, String, String) -> Unit = { _, _, _, _, _, _ -> },
     viewModel: SpaceNodeDetailsViewModel = hiltViewModel()
 ) {
     val nodeName by viewModel.nodeName.collectAsState()
@@ -435,15 +436,23 @@ fun SpaceNodeDetailsScreen(
                     searchQuery = connectionSearchQuery,
                     onSearchQueryChange = viewModel::updateConnectionSearchQuery,
                     hasAnyConnections = nodeConnections.isNotEmpty(),
+                    currentNodeName = nodeName,
+                    currentNodeId = viewModel.nodeId,
+                    availableNodes = availableNodes,
                     onSeeDetailsClick = { connection ->
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.edge_details_placeholder_toast,
-                                connection.label
-                            ),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        // Get node names from available nodes or use IDs as fallback
+                        val sourceNode = availableNodes.find { it.id == connection.sourceId }
+                        val targetNode = availableNodes.find { it.id == connection.targetId }
+                        val sourceName = sourceNode?.name ?: if (connection.sourceId == viewModel.nodeId) nodeName else connection.sourceId
+                        val targetName = targetNode?.name ?: if (connection.targetId == viewModel.nodeId) nodeName else connection.targetId
+                        onNavigateToEdgeDetails(
+                            connection.edgeId,
+                            connection.label,
+                            connection.sourceId,
+                            sourceName,
+                            connection.targetId,
+                            targetName
+                        )
                     }
                 )
             }
@@ -740,6 +749,9 @@ private fun ConnectionsContent(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     hasAnyConnections: Boolean,
+    currentNodeName: String,
+    currentNodeId: String,
+    availableNodes: List<SpaceNodeDetailsViewModel.NodeOption>,
     onSeeDetailsClick: (SpaceNodeDetailsViewModel.NodeConnection) -> Unit
 ) {
     Column(

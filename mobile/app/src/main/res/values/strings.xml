@@ -160,4 +160,15 @@
     <string name="creating_node_message">Creating node...</string>
     <string name="loading_properties_message">Loading properties…</string>
     <string name="loading_nodes_message">Loading nodes…</string>
+    <string name="edge_source_label">Source:</string>
+    <string name="edge_target_label">Target:</string>
+    <string name="edit_edge_label_direction_title">Edit edge label &amp; direction</string>
+    <string name="update_edge_details_button">Update Edge Details</string>
+    <string name="delete_edge_button">Delete Edge</string>
+    <string name="edge_location_label">Location:</string>
+    <string name="edge_founded_in_label">Founded In:</string>
+    <string name="edge_size_label">Size:</string>
+    <string name="edge_flight_capacity_label">Has flight capacity:</string>
+    <string name="delete_edge_title">Delete Edge</string>
+    <string name="delete_edge_confirmation">Deleting this edge will remove the connection between these nodes. This action cannot be undone.</string>
 </resources>

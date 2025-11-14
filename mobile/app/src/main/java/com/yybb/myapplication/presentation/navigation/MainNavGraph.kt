@@ -16,6 +16,7 @@ import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.AddNodeScreen
+import com.yybb.myapplication.presentation.ui.screens.EdgeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
@@ -104,6 +105,38 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
                     navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
+                },
+                onNavigateToEdgeDetails = { edgeId, edgeLabel, sourceId, sourceName, targetId, targetName ->
+                    navController.navigate(Screen.EdgeDetails.createRoute(currentSpaceId, edgeId, edgeLabel, sourceId, sourceName, targetId, targetName))
+                }
+            )
+        }
+        composable(
+            route = Screen.EdgeDetails.route,
+            arguments = listOf(
+                navArgument("spaceId") { type = NavType.StringType },
+                navArgument("edgeId") { type = NavType.StringType },
+                navArgument("edgeLabel") { type = NavType.StringType },
+                navArgument("sourceId") { type = NavType.StringType },
+                navArgument("sourceName") { type = NavType.StringType },
+                navArgument("targetId") { type = NavType.StringType },
+                navArgument("targetName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val edgeLabel = backStackEntry.arguments?.getString("edgeLabel") ?: return@composable
+            val sourceId = backStackEntry.arguments?.getString("sourceId") ?: return@composable
+            val sourceName = backStackEntry.arguments?.getString("sourceName") ?: return@composable
+            val targetId = backStackEntry.arguments?.getString("targetId") ?: return@composable
+            val targetName = backStackEntry.arguments?.getString("targetName") ?: return@composable
+            EdgeDetailsScreen(
+                edgeLabel = edgeLabel,
+                sourceId = sourceId,
+                sourceName = sourceName,
+                targetId = targetId,
+                targetName = targetName,
+                onNavigateBack = { navController.popBackStack() },
+                onUpdateEdge = {
+                    // For now, just navigate back - backend integration will come later
                 }
             )
         }

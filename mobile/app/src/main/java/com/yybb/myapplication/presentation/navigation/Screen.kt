@@ -23,6 +23,14 @@ sealed class Screen(val route: String) {
             return "space_node_details/$spaceId/$nodeId/$encodedLabel/$encodedWikidata"
         }
     }
+    object EdgeDetails : Screen("edge_details/{spaceId}/{edgeId}/{edgeLabel}/{sourceId}/{sourceName}/{targetId}/{targetName}") {
+        fun createRoute(spaceId: String, edgeId: String, edgeLabel: String, sourceId: String, sourceName: String, targetId: String, targetName: String): String {
+            val encodedLabel = android.net.Uri.encode(edgeLabel)
+            val encodedSourceName = android.net.Uri.encode(sourceName)
+            val encodedTargetName = android.net.Uri.encode(targetName)
+            return "edge_details/$spaceId/$edgeId/$encodedLabel/$sourceId/$encodedSourceName/$targetId/$encodedTargetName"
+        }
+    }
     object CreateSpace : Screen("create_space")
     object EditProfile : Screen("edit_profile")
     object Profile : Screen("profile/{username}") {
