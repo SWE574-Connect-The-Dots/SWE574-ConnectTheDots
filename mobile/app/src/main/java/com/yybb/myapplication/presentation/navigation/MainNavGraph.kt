@@ -18,6 +18,8 @@ import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.AddNodeScreen
 import com.yybb.myapplication.presentation.ui.screens.EdgeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodeDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.WebViewScreen
+import com.yybb.myapplication.presentation.ui.viewmodel.EdgeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
@@ -108,6 +110,9 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                 },
                 onNavigateToEdgeDetails = { edgeId, edgeLabel, sourceId, sourceName, targetId, targetName ->
                     navController.navigate(Screen.EdgeDetails.createRoute(currentSpaceId, edgeId, edgeLabel, sourceId, sourceName, targetId, targetName))
+                },
+                onNavigateToWebView = { url ->
+                    navController.navigate(Screen.WebView.createRoute(url))
                 }
             )
         }
@@ -123,21 +128,25 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                 navArgument("targetName") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val edgeLabel = backStackEntry.arguments?.getString("edgeLabel") ?: return@composable
-            val sourceId = backStackEntry.arguments?.getString("sourceId") ?: return@composable
-            val sourceName = backStackEntry.arguments?.getString("sourceName") ?: return@composable
-            val targetId = backStackEntry.arguments?.getString("targetId") ?: return@composable
-            val targetName = backStackEntry.arguments?.getString("targetName") ?: return@composable
+            val viewModel: EdgeDetailsViewModel = hiltViewModel()
             EdgeDetailsScreen(
-                edgeLabel = edgeLabel,
-                sourceId = sourceId,
-                sourceName = sourceName,
-                targetId = targetId,
-                targetName = targetName,
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
                 onUpdateEdge = {
-                    // For now, just navigate back - backend integration will come later
-                }
+                    // This is handled internally by EdgeDetailsScreen
+                },
+                viewModel = viewModel
+            )
+        }
+        composable(
+            route = Screen.WebView.route,
+            arguments = listOf(navArgument("url") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val url = backStackEntry.arguments?.getString("url") ?: return@composable
+            WebViewScreen(
+                url = android.net.Uri.decode(url),
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.EditProfile.route) {

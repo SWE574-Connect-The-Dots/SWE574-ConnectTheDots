@@ -135,6 +135,17 @@
     <string name="edge_direction_placeholder_reverse">target -&gt; source</string>
     <string name="edge_added_toast">Edge added with direction %1$s and description %2$s</string>
     <string name="add_edge_service_error">Failed to add edge.</string>
+    <string name="update_edge_service_error">Failed to update edge.</string>
+    <string name="updating_edge_title">Updating Edge</string>
+    <string name="updating_edge_message">Please wait while we update the edge details…</string>
+    <string name="update_edge_success_message">Edge updated successfully</string>
+    <string name="delete_edge_service_error">Failed to delete edge.</string>
+    <string name="deleting_edge_title">Deleting Edge</string>
+    <string name="deleting_edge_message">Please wait while we delete the edge…</string>
+    <string name="delete_edge_success_message">Edge deleted successfully</string>
+    <string name="wikidata_page_title">Wikidata Page</string>
+    <string name="loading_page_title">Loading Page</string>
+    <string name="loading_page_message">Please wait while we load the page…</string>
     <string name="create_snapshot_service_error">Failed to create snapshot.</string>
     <string name="space_node_no_connections">No connections yet</string>
     <string name="space_node_connections_error">Failed to load node connections</string>

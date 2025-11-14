@@ -62,11 +62,15 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.yybb.myapplication.R
+import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.SpaceNode
 import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.presentation.navigation.Screen
@@ -399,12 +403,19 @@ fun AddNodeScreen(
                                             viewModel.togglePropertySelection(property.statementId)
                                         }
                                     )
-                                    Text(
-                                        text = property.display,
+                                    PropertyDisplayTextInAddNode(
+                                        property = property,
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(start = 8.dp),
-                                        style = MaterialTheme.typography.bodyMedium
+                                        textStyle = MaterialTheme.typography.bodyMedium,
+                                        onValueClick = { property ->
+                                            // Navigate to WebView with Wikidata URL if entity has an ID
+                                            property.entityId?.let { entityId ->
+                                                val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
+                                                navController.navigate(Screen.WebView.createRoute(wikidataUrl))
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -694,4 +705,69 @@ fun AddNodeScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
+
+@Composable
+private fun PropertyDisplayTextInAddNode(
+    property: NodeProperty,
+    modifier: Modifier = Modifier,
+    textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
+    onValueClick: ((NodeProperty) -> Unit)? = null
+) {
+    val displayText = property.display.ifBlank { "${property.propertyLabel}: ${property.valueText}" }
+    val colonIndex = displayText.indexOf(':')
+    val isClickable = property.isEntity && colonIndex != -1 && onValueClick != null
+
+    if (!isClickable) {
+        Text(
+            text = displayText,
+            style = textStyle,
+            modifier = modifier
+        )
+        return
+    }
+
+    val prefix = displayText.substring(0, colonIndex + 1)
+    val suffix = displayText.substring(colonIndex + 1)
+    val firstNonSpaceIndex = suffix.indexOfFirst { !it.isWhitespace() }
+    val leadingSpaces = if (firstNonSpaceIndex == -1) suffix else suffix.substring(0, firstNonSpaceIndex)
+    val valuePart = if (firstNonSpaceIndex == -1) "" else suffix.substring(firstNonSpaceIndex)
+
+    val annotatedText = buildAnnotatedString {
+        append(prefix)
+        if (suffix.isNotEmpty()) {
+            append(leadingSpaces)
+            if (valuePart.isNotEmpty()) {
+                val start = length
+                append(valuePart)
+                addStyle(
+                    style = SpanStyle(color = Color(0xFF436FED)),
+                    start = start,
+                    end = length
+                )
+                addStringAnnotation(
+                    tag = "ENTITY_VALUE",
+                    annotation = property.entityId ?: property.valueText,
+                    start = start,
+                    end = length
+                )
+            }
+        }
+    }
+
+    ClickableText(
+        text = annotatedText,
+        style = textStyle,
+        modifier = modifier,
+        onClick = { offset ->
+            val annotations = annotatedText.getStringAnnotations(
+                tag = "ENTITY_VALUE",
+                start = offset,
+                end = offset
+            )
+            if (annotations.isNotEmpty()) {
+                onValueClick?.invoke(property)
+            }
+        }
+    )
 }

@@ -175,6 +175,18 @@ data class UpdateNodePropertiesRequest(
     val selectedProperties: List<UpdateNodePropertyItem>
 )
 
+data class UpdateEdgeRequest(
+    val label: String,
+    @SerializedName("source_id")
+    val sourceId: String,
+    @SerializedName("target_id")
+    val targetId: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String,
+
+)
+
+
 data class UpdateNodePropertyItem(
     @SerializedName("statement_id")
     val statementId: String,
@@ -189,6 +201,14 @@ data class UpdateNodePropertiesResponse(
 )
 
 data class DeleteNodeResponse(
+    val message: String
+)
+
+data class UpdateEdgeResponse(
+    val message: String
+)
+
+data class DeleteEdgeResponse(
     val message: String
 )
 

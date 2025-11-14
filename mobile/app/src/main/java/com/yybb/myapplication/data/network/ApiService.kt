@@ -8,6 +8,7 @@ import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
 import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
+import com.yybb.myapplication.data.network.dto.DeleteEdgeResponse
 import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
 import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.LoginRequest
@@ -23,6 +24,8 @@ import com.yybb.myapplication.data.network.dto.SpaceNodeResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.TagResponse
+import com.yybb.myapplication.data.network.dto.UpdateEdgeRequest
+import com.yybb.myapplication.data.network.dto.UpdateEdgeResponse
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
@@ -159,9 +162,16 @@ interface ApiService {
         @Path("nodeId") nodeId: String
     ): Response<DeleteNodeResponse>
 
-    @POST("api/spaces/{id}/add-node/")
-    suspend fun addNode(
+    @PUT("api/spaces/{id}/edges/{edgeId}/update/")
+    suspend fun updateEdgeDetails(
         @Path("id") id: String,
-        //TODO: implement payload
-    ): Response<AddNodeResponse>
+        @Path("edgeId") edgeId: String,
+        @Body request: UpdateEdgeRequest
+    ): Response<UpdateEdgeResponse>
+
+    @DELETE("api/spaces/{id}/edges/{edgeId}/delete/")
+    suspend fun deleteEdge(
+        @Path("id") id: String,
+        @Path("edgeId") edgeId: String,
+    ): Response<DeleteEdgeResponse>
 }

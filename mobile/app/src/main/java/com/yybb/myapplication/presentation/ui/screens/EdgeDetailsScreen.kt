@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,8 +34,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,37 +52,200 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import android.widget.Toast
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
+import com.yybb.myapplication.data.model.WikidataProperty
+import com.yybb.myapplication.presentation.ui.viewmodel.EdgeDetailsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EdgeDetailsScreen(
-    edgeLabel: String,
-    sourceId: String,
-    sourceName: String,
-    targetId: String,
-    targetName: String,
     onNavigateBack: () -> Unit,
-    onUpdateEdge: () -> Unit
+    onUpdateEdge: () -> Unit,
+    viewModel: EdgeDetailsViewModel = hiltViewModel()
 ) {
-    var edgeLabelText by remember { mutableStateOf(edgeLabel) }
-    var edgeLabelSearchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<String>>(emptyList()) }
+    val initialEdgeLabel by viewModel.edgeLabel.collectAsState()
+    val edgeLabelSearchResults by viewModel.edgeLabelSearchResults.collectAsState()
+    val isEdgeLabelSearching by viewModel.isEdgeLabelSearching.collectAsState()
+    val edgeLabelSearchError by viewModel.edgeLabelSearchError.collectAsState()
+    val isUpdatingEdge by viewModel.isUpdatingEdge.collectAsState()
+    val updateEdgeError by viewModel.updateEdgeError.collectAsState()
+    val updateEdgeSuccess by viewModel.updateEdgeSuccess.collectAsState()
+    val isDeletingEdge by viewModel.isDeletingEdge.collectAsState()
+    val deleteEdgeError by viewModel.deleteEdgeError.collectAsState()
+    val deleteEdgeSuccess by viewModel.deleteEdgeSuccess.collectAsState()
+    
+    // Get source and target node display text with labels and wikidata IDs
+    val sourceNodeDisplayText = viewModel.getSourceNodeDisplayText()
+    val targetNodeDisplayText = viewModel.getTargetNodeDisplayText()
+    
+    // Use local state for text field to maintain focus during typing
+    // Initialize once and don't reset on recomposition
+    var edgeLabelText by remember { mutableStateOf(initialEdgeLabel) }
     var isForwardDirection by remember { mutableStateOf(true) }
     var isFabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showResults by remember { mutableStateOf(false) }
+    
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val clearFocusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+    
+    // Track the last selected property label to sync when user selects from dropdown
+    val selectedPropertyLabel by viewModel.selectedProperty.collectAsState()
+    LaunchedEffect(selectedPropertyLabel) {
+        // Only sync when a property is actually selected (not null)
+        // This happens when user clicks a result from dropdown
+        selectedPropertyLabel?.label?.let { label ->
+            edgeLabelText = label
+        }
+    }
+    
+    LaunchedEffect(edgeLabelSearchResults, isEdgeLabelSearching, edgeLabelSearchError) {
+        // Show results when searching, have results, or have error
+        showResults = isEdgeLabelSearching || edgeLabelSearchResults.isNotEmpty() || edgeLabelSearchError != null
+    }
+
+    // Handle update success
+    LaunchedEffect(updateEdgeSuccess) {
+        if (updateEdgeSuccess) {
+            // Show success toast message
+            Toast.makeText(
+                context,
+                context.getString(R.string.update_edge_success_message),
+                Toast.LENGTH_SHORT
+            ).show()
+            // Refresh edge details by re-searching with the updated label
+            viewModel.searchEdgeLabelOptions(edgeLabelText, isInitialLoad = true)
+            viewModel.resetUpdateEdgeSuccess()
+            // Stay on the same page - don't navigate back
+        }
+    }
+
+    // Handle delete success
+    LaunchedEffect(deleteEdgeSuccess) {
+        if (deleteEdgeSuccess) {
+            // Show success toast message
+            Toast.makeText(
+                context,
+                context.getString(R.string.delete_edge_success_message),
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.resetDeleteEdgeSuccess()
+            // Navigate back to previous page
+            onNavigateBack()
+        }
+    }
+
+    // Show loading dialog while updating edge
+    if (isUpdatingEdge) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text(text = stringResource(id = R.string.updating_edge_title))
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(id = R.string.updating_edge_message),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Show loading dialog while deleting edge
+    if (isDeletingEdge) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismissing during loading */ },
+            title = {
+                Text(text = stringResource(id = R.string.deleting_edge_title))
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(id = R.string.deleting_edge_message),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Show error dialog if update fails
+    updateEdgeError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearUpdateEdgeError() },
+            title = { Text(text = stringResource(id = R.string.error)) },
+            text = {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.clearUpdateEdgeError() }
+                ) {
+                    Text(text = stringResource(id = R.string.ok_button))
+                }
+            }
+        )
+    }
+
+    // Show error dialog if delete fails
+    deleteEdgeError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearDeleteEdgeError() },
+            title = { Text(text = stringResource(id = R.string.error)) },
+            text = {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.clearDeleteEdgeError() }
+                ) {
+                    Text(text = stringResource(id = R.string.ok_button))
+                }
+            }
+        )
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -89,7 +260,7 @@ fun EdgeDetailsScreen(
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        // TODO: Handle delete edge action
+                        viewModel.deleteEdge()
                     }
                 ) {
                     Text(text = stringResource(id = R.string.yes_button))
@@ -108,7 +279,7 @@ fun EdgeDetailsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = edgeLabel, fontWeight = FontWeight.Bold) },
+                title = { Text(text = initialEdgeLabel, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -151,7 +322,7 @@ fun EdgeDetailsScreen(
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(stringResource(id = R.string.edge_source_label) + " ")
                     }
-                    append("$sourceName + $sourceId")
+                    append(sourceNodeDisplayText)
                 }
                 Text(
                     text = sourceText,
@@ -162,7 +333,7 @@ fun EdgeDetailsScreen(
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(stringResource(id = R.string.edge_target_label) + " ")
                     }
-                    append("$targetName + $targetId")
+                    append(targetNodeDisplayText)
                 }
                 Text(
                     text = targetText,
@@ -188,80 +359,158 @@ fun EdgeDetailsScreen(
                     value = edgeLabelText,
                     onValueChange = { newValue ->
                         edgeLabelText = newValue
-                        // For now, just simulate search results based on input
-                        if (newValue.length >= 3) {
-                            edgeLabelSearchQuery = newValue
-                            searchResults = listOf(
-                                "$newValue - Property 1",
-                                "$newValue - Property 2",
-                                "$newValue - Property 3"
-                            )
+                        val normalized = newValue.trim()
+                        if (normalized.length >= 3) {
+                            showResults = true
+                            viewModel.searchEdgeLabelOptions(normalized)
                         } else {
-                            searchResults = emptyList()
+                            showResults = false
+                            viewModel.resetEdgeLabelSearch()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = edgeLabel,
+                            text = initialEdgeLabel,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     shape = RoundedCornerShape(8.dp),
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    enabled = true,
+                    trailingIcon = {
+                        // Use Box to maintain consistent layout even when icon changes
+                        Box(modifier = Modifier.size(18.dp)) {
+                            if (isEdgeLabelSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true
+                )
+                Spacer(
+                    modifier = Modifier
+                        .size(0.dp)
+                        .focusRequester(clearFocusRequester)
+                        .focusable()
                 )
 
-                // Result Box
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 150.dp, max = 300.dp)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                        .padding(12.dp),
-                    contentAlignment = Alignment.TopStart
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Result Box Dropdown
+                if (showResults) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        if (searchResults.isEmpty()) {
-                            item {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        text = stringResource(id = R.string.edge_location_label) + " Istanbul",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        when {
+                            isEdgeLabelSearching -> {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
                                     )
                                     Text(
-                                        text = stringResource(id = R.string.edge_founded_in_label) + " 2010 January",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = stringResource(id = R.string.edge_size_label) + " 100000 m2",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = stringResource(id = R.string.edge_flight_capacity_label) + "500",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = stringResource(id = R.string.searching_label),
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }
-                        } else {
-                            items(searchResults) { result ->
+
+                            edgeLabelSearchError != null -> {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = edgeLabelSearchError ?: "No result found",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.clearEdgeLabelSearchError()
+                                            viewModel.searchEdgeLabelOptions(edgeLabelText.trim())
+                                        }
+                                    ) {
+                                        Text(text = stringResource(id = R.string.retry_button_label))
+                                    }
+                                }
+                            }
+
+                            edgeLabelSearchResults.isEmpty() -> {
                                 Text(
-                                    text = result,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = stringResource(id = R.string.add_edge_no_results),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
                                 )
+                            }
+
+                            else -> {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 300.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(
+                                        items = edgeLabelSearchResults,
+                                        key = { it.id }
+                                    ) { result ->
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outline,
+                                                    shape = MaterialTheme.shapes.small
+                                                )
+                                                .clickable {
+                                                    viewModel.selectProperty(result)
+                                                    edgeLabelText = result.label
+                                                    showResults = false
+                                                    viewModel.resetEdgeLabelSearch()
+                                                    keyboardController?.hide()
+                                                    focusManager.clearFocus(force = true)
+                                                    clearFocusRequester.requestFocus()
+                                                },
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${result.label} (${result.id})",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (result.description.isNotBlank()) {
+                                                    Text(
+                                                        text = result.description,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -294,9 +543,9 @@ fun EdgeDetailsScreen(
                     ) {
                         Text(
                             text = if (isForwardDirection) {
-                                "$sourceName → $targetName"
+                                "$sourceNodeDisplayText → $targetNodeDisplayText"
                             } else {
-                                "$targetName → $sourceName"
+                                "$targetNodeDisplayText → $sourceNodeDisplayText"
                             },
                             color = Color.White,
                             fontSize = 16.sp,
@@ -311,15 +560,18 @@ fun EdgeDetailsScreen(
 
             Button(
                 onClick = {
-                    onUpdateEdge()
-                    onNavigateBack()
+                    viewModel.updateEdge(
+                        label = edgeLabelText,
+                        isForwardDirection = isForwardDirection
+                    )
                 },
                 modifier = Modifier
                     .width(280.dp)
                     .height(60.dp)
                     .align(Alignment.CenterHorizontally)
                     .padding(start = 8.dp, top = 16.dp, bottom = 2.dp, end=8.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isUpdatingEdge
             ) {
                 Text(
                     text = stringResource(id = R.string.update_edge_details_button),
@@ -331,6 +583,7 @@ fun EdgeDetailsScreen(
         }
     }
 }
+
 
 @Composable
 private fun EdgeActionsFab(

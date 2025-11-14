@@ -21,6 +21,9 @@ import com.yybb.myapplication.data.network.dto.AddNodeRequest
 import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
 import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
+import com.yybb.myapplication.data.network.dto.DeleteEdgeResponse
+import com.yybb.myapplication.data.network.dto.UpdateEdgeRequest
+import com.yybb.myapplication.data.network.dto.UpdateEdgeResponse
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertyItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -456,6 +459,89 @@ class SpaceNodeDetailsRepository @Inject constructor(
                     Result.failure(
                         Exception(
                             "Failed to create node: ${response.errorBody()?.string()}"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateEdgeDetails(
+        spaceId: String,
+        edgeId: String,
+        label: String,
+        sourceId: String,
+        targetId: String,
+        wikidataPropertyId: String
+    ): Result<UpdateEdgeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val request = UpdateEdgeRequest(
+                    label = label,
+                    sourceId = sourceId,
+                    targetId = targetId,
+                    wikidataPropertyId = wikidataPropertyId
+                )
+
+                val response = apiService.updateEdgeDetails(spaceId, edgeId, request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body)
+                    } else {
+                        Result.failure(
+                            Exception(context.getString(R.string.update_edge_service_error))
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "${context.getString(R.string.update_edge_service_error)}: ${
+                                response.errorBody()?.string()
+                            }"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteEdge(
+        spaceId: String,
+        edgeId: String
+    ): Result<DeleteEdgeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val response = apiService.deleteEdge(spaceId, edgeId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body)
+                    } else {
+                        Result.failure(
+                            Exception(context.getString(R.string.delete_edge_service_error))
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "${context.getString(R.string.delete_edge_service_error)}: ${
+                                response.errorBody()?.string()
+                            }"
                         )
                     )
                 }

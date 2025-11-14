@@ -515,8 +515,17 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
+    private var fetchNodeConnectionsJob: Job? = null
+
+    fun refreshNodeConnections() {
+        // Cancel previous job if it's still running to avoid duplicate calls
+        fetchNodeConnectionsJob?.cancel()
+        fetchNodeConnectionsJob = null
+        fetchNodeConnections()
+    }
+
     private fun fetchNodeConnections() {
-        viewModelScope.launch {
+        fetchNodeConnectionsJob = viewModelScope.launch {
             val result = spaceNodeDetailsRepository.getSpaceEdges(spaceId)
             result.onSuccess { edges ->
                 val filtered = edges.filter { edge ->
@@ -534,6 +543,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             }.onFailure {
                 _nodeConnections.value = emptyList()
             }
+            fetchNodeConnectionsJob = null
         }
     }
 

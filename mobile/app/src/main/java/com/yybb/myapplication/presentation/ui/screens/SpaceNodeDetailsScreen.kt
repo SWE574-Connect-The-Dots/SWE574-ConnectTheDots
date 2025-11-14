@@ -96,6 +96,7 @@ fun SpaceNodeDetailsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNodeDetails: (String, String, String?) -> Unit,
     onNavigateToEdgeDetails: (String, String, String, String, String, String) -> Unit = { _, _, _, _, _, _ -> },
+    onNavigateToWebView: (String) -> Unit = { },
     viewModel: SpaceNodeDetailsViewModel = hiltViewModel()
 ) {
     val nodeName by viewModel.nodeName.collectAsState()
@@ -137,6 +138,27 @@ fun SpaceNodeDetailsScreen(
     LaunchedEffect(selectedTabIndex) {
         if (isFabExpanded) {
             isFabExpanded = false
+        }
+    }
+
+    // Refresh connections when the Connections tab is selected or visible
+    // This ensures we have the latest data when:
+    // 1. Tab is first selected
+    // 2. User navigates back from EdgeDetailsScreen (composable recomposes with Connections tab visible)
+    // The ViewModel prevents duplicate concurrent calls via job cancellation
+    LaunchedEffect(selectedTabIndex) {
+        if (selectedTabIndex == 1) { // Connections tab
+            viewModel.refreshNodeConnections()
+        }
+    }
+    
+    // Additional refresh when composable is composed/recomposed and Connections tab is visible
+    // This handles the case when user navigates back while already on Connections tab
+    LaunchedEffect(Unit) {
+        // Refresh connections when the screen becomes visible and Connections tab is active
+        // This runs when the composable is composed (including after navigation back)
+        if (selectedTabIndex == 1) {
+            viewModel.refreshNodeConnections()
         }
     }
 
@@ -412,14 +434,21 @@ fun SpaceNodeDetailsScreen(
                     propertiesError = nodePropertiesError,
                     onRetryProperties = viewModel::retryNodeProperties,
                     onPropertyValueClick = { property ->
-                        Toast.makeText(
-                            context,
-                            context.getString(
-                                R.string.node_property_value_click_message,
-                                property.valueText
-                            ),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        // Navigate to WebView with Wikidata URL if entity has an ID
+                        property.entityId?.let { entityId ->
+                            val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
+                            onNavigateToWebView(wikidataUrl)
+                        } ?: run {
+                            // Fallback to toast if no entity ID
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.node_property_value_click_message,
+                                    property.valueText
+                                ),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     },
                     onPropertyRemove = viewModel::deleteNodeProperty,
                     wikidataId = wikidataId,
@@ -428,7 +457,8 @@ fun SpaceNodeDetailsScreen(
                     onToggleProperty = viewModel::togglePropertySelection,
                     onSaveProperties = viewModel::saveSelectedProperties,
                     filteredOptions = filteredProperties,
-                    isSavingProperties = isUpdatingNodeProperties
+                    isSavingProperties = isUpdatingNodeProperties,
+                    onNavigateToWebView = onNavigateToWebView
                 )
 
                 else -> ConnectionsContent(
@@ -474,7 +504,8 @@ private fun DetailsContent(
     onToggleProperty: (String) -> Unit,
     onSaveProperties: () -> Unit,
     filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>,
-    isSavingProperties: Boolean
+    isSavingProperties: Boolean,
+    onNavigateToWebView: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -484,10 +515,46 @@ private fun DetailsContent(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(id = R.string.node_wikidata_id, wikidataId),
+                // Make Wikidata ID clickable
+                val wikidataIdText = stringResource(id = R.string.node_wikidata_id, wikidataId)
+                val colonIndex = wikidataIdText.indexOf(':')
+                val prefix = if (colonIndex != -1) wikidataIdText.substring(0, colonIndex + 1) else wikidataIdText
+                val idPart = if (colonIndex != -1) wikidataIdText.substring(colonIndex + 1).trim() else ""
+                
+                val annotatedWikidataText = buildAnnotatedString {
+                    append(prefix)
+                    if (idPart.isNotEmpty()) {
+                        append(" ")
+                        val start = length
+                        append(idPart)
+                        addStyle(
+                            style = SpanStyle(color = Color(0xFF436FED)),
+                            start = start,
+                            end = length
+                        )
+                        addStringAnnotation(
+                            tag = "WIKIDATA_ID",
+                            annotation = wikidataId,
+                            start = start,
+                            end = length
+                        )
+                    }
+                }
+                
+                ClickableText(
+                    text = annotatedWikidataText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    onClick = { offset ->
+                        val annotations = annotatedWikidataText.getStringAnnotations(
+                            tag = "WIKIDATA_ID",
+                            start = offset,
+                            end = offset
+                        )
+                        if (annotations.isNotEmpty() && wikidataId.isNotBlank()) {
+                            val wikidataUrl = "https://www.wikidata.org/wiki/$wikidataId"
+                            onNavigateToWebView(wikidataUrl)
+                        }
+                    }
                 )
                 Text(
                     text = stringResource(id = R.string.node_properties_title),
@@ -712,7 +779,7 @@ private fun PropertyDisplayText(
                 val start = length
                 append(valuePart)
                 addStyle(
-                    style = SpanStyle(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+                    style = SpanStyle(color = Color(0xFF436FED)),
                     start = start,
                     end = length
                 )

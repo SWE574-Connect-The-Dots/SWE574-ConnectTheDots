@@ -31,6 +31,12 @@ sealed class Screen(val route: String) {
             return "edge_details/$spaceId/$edgeId/$encodedLabel/$sourceId/$encodedSourceName/$targetId/$encodedTargetName"
         }
     }
+    object WebView : Screen("webview/{url}") {
+        fun createRoute(url: String): String {
+            val encodedUrl = android.net.Uri.encode(url)
+            return "webview/$encodedUrl"
+        }
+    }
     object CreateSpace : Screen("create_space")
     object EditProfile : Screen("edit_profile")
     object Profile : Screen("profile/{username}") {
