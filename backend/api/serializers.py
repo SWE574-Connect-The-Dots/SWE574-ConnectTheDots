@@ -67,6 +67,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     joined_spaces = serializers.SerializerMethodField()
     owned_spaces = serializers.SerializerMethodField()
     moderated_spaces = serializers.SerializerMethodField()
+    can_access_admin_dashboard = serializers.SerializerMethodField()
 
     def geocode_location(self, country, city):
         """Convert location text to coordinates using Nominatim API"""
@@ -113,7 +114,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ['user', 'user_type', 'user_type_display', 'profession', 'bio', 'dob', 
                  'created_at', 'updated_at', 'country', 'city', 'latitude', 'longitude', 'location_name', 
-                 'joined_spaces', 'owned_spaces', 'moderated_spaces']
+                 'joined_spaces', 'owned_spaces', 'moderated_spaces', 'can_access_admin_dashboard']
 
     def get_joined_spaces(self, obj):
         joined_spaces = Space.objects.filter(collaborators=obj.user)
@@ -140,6 +141,32 @@ class ProfileSerializer(serializers.ModelSerializer):
             'description': moderator.space.description,
             'assigned_at': moderator.assigned_at
         } for moderator in moderated_spaces]
+    
+    def get_can_access_admin_dashboard(self, obj):
+        """
+        Check if user can access admin dashboard.
+        Returns True if:
+        - User is admin
+        - User is moderator AND has at least one moderated space
+        - User has created at least one space
+        """
+        # Admin always has access
+        if obj.is_admin():
+            return True
+        
+        # Moderator has access if they moderate at least one space
+        if obj.is_moderator():
+            from .models import SpaceModerator
+            has_moderated_spaces = SpaceModerator.objects.filter(user=obj.user).exists()
+            if has_moderated_spaces:
+                return True
+        
+        # Space creator has access if they created at least one space
+        has_owned_spaces = Space.objects.filter(creator=obj.user).exists()
+        if has_owned_spaces:
+            return True
+        
+        return False
     
     def update(self, instance, validated_data):
         # Handle different location update scenarios
