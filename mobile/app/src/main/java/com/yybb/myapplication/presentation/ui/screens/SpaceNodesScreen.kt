@@ -5,20 +5,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.ui.res.colorResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,9 +34,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -45,12 +55,24 @@ import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodesViewModel
 @Composable
 fun SpaceNodesScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToNodeDetails: (String) -> Unit,
+    onNavigateToNodeDetails: (String, String, String?) -> Unit,
+    onNavigateToAddNode: () -> Unit,
     viewModel: SpaceNodesViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredNodes by viewModel.filteredNodes.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     val layoutDirection = LocalLayoutDirection.current
+
+    // Refresh data when screen becomes visible again (e.g., after navigating back)
+    // This handles the case when navigating back from node details after deleting a node
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.onScreenResumed()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -65,6 +87,24 @@ fun SpaceNodesScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onNavigateToAddNode,
+                containerColor = colorResource(id = R.color.button_join),
+                contentColor = androidx.compose.ui.graphics.Color.White
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.add_node_title),
+                    tint = androidx.compose.ui.graphics.Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.add_node_title),
+                    color = androidx.compose.ui.graphics.Color.White
+                )
+            }
         }
     ) { innerPadding ->
         val bottomPadding = (innerPadding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
@@ -78,43 +118,66 @@ fun SpaceNodesScreen(
                     bottom = bottomPadding
                 )
         ) {
-            SearchNode(
-                query = searchQuery,
-                onQueryChange = viewModel::onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
-
-            if (filteredNodes.isEmpty()) {
+            when {
+                isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = 32.dp),
                         contentAlignment = Alignment.TopCenter
                     ) {
-                        Text(
-                            text = stringResource(R.string.space_nodes_no_results),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        CircularProgressIndicator()
                     }
-            } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        items(
-                            items = filteredNodes,
-                            key = { node -> node.id }
-                        ) { node ->
-                            SpaceNodeCard(
-                                node = node,
-                                onSeeDetails = { onNavigateToNodeDetails(node.id) }
+                }
+
+                errorMessage != null -> {
+                    SpaceNodesError(
+                        message = errorMessage ?: stringResource(R.string.space_nodes_error_message),
+                        onRetry = viewModel::retry
+                    )
+                }
+
+                else -> {
+                    SearchNode(
+                        query = searchQuery,
+                        onQueryChange = viewModel::onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        enabled = !isLoading
+                    )
+
+                    if (filteredNodes.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 32.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Text(
+                                text = stringResource(R.string.space_nodes_no_results),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 88.dp)
+                        ) {
+                            items(
+                                items = filteredNodes,
+                                key = { node -> node.id }
+                            ) { node ->
+                                SpaceNodeCard(
+                                    node = node,
+                                    onSeeDetails = { onNavigateToNodeDetails(node.id.toString(), node.label, node.wikidataId) }
+                                )
+                            }
+                        }
                     }
+                }
             }
         }
     }
@@ -144,16 +207,19 @@ private fun SpaceNodeCard(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(end = 12.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.space_node_title_format, node.name),
+                        text = node.label,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    ConnectionBadge(count = node.connectionCount)
+                    Text(
+                        text = "${node.connectionCount} connection${if (node.connectionCount != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
                 Button(
                     onClick = onSeeDetails,
@@ -171,12 +237,29 @@ private fun SpaceNodeCard(
 }
 
 @Composable
-private fun ConnectionBadge(count: Int) {
-    Text(
-        text = stringResource(id = R.string.space_node_connections, count),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-    )
+private fun SpaceNodesError(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Button(onClick = onRetry) {
+            Text(
+                text = stringResource(R.string.retry_button_label),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,12 +267,14 @@ private fun ConnectionBadge(count: Int) {
 fun SearchNode(
     query: String,
     onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier,
+        enabled = enabled,
         placeholder = {
             Text(
                 text = stringResource(id = R.string.search_node_hint_msg),

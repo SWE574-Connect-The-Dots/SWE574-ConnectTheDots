@@ -15,7 +15,11 @@ import com.yybb.myapplication.presentation.ui.screens.EditProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.ProfileScreen
 import com.yybb.myapplication.presentation.ui.screens.SettingsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.AddNodeScreen
+import com.yybb.myapplication.presentation.ui.screens.EdgeDetailsScreen
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodeDetailsScreen
+import com.yybb.myapplication.presentation.ui.screens.WebViewScreen
+import com.yybb.myapplication.presentation.ui.viewmodel.EdgeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.screens.SpaceNodesScreen
 import com.yybb.myapplication.presentation.ui.screens.SpacesScreen
 import com.yybb.myapplication.presentation.ui.viewmodel.CreateSpaceViewModel
@@ -67,23 +71,88 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
         composable(
             route = Screen.SpaceNodes.route,
             arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
-        ) {
+        ) { backStackEntry ->
+            val spaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
             SpaceNodesScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNodeDetails = { nodeId ->
-                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(spaceId, nodeId, nodeLabel, wikidataId))
+                },
+                onNavigateToAddNode = {
+                    navController.navigate(Screen.AddNode.createRoute(spaceId.toInt()))
                 }
             )
         }
         composable(
+            route = Screen.AddNode.route,
+            arguments = listOf(navArgument("spaceId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val spaceId = backStackEntry.arguments?.getString("spaceId") ?: ""
+            AddNodeScreen(
+                navController = navController,
+                spaceId = spaceId
+            )
+        }
+        composable(
             route = Screen.SpaceNodeDetails.route,
-            arguments = listOf(navArgument("nodeId") { type = NavType.StringType })
-        ) {
+            arguments = listOf(
+                navArgument("spaceId") { type = NavType.StringType },
+                navArgument("nodeId") { type = NavType.StringType },
+                navArgument("nodeLabel") { type = NavType.StringType },
+                navArgument("nodeWikidataId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val currentSpaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
             SpaceNodeDetailsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNodeDetails = { nodeId ->
-                    navController.navigate(Screen.SpaceNodeDetails.createRoute(nodeId))
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
+                },
+                onNavigateToEdgeDetails = { edgeId, edgeLabel, sourceId, sourceName, targetId, targetName ->
+                    val currentNodeId = backStackEntry.arguments?.getString("nodeId") ?: ""
+                    navController.navigate(Screen.EdgeDetails.createRoute(currentSpaceId, edgeId, edgeLabel, sourceId, sourceName, targetId, targetName, currentNodeId))
+                },
+                onNavigateToWebView = { url ->
+                    navController.navigate(Screen.WebView.createRoute(url))
                 }
+            )
+        }
+        composable(
+            route = Screen.EdgeDetails.route,
+            arguments = listOf(
+                navArgument("spaceId") { type = NavType.StringType },
+                navArgument("edgeId") { type = NavType.StringType },
+                navArgument("edgeLabel") { type = NavType.StringType },
+                navArgument("sourceId") { type = NavType.StringType },
+                navArgument("sourceName") { type = NavType.StringType },
+                navArgument("targetId") { type = NavType.StringType },
+                navArgument("targetName") { type = NavType.StringType },
+                navArgument("currentNodeId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val currentSpaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
+            val viewModel: EdgeDetailsViewModel = hiltViewModel()
+            EdgeDetailsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
+                },
+                onUpdateEdge = {
+                    // This is handled internally by EdgeDetailsScreen
+                },
+                viewModel = viewModel
+            )
+        }
+        composable(
+            route = Screen.WebView.route,
+            arguments = listOf(navArgument("url") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val url = backStackEntry.arguments?.getString("url") ?: return@composable
+            WebViewScreen(
+                url = android.net.Uri.decode(url),
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.EditProfile.route) {

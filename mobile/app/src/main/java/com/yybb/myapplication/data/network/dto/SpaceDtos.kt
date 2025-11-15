@@ -1,5 +1,6 @@
 package com.yybb.myapplication.data.network.dto
 
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
 
 data class SpaceDto(
@@ -96,6 +97,175 @@ data class AddDiscussionRequest(
 data class SpaceMembershipResponse(
     val message: String,
     val success: Boolean
+)
+
+data class SpaceNodeResponse(
+    val id: Int,
+    val label: String,
+    @SerializedName("wikidata_id")
+    val wikidataId: String?,
+    val country: String?,
+    val city: String?,
+    val district: String?,
+    val street: String?,
+    val latitude: String?,
+    val longitude: String?,
+    @SerializedName("location_name")
+    val locationName: String?
+)
+
+data class SpaceEdgeResponse(
+    val id: Int,
+    val source: Int,
+    val target: Int,
+    val label: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String?
+)
+
+data class AddEdgeRequest(
+    @SerializedName("source_id")
+    val sourceId: String,
+    @SerializedName("target_id")
+    val targetId: String,
+    val label: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String
+)
+
+data class AddEdgeResponse(
+    val message: String,
+    @SerializedName("edge_id")
+    val edgeId: Int
+)
+
+data class CreateSnapshotResponse(
+    @SerializedName("snapshot_id")
+    val snapshotId: Int,
+    @SerializedName("created_at")
+    val createdAt: String
+)
+
+data class NodePropertyResponse(
+    @SerializedName("statement_id")
+    val statementId: String,
+    @SerializedName("property_id")
+    val propertyId: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    @SerializedName("property_value")
+    val propertyValue: JsonElement?,
+    val display: String?
+)
+
+data class NodeWikidataPropertyResponse(
+    @SerializedName("statement_id")
+    val statementId: String,
+    @SerializedName("property")
+    val propertyId: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    @SerializedName("value")
+    val propertyValue: JsonElement?,
+    val display: String?
+)
+
+data class UpdateNodePropertiesRequest(
+    @SerializedName("selected_properties")
+    val selectedProperties: List<UpdateNodePropertyItem>
+)
+
+data class UpdateEdgeRequest(
+    val label: String,
+    @SerializedName("source_id")
+    val sourceId: String,
+    @SerializedName("target_id")
+    val targetId: String,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String,
+
+)
+
+
+data class UpdateNodePropertyItem(
+    @SerializedName("statement_id")
+    val statementId: String,
+    val property: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    val value: JsonElement?
+)
+
+data class UpdateNodePropertiesResponse(
+    val message: String
+)
+
+data class DeleteNodeResponse(
+    val message: String
+)
+
+data class UpdateEdgeResponse(
+    val message: String
+)
+
+data class DeleteEdgeResponse(
+    val message: String
+)
+
+data class AddNodeRequest(
+    @SerializedName("related_node_id")
+    val relatedNodeId: String?,
+    @SerializedName("wikidata_entity")
+    val wikidataEntity: AddNodeWikidataEntity,
+    @SerializedName("edge_label")
+    val edgeLabel: String,
+    @SerializedName("is_new_node_source")
+    val isNewNodeSource: Boolean,
+    val location: AddNodeLocation,
+    @SerializedName("selected_properties")
+    val selectedProperties: List<AddNodeProperty>
+)
+
+data class AddNodeWikidataEntity(
+    val id: String,
+    val label: String,
+    val description: String? = null,
+    val url: String? = null,
+    @SerializedName("wikidata_property_id")
+    val wikidataPropertyId: String? = null
+)
+
+data class AddNodeLocation(
+    val country: String? = null,
+    val city: String? = null,
+    val district: String? = null,
+    val street: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerializedName("location_name")
+    val locationName: String? = null
+)
+
+data class AddNodeProperty(
+    @SerializedName("statement_id")
+    val statementId: String,
+    val property: String,
+    val display: String,
+    @SerializedName("property_label")
+    val propertyLabel: String,
+    val value: AddNodePropertyValue,
+    @SerializedName("wikidata_entity")
+    val wikidataEntity: AddNodeWikidataEntity
+)
+
+data class AddNodePropertyValue(
+    val type: String,
+    val id: String? = null,
+    val text: String
+)
+
+data class AddNodeResponse(
+    val message: String
 )
 
 // Vote Discussion Request

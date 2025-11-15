@@ -96,7 +96,7 @@ fun SpacesScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 32.dp)
+                .padding(horizontal = 8.dp, vertical = 16.dp)
         ) {
         Text(
             text = stringResource(id = R.string.spaces_title),
