@@ -1041,20 +1041,29 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         space = self.get_object()
         user = request.user
-        # Allow only creator or admin (is_staff or is_superuser)
+    
+        # Permission check
         if user != space.creator and not (user.is_staff or user.is_superuser):
             return Response({'detail': 'You do not have permission to delete this space.'}, status=403)
+    
+        try:
+            response = super().destroy(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=400)
+    
         try:
             record_activity(
                 actor_user=user,
                 type='Delete',
-                object=f'Space:{space.id}',
+                object=f"Space:{space.id}",
                 summary=f"{user.username} deleted space '{space.title}'",
                 payload={'space_id': space.id}
             )
         except Exception:
             pass
-        return super().destroy(request, *args, **kwargs)
+    
+        return response
+
 
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
