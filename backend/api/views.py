@@ -829,6 +829,56 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'You do not have permission to delete this space.'}, status=403)
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=['get'], url_path='top-scored', permission_classes=[IsAuthenticated])
+    def top_scored(self, request):
+        """Get top scored spaces based on: Node (4pts) + Edge (2pts) + Contributor (4pts) + Discussion (1pt)"""
+        limit = int(request.query_params.get('limit', 10))
+        
+        # Get all spaces with their related counts
+        spaces = Space.objects.prefetch_related('collaborators', 'tags').all()
+        
+        spaces_with_scores = []
+        for space in spaces:
+            # Count nodes and edges
+            node_count = Node.objects.filter(space=space).count()
+            edge_count = Edge.objects.filter(source__space=space).count()
+            
+            # Count collaborators 
+            collaborator_count = space.collaborators.count()
+            
+            # Count discussions
+            discussion_count = Discussion.objects.filter(space=space).count()
+            
+            # Calculate score: Node (4pts) + Edge (2pts) + Contributor (4pts) + Discussion (1pt)
+            score = (node_count * 4) + (edge_count * 2) + (collaborator_count * 4) + (discussion_count * 1)
+            
+            spaces_with_scores.append({
+                'id': space.id,
+                'title': space.title,
+                'description': space.description,
+                'creator_username': space.creator.username,
+                'created_at': space.created_at,
+                'country': space.country,
+                'city': space.city,
+                'district': space.district,
+                'street': space.street,
+                'latitude': space.latitude,
+                'longitude': space.longitude,
+                'tags': [{'id': tag.id, 'name': tag.name} for tag in space.tags.all()],
+                'collaborators': [user.username for user in space.collaborators.all()],
+                'node_count': node_count,
+                'edge_count': edge_count,
+                'collaborator_count': collaborator_count,
+                'discussion_count': discussion_count,
+                'score': score
+            })
+        
+        # Sort by score (highest first) and limit results
+        spaces_with_scores.sort(key=lambda x: x['score'], reverse=True)
+        top_spaces = spaces_with_scores[:limit]
+        
+        return Response(top_spaces)
+
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
