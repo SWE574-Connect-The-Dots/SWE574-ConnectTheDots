@@ -91,6 +91,9 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private val _isWikidataPropertiesLoading = MutableStateFlow(false)
     val isWikidataPropertiesLoading: StateFlow<Boolean> = _isWikidataPropertiesLoading.asStateFlow()
 
+    private val _wikidataPropertiesError = MutableStateFlow<String?>(null)
+    val wikidataPropertiesError: StateFlow<String?> = _wikidataPropertiesError.asStateFlow()
+
     private val _isUpdatingNodeProperties = MutableStateFlow(false)
     val isUpdatingNodeProperties: StateFlow<Boolean> = _isUpdatingNodeProperties.asStateFlow()
 
@@ -269,6 +272,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
     private fun fetchWikidataProperties() {
         viewModelScope.launch {
             _isWikidataPropertiesLoading.value = true
+            _wikidataPropertiesError.value = null
             val entityId = _wikidataId.value
             if (entityId.isBlank()) {
                 _propertyOptions.value = _apiNodeProperties.value.map { property ->
@@ -284,8 +288,11 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             val result = spaceNodeDetailsRepository.getWikidataEntityProperties(entityId)
             result.onSuccess { properties ->
                 updatePropertyOptionsWithCatalog(properties)
+                _wikidataPropertiesError.value = null
                 _isWikidataPropertiesLoading.value = false
             }.onFailure {
+                // Set error message when catalog fails
+                _wikidataPropertiesError.value = "Could not retrieve the properties. Please go back and try again."
                 // fallback to current selections if catalog fails
                 _propertyOptions.value = _apiNodeProperties.value.map { property ->
                     PropertyOption(

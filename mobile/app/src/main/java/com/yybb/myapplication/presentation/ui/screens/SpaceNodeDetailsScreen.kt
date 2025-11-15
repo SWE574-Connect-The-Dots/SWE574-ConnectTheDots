@@ -38,6 +38,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -111,6 +112,8 @@ fun SpaceNodeDetailsScreen(
     val filteredConnections by viewModel.filteredConnections.collectAsState()
     val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
     val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
+    val isWikidataPropertiesLoading by viewModel.isWikidataPropertiesLoading.collectAsState()
+    val wikidataPropertiesError by viewModel.wikidataPropertiesError.collectAsState()
     val isUpdatingNodeProperties by viewModel.isUpdatingNodeProperties.collectAsState()
     val isDeletingNodeProperty by viewModel.isDeletingNodeProperty.collectAsState()
     val nodePropertiesError by viewModel.nodePropertiesError.collectAsState()
@@ -128,18 +131,12 @@ fun SpaceNodeDetailsScreen(
     val deleteNodeSuccess by viewModel.deleteNodeSuccess.collectAsState()
     val reportReasons = viewModel.reportReasons
 
-    var isFabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
-    LaunchedEffect(selectedTabIndex) {
-        if (isFabExpanded) {
-            isFabExpanded = false
-        }
-    }
 
     // Refresh connections when the Connections tab is selected or visible
     // This ensures we have the latest data when:
@@ -377,34 +374,64 @@ fun SpaceNodeDetailsScreen(
                             contentDescription = null
                         )
                     }
+                },
+                actions = {
+                    when (selectedTabIndex) {
+                        0 -> {
+                            // Details tab - show menu with Delete and Report options
+                            var showMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More options"
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(id = R.string.delete_node_title)) },
+                                        onClick = {
+                                            showMenu = false
+                                            showDeleteDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(id = R.string.report_node_title)) },
+                                        onClick = {
+                                            showMenu = false
+                                            showReportDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Flag,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            // Connections tab - show Add connection button
+                            IconButton(onClick = { showAddEdgeDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = stringResource(id = R.string.add_connection_title)
+                                )
+                            }
+                        }
+                    }
                 }
             )
-        },
-        floatingActionButton = {
-            when (selectedTabIndex) {
-                0 -> {
-                    NodeActionsFab(
-                        isExpanded = isFabExpanded,
-                        onToggle = { isFabExpanded = !isFabExpanded },
-                        onDelete = {
-                            isFabExpanded = false
-                            showDeleteDialog = true
-                        },
-                        onReport = {
-                            isFabExpanded = false
-                            showReportDialog = true
-                        }
-                    )
-                }
-
-                else -> {
-                    ConnectionFab(
-                        modifier = Modifier
-                            .padding(bottom = 1.dp, end = 1.dp),
-                        onClick = { showAddEdgeDialog = true }
-                    )
-                }
-            }
         }
     ) { innerPadding ->
         val bottomPadding = innerPadding.calculateBottomPadding() - 48.dp
@@ -462,6 +489,8 @@ fun SpaceNodeDetailsScreen(
                     onSaveProperties = viewModel::saveSelectedProperties,
                     filteredOptions = filteredProperties,
                     isSavingProperties = isUpdatingNodeProperties,
+                    isWikidataPropertiesLoading = isWikidataPropertiesLoading,
+                    wikidataPropertiesError = wikidataPropertiesError,
                     onNavigateToWebView = onNavigateToWebView
                 )
 
@@ -509,6 +538,8 @@ private fun DetailsContent(
     onSaveProperties: () -> Unit,
     filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>,
     isSavingProperties: Boolean,
+    isWikidataPropertiesLoading: Boolean,
+    wikidataPropertiesError: String?,
     onNavigateToWebView: (String) -> Unit
 ) {
     LazyColumn(
@@ -652,7 +683,9 @@ private fun DetailsContent(
                 PropertySelectionList(
                     options = filteredOptions,
                     onToggleProperty = onToggleProperty,
-                    onValueClick = onPropertyValueClick
+                    onValueClick = onPropertyValueClick,
+                    isLoading = isWikidataPropertiesLoading,
+                    error = wikidataPropertiesError
                 )
                 Button(
                     onClick = onSaveProperties,
@@ -711,7 +744,9 @@ private fun NodePropertyDisplayRow(
 private fun PropertySelectionList(
     options: List<SpaceNodeDetailsViewModel.PropertyOption>,
     onToggleProperty: (String) -> Unit,
-    onValueClick: (NodeProperty) -> Unit
+    onValueClick: (NodeProperty) -> Unit,
+    isLoading: Boolean = false,
+    error: String? = null
 ) {
     Box(
         modifier = Modifier
@@ -724,25 +759,62 @@ private fun PropertySelectionList(
             )
             .padding(12.dp)
     ) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(options) { option ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Checkbox(
-                        checked = option.isChecked,
-                        onCheckedChange = { onToggleProperty(option.property.statementId) }
+                    CircularProgressIndicator()
+                }
+            }
+            error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
-                    PropertyDisplayText(
-                        property = option.property,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 8.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium,
-                        onValueClick = onValueClick
+                }
+            }
+            options.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.node_properties_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+            else -> {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(options) { option ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = option.isChecked,
+                                onCheckedChange = { onToggleProperty(option.property.statementId) }
+                            )
+                            PropertyDisplayText(
+                                property = option.property,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp),
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                onValueClick = onValueClick
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1443,7 +1515,7 @@ private fun NodeActionsFab(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
-            .padding(bottom = 24.dp, end = 16.dp)
+            .padding(bottom = 80.dp, end = 16.dp)
     ) {
         if (isExpanded) {
             NodeActionFab(

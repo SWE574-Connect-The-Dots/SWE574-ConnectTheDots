@@ -109,7 +109,8 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                     navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
                 },
                 onNavigateToEdgeDetails = { edgeId, edgeLabel, sourceId, sourceName, targetId, targetName ->
-                    navController.navigate(Screen.EdgeDetails.createRoute(currentSpaceId, edgeId, edgeLabel, sourceId, sourceName, targetId, targetName))
+                    val currentNodeId = backStackEntry.arguments?.getString("nodeId") ?: ""
+                    navController.navigate(Screen.EdgeDetails.createRoute(currentSpaceId, edgeId, edgeLabel, sourceId, sourceName, targetId, targetName, currentNodeId))
                 },
                 onNavigateToWebView = { url ->
                     navController.navigate(Screen.WebView.createRoute(url))
@@ -125,13 +126,18 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                 navArgument("sourceId") { type = NavType.StringType },
                 navArgument("sourceName") { type = NavType.StringType },
                 navArgument("targetId") { type = NavType.StringType },
-                navArgument("targetName") { type = NavType.StringType }
+                navArgument("targetName") { type = NavType.StringType },
+                navArgument("currentNodeId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
+            val currentSpaceId = backStackEntry.arguments?.getString("spaceId") ?: return@composable
             val viewModel: EdgeDetailsViewModel = hiltViewModel()
             EdgeDetailsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToNodeDetails = { nodeId, nodeLabel, wikidataId ->
+                    navController.navigate(Screen.SpaceNodeDetails.createRoute(currentSpaceId, nodeId, nodeLabel, wikidataId))
                 },
                 onUpdateEdge = {
                     // This is handled internally by EdgeDetailsScreen

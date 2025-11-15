@@ -28,6 +28,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -65,6 +67,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import android.widget.Toast
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +83,7 @@ import com.yybb.myapplication.presentation.ui.viewmodel.EdgeDetailsViewModel
 @Composable
 fun EdgeDetailsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToNodeDetails: (String, String, String?) -> Unit = { _, _, _ -> },
     onUpdateEdge: () -> Unit,
     viewModel: EdgeDetailsViewModel = hiltViewModel()
 ) {
@@ -102,7 +106,6 @@ fun EdgeDetailsScreen(
     // Initialize once and don't reset on recomposition
     var edgeLabelText by remember { mutableStateOf(initialEdgeLabel) }
     var isForwardDirection by remember { mutableStateOf(true) }
-    var isFabExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showResults by remember { mutableStateOf(false) }
     
@@ -287,16 +290,36 @@ fun EdgeDetailsScreen(
                             contentDescription = stringResource(id = R.string.close_button)
                         )
                     }
-                }
-            )
-        },
-        floatingActionButton = {
-            EdgeActionsFab(
-                isExpanded = isFabExpanded,
-                onToggle = { isFabExpanded = !isFabExpanded },
-                onDelete = {
-                    isFabExpanded = false
-                    showDeleteDialog = true
+                },
+                actions = {
+                    // Show menu with Delete option
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(id = R.string.delete_edge_button)) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             )
         }
@@ -318,28 +341,127 @@ fun EdgeDetailsScreen(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Source Node
+                val isSourceClickable = !viewModel.isCurrentNodeSource()
+                val sourceNodeId = if (isSourceClickable) viewModel.getOtherNodeId() else null
+                val sourceNodeName = if (isSourceClickable) viewModel.getOtherNodeLabel() else null
+                val sourceNodeWikidataId = if (isSourceClickable) viewModel.getOtherNodeWikidataId() else null
+                
                 val sourceText = buildAnnotatedString {
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(stringResource(id = R.string.edge_source_label) + " ")
                     }
-                    append(sourceNodeDisplayText)
+                    if (isSourceClickable && sourceNodeId != null && sourceNodeName != null) {
+                        // Make node name clickable
+                        val start = length
+                        append(sourceNodeName)
+                        addStyle(
+                            style = SpanStyle(color = Color(0xFF436FED)),
+                            start = start,
+                            end = length
+                        )
+                        addStringAnnotation(
+                            tag = "SOURCE_NODE",
+                            annotation = sourceNodeId,
+                            start = start,
+                            end = length
+                        )
+                        // Add wikidata ID if available (not clickable)
+                        sourceNodeWikidataId?.let { wikidataId ->
+                            append(" ($wikidataId)")
+                        }
+                    } else {
+                        append(sourceNodeDisplayText)
+                    }
                 }
-                Text(
-                    text = sourceText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                
+                if (isSourceClickable && sourceNodeId != null && sourceNodeName != null) {
+                    ClickableText(
+                        text = sourceText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        onClick = { offset ->
+                            val annotations = sourceText.getStringAnnotations(
+                                tag = "SOURCE_NODE",
+                                start = offset,
+                                end = offset
+                            )
+                            if (annotations.isNotEmpty()) {
+                                onNavigateToNodeDetails(
+                                    sourceNodeId,
+                                    sourceNodeName,
+                                    sourceNodeWikidataId
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    Text(
+                        text = sourceText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                // Target Node
+                val isTargetClickable = viewModel.isCurrentNodeSource()
+                val targetNodeId = if (isTargetClickable) viewModel.getOtherNodeId() else null
+                val targetNodeName = if (isTargetClickable) viewModel.getOtherNodeLabel() else null
+                val targetNodeWikidataId = if (isTargetClickable) viewModel.getOtherNodeWikidataId() else null
+                
                 val targetText = buildAnnotatedString {
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(stringResource(id = R.string.edge_target_label) + " ")
                     }
-                    append(targetNodeDisplayText)
+                    if (isTargetClickable && targetNodeId != null && targetNodeName != null) {
+                        // Make node name clickable
+                        val start = length
+                        append(targetNodeName)
+                        addStyle(
+                            style = SpanStyle(color = Color(0xFF436FED)),
+                            start = start,
+                            end = length
+                        )
+                        addStringAnnotation(
+                            tag = "TARGET_NODE",
+                            annotation = targetNodeId,
+                            start = start,
+                            end = length
+                        )
+                        // Add wikidata ID if available (not clickable)
+                        targetNodeWikidataId?.let { wikidataId ->
+                            append(" ($wikidataId)")
+                        }
+                    } else {
+                        append(targetNodeDisplayText)
+                    }
                 }
-                Text(
-                    text = targetText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                
+                if (isTargetClickable && targetNodeId != null && targetNodeName != null) {
+                    ClickableText(
+                        text = targetText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        onClick = { offset ->
+                            val annotations = targetText.getStringAnnotations(
+                                tag = "TARGET_NODE",
+                                start = offset,
+                                end = offset
+                            )
+                            if (annotations.isNotEmpty()) {
+                                onNavigateToNodeDetails(
+                                    targetNodeId,
+                                    targetNodeName,
+                                    targetNodeWikidataId
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    Text(
+                        text = targetText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             Divider()

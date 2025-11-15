@@ -23,12 +23,12 @@ sealed class Screen(val route: String) {
             return "space_node_details/$spaceId/$nodeId/$encodedLabel/$encodedWikidata"
         }
     }
-    object EdgeDetails : Screen("edge_details/{spaceId}/{edgeId}/{edgeLabel}/{sourceId}/{sourceName}/{targetId}/{targetName}") {
-        fun createRoute(spaceId: String, edgeId: String, edgeLabel: String, sourceId: String, sourceName: String, targetId: String, targetName: String): String {
+    object EdgeDetails : Screen("edge_details/{spaceId}/{edgeId}/{edgeLabel}/{sourceId}/{sourceName}/{targetId}/{targetName}/{currentNodeId}") {
+        fun createRoute(spaceId: String, edgeId: String, edgeLabel: String, sourceId: String, sourceName: String, targetId: String, targetName: String, currentNodeId: String): String {
             val encodedLabel = android.net.Uri.encode(edgeLabel)
             val encodedSourceName = android.net.Uri.encode(sourceName)
             val encodedTargetName = android.net.Uri.encode(targetName)
-            return "edge_details/$spaceId/$edgeId/$encodedLabel/$sourceId/$encodedSourceName/$targetId/$encodedTargetName"
+            return "edge_details/$spaceId/$edgeId/$encodedLabel/$sourceId/$encodedSourceName/$targetId/$encodedTargetName/$currentNodeId"
         }
     }
     object WebView : Screen("webview/{url}") {

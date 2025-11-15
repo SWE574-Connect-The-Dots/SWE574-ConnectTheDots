@@ -27,6 +27,7 @@ class EdgeDetailsViewModel @Inject constructor(
     private val sourceName: String = checkNotNull(savedStateHandle["sourceName"])
     private val targetId: String = checkNotNull(savedStateHandle["targetId"])
     private val targetName: String = checkNotNull(savedStateHandle["targetName"])
+    private val currentNodeId: String = checkNotNull(savedStateHandle["currentNodeId"])
 
     private val _edgeLabel = MutableStateFlow(edgeLabelArg ?: "")
     val edgeLabel: StateFlow<String> = _edgeLabel.asStateFlow()
@@ -119,6 +120,26 @@ class EdgeDetailsViewModel @Inject constructor(
             // Fallback to targetName if node not found
             "$targetName ($targetId)"
         }
+    }
+
+    fun isCurrentNodeSource(): Boolean {
+        return currentNodeId == sourceId
+    }
+
+    fun getOtherNodeId(): String {
+        return if (isCurrentNodeSource()) targetId else sourceId
+    }
+
+    fun getOtherNodeLabel(): String {
+        val otherNodeId = getOtherNodeId()
+        val node = _spaceNodes.value.find { it.id.toString() == otherNodeId }
+        return node?.label ?: if (isCurrentNodeSource()) targetName else sourceName
+    }
+
+    fun getOtherNodeWikidataId(): String? {
+        val otherNodeId = getOtherNodeId()
+        val node = _spaceNodes.value.find { it.id.toString() == otherNodeId }
+        return node?.wikidataId
     }
 
     fun searchEdgeLabelOptions(query: String, isInitialLoad: Boolean = false) {
