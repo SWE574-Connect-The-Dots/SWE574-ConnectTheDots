@@ -132,9 +132,9 @@ export default function BackOffice() {
 
         
         {loading ? (
-          <p style={{ color: "#666" }}>Loading top spaces...</p>
+          <p style={{ color: "#4A5568" }}>Loading top spaces...</p>
         ) : topSpaces.length === 0 ? (
-          <p style={{ color: "#666" }}>No spaces found.</p>
+          <p style={{ color: "#4A5568" }}>No spaces found.</p>
         ) : (
           <div
             style={{
@@ -177,8 +177,8 @@ export default function BackOffice() {
                   position: "absolute",
                   top: "15px",
                   right: "15px",
-                  backgroundColor: index === 0 ? "#ffd700" : index === 1 ? "#c0c0c0" : index === 2 ? "#cd7f32" : "#007bff",
-                  color: index < 3 ? "#000" : "#fff",
+                  backgroundColor: index === 0 ? "#8F6701" : index === 1 ? "#656F75" : index === 2 ? "#BD4902" : "#0076B5",
+                  color: "#FFFFFF", // White text for all badges
                   width: "28px",
                   height: "28px",
                   borderRadius: "50%",
@@ -195,7 +195,7 @@ export default function BackOffice() {
 
                 <h4 style={{ 
                   margin: "0", 
-                  color: "#3498db", 
+                  color: "#1B1F3B", // Primary Text - Almost Black
                   fontSize: "18px",
                   fontWeight: "600",
                   paddingRight: "45px" // Make room for badge
@@ -206,7 +206,7 @@ export default function BackOffice() {
                 <p style={{
                   margin: "0",
                   fontSize: "14px",
-                  color: "#666",
+                  color: "#646E7A", // Placeholder Text - Gray
                   lineHeight: "1.4",
                   height: "40px",
                   overflow: "hidden"
@@ -227,13 +227,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#2ecc71",
+                      color: "#2D6A4F", // Success - Emerald Green
                       fontSize: "16px"
                     }}>
                       {space.collaborator_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#666", 
+                      color: "#4A5568", // Secondary Text - Slate Gray
                       fontSize: "13px"
                     }}>
                       collaborators
@@ -247,13 +247,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#e74c3c",
+                      color: "#3A0CA3", // Node Default - Indigo Blue
                       fontSize: "16px"
                     }}>
                       {space.node_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#666", 
+                      color: "#4A5568", // Secondary Text - Slate Gray
                       fontSize: "13px"
                     }}>
                       nodes
@@ -267,13 +267,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#3498db",
+                      color: "#374151", // Edges/Lines - Dark Gray
                       fontSize: "16px"
                     }}>
                       {space.edge_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#666", 
+                      color: "#4A5568", // Secondary Text - Slate Gray
                       fontSize: "13px"
                     }}>
                       edges
@@ -287,13 +287,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#9b59b6",
+                      color: "#215D69", // Info/Hint - Sky Blue
                       fontSize: "16px"
                     }}>
                       {space.discussion_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#666", 
+                      color: "#4A5568", // Secondary Text - Slate Gray
                       fontSize: "13px"
                     }}>
                       discussions
