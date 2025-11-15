@@ -113,7 +113,7 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
                   >
                     {t("navigation.profile")}
                   </Link>
-                  {(currentUser.is_staff || currentUser.is_superuser) && (
+                  {(currentUser.is_staff || currentUser.is_superuser || currentUser.can_access_admin_dashboard) && (
                     <Link
                       to="/backoffice"
                       onClick={() => setDropdownOpen(false)}

@@ -117,4 +117,31 @@ class ProfileAPITestCase(TestCase):
         
         self.user1.refresh_from_db()
         self.assertEqual(self.user1.profile.bio, 'Original bio')
-        self.assertEqual(self.user1.profile.profession, 'Software Engineer') 
+        self.assertEqual(self.user1.profile.profession, 'Software Engineer')
+    
+    def test_can_access_admin_dashboard_field_in_profile_response(self):
+        """Test that can_access_admin_dashboard field is included in profile response"""
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(reverse('profile-me'))
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('can_access_admin_dashboard', response.data)
+        # Regular user without spaces should have False
+        self.assertFalse(response.data['can_access_admin_dashboard'])
+    
+    def test_can_access_admin_dashboard_for_space_creator(self):
+        """Test that space creator has can_access_admin_dashboard set to True"""
+        from api.models import Space
+        
+        # Create a space for user1
+        Space.objects.create(
+            title='Test Space',
+            description='Test description',
+            creator=self.user1
+        )
+        
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(reverse('profile-me'))
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['can_access_admin_dashboard']) 
