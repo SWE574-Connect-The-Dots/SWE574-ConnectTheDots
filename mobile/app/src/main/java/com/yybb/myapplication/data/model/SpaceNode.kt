@@ -12,10 +12,11 @@ data class SpaceNode(
     val street: String?,
     val latitude: String?,
     val longitude: String?,
-    val locationName: String?
+    val locationName: String?,
+    val connectionCount: Int = 0
 )
 
-fun SpaceNodeResponse.toSpaceNode(): SpaceNode {
+fun SpaceNodeResponse.toSpaceNode(connectionCount: Int = 0): SpaceNode {
     return SpaceNode(
         id = id,
         label = label,
@@ -26,7 +27,8 @@ fun SpaceNodeResponse.toSpaceNode(): SpaceNode {
         street = street,
         latitude = latitude,
         longitude = longitude,
-        locationName = locationName
+        locationName = locationName,
+        connectionCount = connectionCount
     )
 }
 

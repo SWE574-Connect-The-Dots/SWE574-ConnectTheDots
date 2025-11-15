@@ -274,6 +274,10 @@ fun SpaceNodeDetailsScreen(
         )
     }
 
+    if (isNodePropertiesLoading) {
+        LoadingDialog(message = stringResource(id = R.string.loading_properties_message))
+    }
+
     if (isDeletingNodeProperty) {
         LoadingDialog(message = stringResource(id = R.string.deleting_node_property_message))
     }

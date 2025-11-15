@@ -164,7 +164,7 @@ fun SpaceNodesScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 8.dp)
+                            contentPadding = PaddingValues(bottom = 88.dp)
                         ) {
                             items(
                                 items = filteredNodes,
@@ -204,15 +204,23 @@ private fun SpaceNodeCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = node.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                Column(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 12.dp)
-                )
+                ) {
+                    Text(
+                        text = node.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${node.connectionCount} connection${if (node.connectionCount != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
                 Button(
                     onClick = onSeeDetails,
                     shape = MaterialTheme.shapes.medium,

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.SpaceNode
+import com.yybb.myapplication.data.model.SpaceEdge
 import com.yybb.myapplication.data.repository.SpaceNodesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,15 +73,59 @@ class SpaceNodesViewModel @Inject constructor(
             _isLoading.value = true
             _errorMessage.value = null
 
-            val result = spaceNodesRepository.getSpaceNodes(spaceId)
-            result.onSuccess { nodes ->
-                _nodes.value = nodes
-            }.onFailure { throwable ->
-                _nodes.value = emptyList()
-                _errorMessage.value = throwable.message
+            val nodesResult = spaceNodesRepository.getSpaceNodes(spaceId)
+            val edgesResult = spaceNodesRepository.getSpaceEdges(spaceId)
+
+            when {
+                nodesResult.isSuccess && edgesResult.isSuccess -> {
+                    val nodes = nodesResult.getOrNull() ?: emptyList()
+                    val edges = edgesResult.getOrNull() ?: emptyList()
+                    
+                    // Calculate connection counts for each node
+                    val nodesWithCounts = calculateConnectionCounts(nodes, edges)
+                    
+                    // Sort nodes by connection count (descending)
+                    val sortedNodes = nodesWithCounts.sortedByDescending { it.connectionCount }
+                    
+                    _nodes.value = sortedNodes
+                }
+                nodesResult.isFailure -> {
+                    _nodes.value = emptyList()
+                    _errorMessage.value = nodesResult.exceptionOrNull()?.message
+                }
+                edgesResult.isFailure -> {
+                    // If edges fail, still show nodes but without connection counts
+                    val nodes = nodesResult.getOrNull() ?: emptyList()
+                    _nodes.value = nodes.sortedByDescending { it.connectionCount }
+                    // Don't set error message for edges failure, just log it
+                }
             }
 
             _isLoading.value = false
+        }
+    }
+
+    private fun calculateConnectionCounts(
+        nodes: List<SpaceNode>,
+        edges: List<SpaceEdge>
+    ): List<SpaceNode> {
+        // Create a map to count connections for each node
+        val connectionCountMap = mutableMapOf<Int, Int>()
+        
+        // Initialize all nodes with 0 connections
+        nodes.forEach { node ->
+            connectionCountMap[node.id] = 0
+        }
+        
+        // Count connections: if a node is source or target of an edge, increment its count
+        edges.forEach { edge ->
+            connectionCountMap[edge.source] = (connectionCountMap[edge.source] ?: 0) + 1
+            connectionCountMap[edge.target] = (connectionCountMap[edge.target] ?: 0) + 1
+        }
+        
+        // Update nodes with their connection counts
+        return nodes.map { node ->
+            node.copy(connectionCount = connectionCountMap[node.id] ?: 0)
         }
     }
 
@@ -95,18 +140,21 @@ class SpaceNodesViewModel @Inject constructor(
     }
 
     private fun filterNodes(nodes: List<SpaceNode>, query: String): List<SpaceNode> {
-        if (query.isBlank()) {
-            return nodes
+        val filtered = if (query.isBlank()) {
+            nodes
+        } else {
+            val normalizedQuery = query.trim()
+            nodes.filter { node ->
+                node.label.contains(normalizedQuery, ignoreCase = true) ||
+                    node.locationName?.contains(normalizedQuery, ignoreCase = true) == true ||
+                    node.city?.contains(normalizedQuery, ignoreCase = true) == true ||
+                    node.country?.contains(normalizedQuery, ignoreCase = true) == true ||
+                    node.district?.contains(normalizedQuery, ignoreCase = true) == true ||
+                    node.street?.contains(normalizedQuery, ignoreCase = true) == true
+            }
         }
-        val normalizedQuery = query.trim()
-        return nodes.filter { node ->
-            node.label.contains(normalizedQuery, ignoreCase = true) ||
-                node.locationName?.contains(normalizedQuery, ignoreCase = true) == true ||
-                node.city?.contains(normalizedQuery, ignoreCase = true) == true ||
-                node.country?.contains(normalizedQuery, ignoreCase = true) == true ||
-                node.district?.contains(normalizedQuery, ignoreCase = true) == true ||
-                node.street?.contains(normalizedQuery, ignoreCase = true) == true
-        }
+        // Maintain sort order by connection count after filtering
+        return filtered.sortedByDescending { it.connectionCount }
     }
 }
 
