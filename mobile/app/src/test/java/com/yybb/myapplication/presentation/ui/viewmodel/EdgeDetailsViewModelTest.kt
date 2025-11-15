@@ -40,6 +40,7 @@ class EdgeDetailsViewModelTest {
     private val sourceName = "Source Node"
     private val targetId = "456"
     private val targetName = "Target Node"
+    private val currentNodeId = "123"
 
     @Before
     fun setUp() {
@@ -53,7 +54,8 @@ class EdgeDetailsViewModelTest {
                 "sourceId" to sourceId,
                 "sourceName" to sourceName,
                 "targetId" to targetId,
-                "targetName" to targetName
+                "targetName" to targetName,
+                "currentNodeId" to currentNodeId
             )
         )
     }
@@ -62,8 +64,8 @@ class EdgeDetailsViewModelTest {
     fun `initialization should load edge data and nodes successfully`() = runTest {
         // Given
         val mockNodes = listOf(
-            SpaceNode(123, sourceName, "Q1", null, null, null, null, null, null, null),
-            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null)
+            SpaceNode(123, sourceName, "Q1", null, null, null, null, null, null, null, 0),
+            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null, 0)
         )
         val mockProperty = WikidataProperty("P1", edgeLabel, "Description", "url")
         whenever(mockRepository.getSpaceNodes(spaceId)).thenReturn(Result.success(mockNodes))
@@ -94,7 +96,8 @@ class EdgeDetailsViewModelTest {
                 "sourceId" to sourceId,
                 "sourceName" to sourceName,
                 "targetId" to targetId,
-                "targetName" to targetName
+                "targetName" to targetName,
+                "currentNodeId" to currentNodeId
             )
         )
         whenever(mockRepository.getSpaceNodes(spaceId)).thenReturn(Result.success(emptyList()))
@@ -111,7 +114,7 @@ class EdgeDetailsViewModelTest {
     fun `getSourceNodeDisplayText should return formatted text with wikidata id`() = runTest {
         // Given
         val mockNodes = listOf(
-            SpaceNode(123, sourceName, "Q1", null, null, null, null, null, null, null)
+            SpaceNode(123, sourceName, "Q1", null, null, null, null, null, null, null, 0)
         )
         whenever(mockRepository.getSpaceNodes(spaceId)).thenReturn(Result.success(mockNodes))
 
@@ -146,7 +149,7 @@ class EdgeDetailsViewModelTest {
     fun `getTargetNodeDisplayText should return formatted text with wikidata id`() = runTest {
         // Given
         val mockNodes = listOf(
-            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null)
+            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null, 0)
         )
         whenever(mockRepository.getSpaceNodes(spaceId)).thenReturn(Result.success(mockNodes))
 
@@ -500,6 +503,66 @@ class EdgeDetailsViewModelTest {
 
         // Then
         assertFalse(viewModel.deleteEdgeSuccess.value)
+    }
+
+    @Test
+    fun `isCurrentNodeSource should return true when current node is source`() = runTest {
+        // Given
+        setupViewModelWithMocks()
+
+        // When
+        val isSource = viewModel.isCurrentNodeSource()
+
+        // Then
+        assertTrue(isSource) // currentNodeId is "123" which equals sourceId
+    }
+
+    @Test
+    fun `getOtherNodeId should return target when current is source`() = runTest {
+        // Given
+        setupViewModelWithMocks()
+
+        // When
+        val otherNodeId = viewModel.getOtherNodeId()
+
+        // Then
+        assertEquals(targetId, otherNodeId)
+    }
+
+    @Test
+    fun `getOtherNodeLabel should return target label when current is source`() = runTest {
+        // Given
+        val mockNodes = listOf(
+            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null, 0)
+        )
+        whenever(mockRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(mockNodes))
+        viewModel = EdgeDetailsViewModel(mockRepository, savedStateHandle)
+        advanceUntilIdle()
+
+        // When
+        val otherNodeLabel = viewModel.getOtherNodeLabel()
+
+        // Then
+        assertEquals(targetName, otherNodeLabel)
+    }
+
+    @Test
+    fun `getOtherNodeWikidataId should return target wikidata id when current is source`() = runTest {
+        // Given
+        val mockNodes = listOf(
+            SpaceNode(456, targetName, "Q2", null, null, null, null, null, null, null, 0)
+        )
+        whenever(mockRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(mockNodes))
+        viewModel = EdgeDetailsViewModel(mockRepository, savedStateHandle)
+        advanceUntilIdle()
+
+        // When
+        val otherNodeWikidataId = viewModel.getOtherNodeWikidataId()
+
+        // Then
+        assertEquals("Q2", otherNodeWikidataId)
     }
 
     // Helper functions

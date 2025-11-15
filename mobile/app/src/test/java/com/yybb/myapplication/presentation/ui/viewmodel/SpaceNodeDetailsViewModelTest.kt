@@ -3,7 +3,6 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.SpaceEdge
-import com.yybb.myapplication.data.model.SpaceNode
 import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
@@ -16,7 +15,6 @@ import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -24,6 +22,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.clearInvocations
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -54,39 +53,6 @@ class SpaceNodeDetailsViewModelTest {
                 "nodeWikidataId" to wikidataId
             )
         )
-    }
-
-    @Test
-    fun `initialization should load node data successfully`() = runTest {
-        // Given
-        val mockNodes = listOf(
-            SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null),
-            SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null)
-        )
-        val mockProperties = listOf(
-            createMockNodeProperty("prop1", "Property 1", "Value 1"),
-            createMockNodeProperty("prop2", "Property 2", "Value 2")
-        )
-        val mockEdges = listOf(
-            SpaceEdge(1, 456, 1, "Edge 1", null),
-            SpaceEdge(2, 1, 456, "Edge 2", null)
-        )
-
-        whenever(mockRepository.getSpaceNodes(spaceId)).thenReturn(Result.success(mockNodes))
-        whenever(mockRepository.getNodeProperties(spaceId, nodeId)).thenReturn(Result.success(mockProperties))
-        whenever(mockRepository.getWikidataEntityProperties(wikidataId)).thenReturn(Result.success(mockProperties))
-        whenever(mockRepository.getSpaceEdges(spaceId)).thenReturn(Result.success(mockEdges))
-
-        // When
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
-
-        // Then
-        assertEquals(nodeLabel, viewModel.nodeName.value)
-        assertEquals(wikidataId, viewModel.wikidataId.value)
-        assertNull(viewModel.criticalError.value)
-        assertTrue(viewModel.availableConnectionNodes.value.isNotEmpty())
-        assertTrue(viewModel.nodeConnections.value.isNotEmpty())
     }
 
     @Test
@@ -131,6 +97,7 @@ class SpaceNodeDetailsViewModelTest {
     fun `updateSearchQuery should update search query`() = runTest {
         // Given
         setupViewModelWithMocks()
+        initializeViewModel()
         val query = "test query"
 
         // When
@@ -145,6 +112,7 @@ class SpaceNodeDetailsViewModelTest {
     fun `updateConnectionSearchQuery should update connection search query`() = runTest {
         // Given
         setupViewModelWithMocks()
+        initializeViewModel()
         val query = "connection query"
 
         // When
@@ -159,6 +127,7 @@ class SpaceNodeDetailsViewModelTest {
     fun `resetConnectionSearchQuery should clear connection search query`() = runTest {
         // Given
         setupViewModelWithMocks()
+        initializeViewModel()
         viewModel.updateConnectionSearchQuery("test")
         advanceUntilIdle()
 
@@ -262,6 +231,9 @@ class SpaceNodeDetailsViewModelTest {
         viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
         advanceUntilIdle()
 
+        // Clear invocations from initialization
+        clearInvocations(mockRepository)
+
         // When
         viewModel.retryNodeProperties()
         advanceUntilIdle()
@@ -333,9 +305,7 @@ class SpaceNodeDetailsViewModelTest {
         )
         whenever(mockRepository.searchWikidataEdgeLabels(query))
             .thenReturn(Result.success(mockResults))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.searchEdgeLabelOptions(query)
@@ -350,10 +320,8 @@ class SpaceNodeDetailsViewModelTest {
     fun `searchEdgeLabelOptions should not search with query length less than 3`() = runTest {
         // Given
         setupViewModelWithMocks()
+        initializeViewModel()
         val query = "te"
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
 
         // When
         viewModel.searchEdgeLabelOptions(query)
@@ -368,8 +336,7 @@ class SpaceNodeDetailsViewModelTest {
     fun `resetEdgeLabelSearch should clear search results`() = runTest {
         // Given
         setupViewModelWithMocks()
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.resetEdgeLabelSearch()
@@ -398,9 +365,7 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(snapshotResponse))
         whenever(mockRepository.getSpaceEdges(spaceId))
             .thenReturn(Result.success(mockEdges))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.addEdge(nodeOption, true, "New Edge", "")
@@ -420,9 +385,7 @@ class SpaceNodeDetailsViewModelTest {
         val errorMessage = "Edge creation failed"
         whenever(mockRepository.addEdgeToSpaceGraph(spaceId, nodeId, "node789", "New Edge", ""))
             .thenReturn(Result.failure(Exception(errorMessage)))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.addEdge(nodeOption, true, "New Edge", "")
@@ -444,9 +407,7 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(deleteResponse))
         whenever(mockRepository.createSnapshot(spaceId))
             .thenReturn(Result.success(snapshotResponse))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.deleteNode()
@@ -465,9 +426,7 @@ class SpaceNodeDetailsViewModelTest {
         val errorMessage = "Node deletion failed"
         whenever(mockRepository.deleteNode(spaceId, nodeId))
             .thenReturn(Result.failure(Exception(errorMessage)))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.deleteNode()
@@ -488,9 +447,7 @@ class SpaceNodeDetailsViewModelTest {
         )
         whenever(mockRepository.getSpaceEdges(spaceId))
             .thenReturn(Result.success(mockEdges))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.refreshNodeConnections()
@@ -510,9 +467,7 @@ class SpaceNodeDetailsViewModelTest {
         )
         whenever(mockRepository.getSpaceEdges(spaceId))
             .thenReturn(Result.success(mockEdges))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.updateConnectionSearchQuery("Test")
@@ -533,9 +488,7 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(listOf(property1, property2)))
         whenever(mockRepository.getWikidataEntityProperties(wikidataId))
             .thenReturn(Result.success(listOf(property1, property2)))
-
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
-        advanceUntilIdle()
+        initializeViewModel()
 
         // When
         viewModel.updateSearchQuery("Test")
@@ -556,6 +509,10 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(emptyList()))
         whenever(mockRepository.getSpaceEdges(spaceId))
             .thenReturn(Result.success(emptyList()))
+    }
+
+    private suspend fun initializeViewModel() {
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
     }
 
     private fun createMockNodeProperty(

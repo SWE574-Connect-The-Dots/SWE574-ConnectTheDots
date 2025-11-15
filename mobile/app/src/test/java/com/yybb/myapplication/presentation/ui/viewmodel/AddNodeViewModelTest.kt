@@ -51,8 +51,8 @@ class AddNodeViewModelTest {
     fun `initialization should load space nodes`() = runTest {
         // Given
         val mockNodes = listOf(
-            SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null),
-            SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null)
+            SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null, 0),
+            SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null, 0)
         )
         whenever(mockNodesRepository.getSpaceNodes(spaceId))
             .thenReturn(Result.success(mockNodes))
