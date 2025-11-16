@@ -252,7 +252,9 @@
     "reasonLabel": "Reason for report:",
     "selectReasonPlaceholder": "-- Select a reason --",
     "submitting": "Submitting...",
-    "submitButton": "Submit Report"
+    "submitButton": "Submit Report",
+    "dismiss": "Dismiss",
+    "archive": "Archive"
   },
   "property": {
     "searchPlaceholder": "Search for a property or enter a custom label...",
