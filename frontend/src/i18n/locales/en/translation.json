@@ -102,6 +102,27 @@
     "failedToAddNode": "Failed to add node.",
     "addNodeWithEdge": "Add Node with Edge"
   },
+  "spaceAnalytics": {
+    "dashboard": "Space Analytics Dashboard",
+    "backToSpace": "Back to Space", 
+    "spaceOverview": "Space Overview",
+    "description": "Description",
+    "location": "Location",
+    "spaceMembers": "Space Members", 
+    "creator": "Creator",
+    "moderators": "Moderators",
+    "noModeratorsAssigned": "No moderators assigned",
+    "locationNotSpecified": "Location not specified",
+    "noDescriptionProvided": "No description provided",
+    "quickStats": "Quick Stats",
+    "quickStatistics": "Quick Statistics",
+    "totalNodes": "Total Nodes",
+    "totalEdges": "Total Edges",
+    "totalDiscussions": "Total Discussions",
+    "tags": "Tags",
+    "spaceActivityOverTime": "Space Activity Over Time",
+    "failedToLoadData": "Failed to load space data"
+  },
   "graph": {
     "addNode": "Add Node",
     "addEdge": "Add Edge",

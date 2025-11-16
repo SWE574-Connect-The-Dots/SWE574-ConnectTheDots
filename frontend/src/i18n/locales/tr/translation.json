@@ -102,6 +102,27 @@
     "failedToAddNode": "Düğüm eklenemedi.",
     "addNodeWithEdge": "Bağlantı ile Düğüm Ekle"
   },
+  "spaceAnalytics": {
+    "dashboard": "Alan Analitik Paneli",
+    "backToSpace": "Alana Geri Dön",
+    "spaceOverview": "Alan Özeti",
+    "description": "Açıklama",
+    "location": "Konum",
+    "spaceMembers": "Alan Üyeleri",
+    "creator": "Oluşturan",
+    "moderators": "Moderatörler", 
+    "noModeratorsAssigned": "Hiç moderatör atanmamış",
+    "locationNotSpecified": "Konum belirtilmemiş",
+    "noDescriptionProvided": "Açıklama sağlanmamış",
+    "quickStats": "Hızlı İstatistikler",
+    "quickStatistics": "Hızlı İstatistikler",
+    "totalNodes": "Toplam Düğüm",
+    "totalEdges": "Toplam Bağlantı",
+    "totalDiscussions": "Toplam Tartışma",
+    "tags": "Etiketler",
+    "spaceActivityOverTime": "Zaman İçinde Alan Etkinliği",
+    "failedToLoadData": "Alan verisi yüklenemedi"
+  },
   "graph": {
     "addNode": "Düğüm Ekle",
     "addEdge": "Bağlantı Ekle",

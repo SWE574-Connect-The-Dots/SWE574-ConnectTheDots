@@ -59,7 +59,7 @@ const SpaceAnalytics = () => {
 
       } catch (err) {
         console.error("Error fetching space data:", err);
-        setError("Failed to load space data");
+        setError(t("spaceAnalytics.failedToLoadData"));
       } finally {
         setLoading(false);
       }
@@ -176,7 +176,7 @@ const SpaceAnalytics = () => {
             color: '#4A5568',
             fontSize: '16px'
           }}>
-            Space Analytics Dashboard
+            {t("spaceAnalytics.dashboard")}
           </p>
         </div>
         
@@ -194,7 +194,7 @@ const SpaceAnalytics = () => {
               fontWeight: '500'
             }}
           >
-            ← Back to Space
+            ← {t("spaceAnalytics.backToSpace")}
           </button>
         </div>
       </div>
@@ -217,7 +217,7 @@ const SpaceAnalytics = () => {
           alignItems: 'center',
           gap: '8px'
         }}>
-          Space Overview
+          📋 {t("spaceAnalytics.spaceOverview")}
         </h2>
         
         <div style={{ color: '#4A5568', lineHeight: '1.6' }}>
@@ -230,10 +230,10 @@ const SpaceAnalytics = () => {
             border: '1px solid #E5E5E5'
           }}>
             <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1B1F3B' }}>
-              Description:
+              {t("spaceAnalytics.description")}:
             </div>
             <div style={{ fontStyle: 'italic' }}>
-              {space?.description || 'No description provided'}
+              {space?.description || t("spaceAnalytics.noDescriptionProvided")}
             </div>
           </div>
 
@@ -253,7 +253,7 @@ const SpaceAnalytics = () => {
               alignItems: 'center',
               gap: '6px'
             }}>
-              📍 Location:
+              📍 {t("spaceAnalytics.location")}:
             </div>
             <div>
               {space?.country || space?.city || space?.district || space?.street ? (
@@ -271,7 +271,7 @@ const SpaceAnalytics = () => {
                   color: '#656F75',
                   fontSize: '14px'
                 }}>
-                  Location not specified
+                  {t("spaceAnalytics.locationNotSpecified")}
                 </div>
               )}
             </div>
@@ -293,7 +293,7 @@ const SpaceAnalytics = () => {
               alignItems: 'center',
               gap: '6px'
             }}>
-              Space Management:
+              👥 {t("spaceAnalytics.spaceMembers")}:
             </div>
             
             {/* Creator */}
@@ -304,7 +304,7 @@ const SpaceAnalytics = () => {
                 color: '#4A5568',
                 fontSize: '14px'
               }}>
-                Creator:
+                {t("spaceAnalytics.creator")}:
               </div>
               <div style={{
                 display: 'inline-block',
@@ -327,7 +327,7 @@ const SpaceAnalytics = () => {
                 color: '#4A5568',
                 fontSize: '14px'
               }}>
-                Moderators:
+                {t("spaceAnalytics.moderators")}:
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {space?.moderators && space.moderators.length > 0 ? (
@@ -352,7 +352,7 @@ const SpaceAnalytics = () => {
                     color: '#656F75',
                     fontSize: '13px'
                   }}>
-                    No moderators assigned
+                    {t("spaceAnalytics.noModeratorsAssigned")}
                   </div>
                 )}
               </div>
@@ -369,7 +369,7 @@ const SpaceAnalytics = () => {
               fontSize: '14px',
               fontWeight: '500'
             }}>
-              {space?.tags?.length || 0} Tags
+              🏷️ {space?.tags?.length || 0} {t("spaceAnalytics.tags")}
             </div>
           </div>
         </div>
@@ -383,16 +383,14 @@ const SpaceAnalytics = () => {
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
         marginBottom: '20px'
       }}>
-        <h2 style={{ 
-          color: '#1B1F3B', 
+        <h2 style={{
+          color: '#1B1F3B',
           marginBottom: '20px',
           fontSize: '20px',
           fontWeight: '600'
         }}>
-          Quick Stats
-        </h2>
-        
-        <div style={{
+          {t("spaceAnalytics.quickStats")}
+        </h2>        <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '15px'
@@ -409,7 +407,7 @@ const SpaceAnalytics = () => {
               {analytics.totalNodes}
             </div>
             <div style={{ fontSize: '14px', opacity: 0.9 }}>
-              Total Nodes
+              {t("spaceAnalytics.totalNodes")}
             </div>
           </div>
 
@@ -424,7 +422,7 @@ const SpaceAnalytics = () => {
               {analytics.totalEdges}
             </div>
             <div style={{ fontSize: '14px', opacity: 0.9 }}>
-              Total Edges
+              {t("spaceAnalytics.totalEdges")}
             </div>
           </div>
 
@@ -439,7 +437,7 @@ const SpaceAnalytics = () => {
               {analytics.totalDiscussions}
             </div>
             <div style={{ fontSize: '14px', opacity: 0.9 }}>
-              Discussions
+              {t("spaceAnalytics.totalDiscussions")}
             </div>
           </div>
 
@@ -470,13 +468,13 @@ const SpaceAnalytics = () => {
         
         {/* Chart Section */}
         <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ 
-            color: '#1B1F3B', 
+          <h2 style={{
+            color: '#1B1F3B',
             marginBottom: '20px',
-            fontSize: '24px',
+            fontSize: '20px',
             fontWeight: '600'
           }}>
-            Space Activity Over Time
+            {t("spaceAnalytics.spaceActivityOverTime")}
           </h2>
           
           <div style={{
