@@ -938,7 +938,13 @@ class ReportViewSet(viewsets.ModelViewSet):
         _recompute_entity_reports(report.content_type, report.content_id)
 
     def partial_update(self, request, *args, **kwargs):
-        report = self.get_object()
+        # Get report directly from database to check permissions before filtering
+        pk = kwargs.get('pk')
+        try:
+            report = Report.objects.get(pk=pk)
+        except Report.DoesNotExist:
+            return Response({'error': 'Report not found'}, status=404)
+        
         new_status = request.data.get('status')
         if new_status not in [Report.STATUS_OPEN, Report.STATUS_DISMISSED, Report.STATUS_ARCHIVED]:
             return Response({'error': 'Invalid status'}, status=400)
@@ -946,7 +952,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         user = request.user
         # Admins can update any; moderators only within their spaces and not profile reports
         if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
-            if not user.profile.is_moderator():
+            # Check if user is a moderator (either by profile flag OR by SpaceModerator assignment)
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
                 return Response({'error': 'Insufficient permissions'}, status=403)
             if report.content_type == Report.CONTENT_PROFILE:
                 return Response({'error': 'Profile reports can only be updated by admins'}, status=403)
@@ -954,6 +964,40 @@ class ReportViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'You are not a moderator of this space'}, status=403)
 
         report.status = new_status
+        report.save(update_fields=['status', 'updated_at'])
+        _recompute_entity_reports(report.content_type, report.content_id)
+        serializer = self.get_serializer(report)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='dismiss')
+    def dismiss(self, request, pk=None):
+        """Dismiss a report. Only admins and moderators can dismiss reports."""
+        # Get report directly from database to check permissions before filtering
+        try:
+            report = Report.objects.get(pk=pk)
+        except Report.DoesNotExist:
+            return Response({'error': 'Report not found'}, status=404)
+        
+        user = request.user
+
+        # Check permissions: Admins can dismiss any; moderators only within their spaces and not profile reports
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            # Check if user is a moderator (either by profile flag OR by SpaceModerator assignment)
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if report.content_type == Report.CONTENT_PROFILE:
+                return Response({'error': 'Profile reports can only be dismissed by admins'}, status=403)
+            if not SpaceModerator.objects.filter(user=user, space=report.space).exists():
+                return Response({'error': 'You are not a moderator of this space'}, status=403)
+
+        # Only dismiss if currently open
+        if report.status != Report.STATUS_OPEN:
+            return Response({'error': f'Report is already {report.status.lower()}'}, status=400)
+
+        report.status = Report.STATUS_DISMISSED
         report.save(update_fields=['status', 'updated_at'])
         _recompute_entity_reports(report.content_type, report.content_id)
         serializer = self.get_serializer(report)
