@@ -430,7 +430,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 'street': node.street,
                 'latitude': node.latitude,
                 'longitude': node.longitude,
-                'location_name': node.location_name
+                'location_name': node.location_name,
+                'created_at': node.created_at,
+                'created_by': node.created_by.id if node.created_by else None,
+                'created_by_username': node.created_by.username if node.created_by else None
             }
             data.append(node_data)
         return Response(data)
@@ -451,12 +454,117 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 'source': edge.source.id,
                 'target': edge.target.id,
                 'label': edge.relation_property,
-                'wikidata_property_id': edge.wikidata_property_id
+                'wikidata_property_id': edge.wikidata_property_id,
+                'created_at': edge.created_at
             } 
             for edge in edges
         ]
         
         return Response(data)
+    
+    @action(detail=True, methods=['get'], url_path='collaborators')
+    def collaborators(self, request, pk=None):
+        """Get collaborator statistics for a space"""
+        space = self.get_object()
+        
+        # Get all collaborators for this space
+        collaborators = space.collaborators.all()
+        
+        # For timeline data, we'll track when each collaborator joined
+        # Since we don't have join dates, we'll use space creation date and distribute over time
+        timeline_data = []
+        
+        # Get space creation date as the base
+        if collaborators.exists():
+            # Simple approach: return current collaborator count
+            # In a real scenario, you'd track when each user joined
+            today = timezone.now().date().isoformat()
+            timeline_data.append({
+                'date': today,
+                'collaborator_count': collaborators.count(),
+                'collaborator_ids': list(collaborators.values_list('id', flat=True))
+            })
+        
+        return Response({
+            'total_collaborators': collaborators.count(),
+            'timeline': timeline_data,
+            'collaborators': [
+                {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+                for user in collaborators
+            ]
+        })
+    
+    @action(detail=True, methods=['get'], url_path='top-collaborators')
+    def top_collaborators(self, request, pk=None):
+        """Get top collaborators based on activity scoring"""
+        from collections import defaultdict
+        
+        space = self.get_object()
+        
+        # Get all collaborators for this space
+        collaborators = space.collaborators.all()
+        
+        # Initialize scores for each collaborator
+        collaborator_scores = defaultdict(lambda: {
+            'user': None,
+            'node_count': 0,
+            'edge_count': 0,
+            'discussion_count': 0,
+            'total_score': 0
+        })
+        
+        # Set user objects for all collaborators
+        for user in collaborators:
+            collaborator_scores[user.id]['user'] = user
+        
+        # Count nodes created by each collaborator (4 points each)
+        nodes = Node.objects.filter(space=space, created_by__in=collaborators)
+        for node in nodes:
+            if node.created_by:
+                collaborator_scores[node.created_by.id]['node_count'] += 1
+        
+        # Count edges created by each collaborator (2 points each)
+        # Note: We don't have created_by field on Edge model, so we'll count based on source node creator
+        edges = Edge.objects.filter(source__space=space, source__created_by__in=collaborators)
+        for edge in edges:
+            if edge.source and edge.source.created_by:
+                collaborator_scores[edge.source.created_by.id]['edge_count'] += 1
+        
+        # Count discussions by each collaborator (1 point each)
+        discussions = Discussion.objects.filter(space=space, user__in=collaborators)
+        for discussion in discussions:
+            if discussion.user:
+                collaborator_scores[discussion.user.id]['discussion_count'] += 1
+        
+        # Calculate total scores
+        scored_collaborators = []
+        for user_id, data in collaborator_scores.items():
+            if data['user']:  # Only include actual collaborators
+                # Node creation: 4 points, Edge creation: 2 points, Discussion: 1 point
+                total_score = (data['node_count'] * 4) + (data['edge_count'] * 2) + (data['discussion_count'] * 1)
+                
+                scored_collaborators.append({
+                    'id': data['user'].id,
+                    'username': data['user'].username,
+                    'email': data['user'].email,
+                    'node_count': data['node_count'],
+                    'edge_count': data['edge_count'],
+                    'discussion_count': data['discussion_count'],
+                    'total_score': total_score
+                })
+        
+        # Sort by total score (highest first) and limit to top 10
+        scored_collaborators.sort(key=lambda x: x['total_score'], reverse=True)
+        top_collaborators = scored_collaborators[:10]
+        
+        return Response({
+            'top_collaborators': top_collaborators,
+            'total_collaborators': len(scored_collaborators)
+        })
     
     @action(detail=True, methods=['get'], url_path='snapshots')
     def snapshots(self, request, pk=None):
