@@ -199,12 +199,12 @@ class SpaceViewSet(viewsets.ModelViewSet):
         """
         Custom permissions based on action:
         - discussions and wikidata_search endpoints are open to all (no permission required)
-        - join/leave/check-collaborator/add_discussion endpoints need only IsAuthenticated
+        - join/leave/check-collaborator/add_discussion/delete_discussion endpoints need only IsAuthenticated
         - other write operations require IsCollaboratorOrReadOnly
         """
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
-        elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion']:
+        elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion']:
             permission_classes = [permissions.IsAuthenticated]
         else:
             permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly]
@@ -338,6 +338,26 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
         serializer = DiscussionSerializer(discussion, context={'request': request})
         return Response({'toggled_off': toggled, 'discussion': serializer.data}, status=200)
+
+    @action(detail=True, methods=['delete'], url_path='discussions/(?P<discussion_id>[^/.]+)/delete')
+    def delete_discussion(self, request, pk=None, discussion_id=None):
+        """Delete a discussion. Only admins or moderators can delete discussions."""
+        space = self.get_object()
+        user = request.user
+        
+        try:
+            discussion = Discussion.objects.get(id=discussion_id, space=space)
+        except Discussion.DoesNotExist:
+            return Response({'error': 'Discussion not found'}, status=404)
+        
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            if not SpaceModerator.objects.filter(user=user, space=space).exists():
+                return Response({'error': 'You are not a moderator of this space'}, status=403)
+        
+        Report.objects.filter(content_type=Report.CONTENT_DISCUSSION, content_id=discussion_id).delete()
+        
+        discussion.delete()
+        return Response({'message': 'Discussion deleted successfully'}, status=200)
 
     @action(detail=False, methods=['get'])
     def trending(self, request):
