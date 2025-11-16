@@ -85,6 +85,141 @@ const propertySelectionStyles = `
   font-weight: 600;
   color: var(--color-text);
 }
+
+.space-actions-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease;
+}
+
+.dropdown-toggle:hover {
+  background: #005A8C;
+}
+
+.dropdown-toggle::after {
+  content: '▼';
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #68686B;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(55, 65, 81, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  margin-top: 4px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  color: #1B1F3B;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 8px;
+  transition: background 0.2s ease;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+.dropdown-item:hover {
+  background: #F5F5F5;
+}
+
+.dropdown-item:first-child {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+.dropdown-item:last-child {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-bottom: none;
+}
+
+.dropdown-item.map-action {
+  background: #2D6A4F;
+  color: #FFFFFF;
+}
+
+.dropdown-item.map-action:hover {
+  background: rgba(45, 106, 79, 0.8);
+}
+
+.dropdown-item.join-action {
+  background: #008296;
+  color: #FFFFFF;
+}
+
+.dropdown-item.join-action:hover {
+  background: rgba(0, 130, 150, 0.8);
+}
+
+.dropdown-item.leave-action {
+  background: #8F6701;
+  color: #FFFFFF;
+}
+
+.dropdown-item.leave-action:hover {
+  background: rgba(143, 103, 1, 0.8);
+}
+
+.dropdown-item.delete-action {
+  background: #BD4902;
+  color: #FFFFFF;
+}
+
+.dropdown-item.delete-action:hover {
+  background: rgba(189, 73, 2, 0.8);
+}
+
+.dropdown-item.report-action {
+  background: #4A5568;
+  color: #FFFFFF;
+}
+
+.dropdown-item.report-action:hover {
+  background: rgba(74, 85, 104, 0.8);
+}
+
+.dropdown-item.analytics-action {
+  background: #215D69;
+  color: #FFFFFF;
+}
+
+.dropdown-item.analytics-action:hover {
+  background: rgba(33, 93, 105, 0.8);
+}
+
+.dropdown-item:disabled {
+  color: #656F75;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 `;
 
 
@@ -258,6 +393,9 @@ const SpaceDetails = () => {
   
   // Space map modal state
   const [showSpaceMap, setShowSpaceMap] = useState(false);
+  
+  // Dropdown state
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const {
     nodes,
@@ -962,6 +1100,106 @@ const SpaceDetails = () => {
     }
   };
 
+  // Space Actions Dropdown Component
+  const SpaceActionsDropdown = () => {
+    const dropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setShowDropdown(false);
+        }
+      };
+
+      if (showDropdown) {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [showDropdown]);
+
+    return (
+      <div className="space-actions-dropdown" ref={dropdownRef}>
+        <button
+          className="dropdown-toggle"
+          onClick={() => setShowDropdown(!showDropdown)}
+          aria-expanded={showDropdown}
+          aria-haspopup="true"
+        >
+          Space Actions
+        </button>
+        
+        {showDropdown && (
+          <div className="dropdown-menu" role="menu">
+            <button
+              className="dropdown-item map-action"
+              onClick={() => {
+                setShowSpaceMap(true);
+                setShowDropdown(false);
+              }}
+              role="menuitem"
+            >
+              Show Space Map
+            </button>
+            
+            <button
+              className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
+              onClick={() => {
+                handleJoinLeaveSpace();
+                setShowDropdown(false);
+              }}
+              data-testid={isCollaborator ? "leave-space-button" : "header-join-space-button"}
+              role="menuitem"
+            >
+              {isCollaborator ? `${t("space.leaveSpace")}` : `${t("space.joinSpace")}`}
+            </button>
+            
+            {(canDeleteSpace() || canEditSpaceLocation()) && (
+              <button
+                className="dropdown-item analytics-action"
+                onClick={() => {
+                  navigate(`/spaces/${id}/analytics`);
+                  setShowDropdown(false);
+                }}
+                role="menuitem"
+              >
+                Analytics
+              </button>
+            )}
+            
+            {canDeleteSpace() && (
+              <button
+                className="dropdown-item delete-action"
+                onClick={() => {
+                  handleDeleteClick();
+                  setShowDropdown(false);
+                }}
+                disabled={deleting}
+                role="menuitem"
+              >
+                {t("common.delete")}
+              </button>
+            )}
+            
+            <button
+              className="dropdown-item report-action"
+              onClick={() => {
+                handleReportSpace();
+                setShowDropdown(false);
+              }}
+              role="menuitem"
+            >
+              {t("common.report")}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -987,80 +1225,7 @@ const SpaceDetails = () => {
           }}
         >
           <h2 style={{ margin: 0 }}>{space.title}</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button
-              onClick={() => setShowSpaceMap(true)}
-              style={{
-                background: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#218838'}
-              onMouseOut={(e) => e.currentTarget.style.background = '#28a745'}
-            >
-              🗺️ Show Space Map
-            </button>
-            <button
-              className={isCollaborator ? "leave-button" : "join-button"}
-              onClick={handleJoinLeaveSpace}
-              data-testid={
-                isCollaborator
-                  ? "leave-space-button"
-                  : "header-join-space-button"
-              }
-            >
-              {isCollaborator ? t("space.leaveSpace") : t("space.joinSpace")}
-            </button>
-            {canDeleteSpace() && (
-              <button
-                className="delete-button"
-                title={t("common.delete")}
-                style={{
-                  background: "var(--color-danger-light)",
-                  color: "var(--color-white)",
-                  border: "none",
-                  borderRadius: 4,
-                  fontWeight: 600,
-                  padding: "6px 16px",
-                  marginLeft: 8,
-                  cursor: "pointer",
-                  transition: "background 0.2s",
-                }}
-                onClick={handleDeleteClick}
-                disabled={deleting}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.background =
-                    "var(--color-danger-dark)")
-                }
-                onMouseOut={(e) =>
-                  (e.currentTarget.style.background =
-                    "var(--color-danger-light)")
-                }
-              >
-                {t("common.delete")}
-              </button>
-            )}
-            <button
-              className="report-button"
-              onClick={handleReportSpace}
-              style={{
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-              }}
-            >
-              {t("common.report")}
-            </button>
-          </div>
+          <SpaceActionsDropdown />
         </div>
         <p>{space.description}</p>
         
