@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, record_activity
 from .graph import SpaceGraph
 from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer
 from .wikidata import get_wikidata_properties, extract_location_from_properties
@@ -221,6 +221,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
             )
         except Exception:
             pass
+        try:
+            record_activity(
+                actor_user=self.request.user,
+                type='Create',
+                object=f'Space:{space.id}',
+                summary=f"{self.request.user.username} created space '{space.title}'",
+                payload={'space_id': space.id}
+            )
+        except Exception:
+            pass
         
     def create(self, request, *args, **kwargs):
         if 'tags' in request.data and isinstance(request.data['tags'], list):
@@ -241,6 +251,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'message': 'You are already a collaborator of this space'}, status=400)
             
         space.collaborators.add(user)
+        try:
+            record_activity(
+                actor_user=user,
+                type='Join',
+                object=f'Space:{space.id}',
+                summary=f"{user.username} joined space '{space.title}'",
+                payload={'space_id': space.id}
+            )
+        except Exception:
+            pass
         return Response({'message': 'Successfully joined the space'}, status=200)
     
     @action(detail=True, methods=['post'], url_path='leave')
@@ -255,6 +275,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'message': 'You are not a collaborator of this space'}, status=400)
             
         space.collaborators.remove(user)
+        try:
+            record_activity(
+                actor_user=user,
+                type='Leave',
+                object=f'Space:{space.id}',
+                summary=f"{user.username} left space '{space.title}'",
+                payload={'space_id': space.id}
+            )
+        except Exception:
+            pass
         return Response({'message': 'Successfully left the space'}, status=200)
     
     @action(detail=True, methods=['get'], url_path='check-collaborator')
@@ -296,6 +326,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
         )
         
         serializer = DiscussionSerializer(discussion, context={'request': request})
+        try:
+            record_activity(
+                actor_user=user,
+                type='Create',
+                object=f'Discussion:{discussion.id}',
+                target=f'Space:{space.id}',
+                summary=f"{user.username} commented in '{space.title}'",
+                payload={'space_id': space.id, 'discussion_id': discussion.id}
+            )
+        except Exception:
+            pass
         return Response(serializer.data, status=201)
 
     @action(detail=True, methods=['post', 'delete'], url_path='discussions/(?P<discussion_id>[^/.]+)/react', permission_classes=[IsAuthenticated])
@@ -309,6 +350,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         if request.method == 'DELETE':
             DiscussionReaction.objects.filter(discussion=discussion, user=request.user).delete()
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Remove',
+                    object=f'Reaction:{discussion.id}',
+                    target=f'Discussion:{discussion.id}',
+                    summary=f"{request.user.username} removed reaction",
+                    payload={'discussion_id': discussion.id}
+                )
+            except Exception:
+                pass
             serializer = DiscussionSerializer(discussion, context={'request': request})
             return Response({'discussion': serializer.data}, status=200)
 
@@ -329,12 +381,43 @@ class SpaceViewSet(viewsets.ModelViewSet):
             if reaction.value == value:
                 reaction.delete()
                 toggled = True
+                try:
+                    record_activity(
+                        actor_user=request.user,
+                        type='Remove',
+                        object=f'Reaction:{discussion.id}',
+                        target=f'Discussion:{discussion.id}',
+                        summary=f"{request.user.username} removed reaction",
+                        payload={'discussion_id': discussion.id}
+                    )
+                except Exception:
+                    pass
             else:
                 reaction.value = value
                 reaction.save()
                 toggled = False
+                try:
+                    record_activity(
+                        actor_user=request.user,
+                        type=('Like' if value == DiscussionReaction.UPVOTE else 'Dislike'),
+                        object=f'Discussion:{discussion.id}',
+                        summary=f"{request.user.username} reacted",
+                        payload={'discussion_id': discussion.id, 'value': int(value)}
+                    )
+                except Exception:
+                    pass
         else:
             toggled = False
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type=('Like' if value == DiscussionReaction.UPVOTE else 'Dislike'),
+                    object=f'Discussion:{discussion.id}',
+                    summary=f"{request.user.username} reacted",
+                    payload={'discussion_id': discussion.id, 'value': int(value)}
+                )
+            except Exception:
+                pass
 
         serializer = DiscussionSerializer(discussion, context={'request': request})
         return Response({'toggled_off': toggled, 'discussion': serializer.data}, status=200)
@@ -378,6 +461,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
             created_by=request.user,
             space = space
         )
+        try:
+            record_activity(
+                actor_user=request.user,
+                type='Create',
+                object=f'Node:{new_node.id}',
+                target=f'Space:{space.id}',
+                summary=f"{request.user.username} added node '{new_node.label}'",
+                payload={'space_id': space.id, 'node_id': new_node.id}
+            )
+        except Exception:
+            pass
         
         for prop in selected_properties:
             Property.objects.create(
@@ -399,19 +493,41 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if related_node_id:
             related_node = Node.objects.get(id=related_node_id)
             if is_new_node_source:
-                Edge.objects.create(
+                e = Edge.objects.create(
                     source=new_node, 
                     target=related_node, 
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                try:
+                    record_activity(
+                        actor_user=request.user,
+                        type='Add',
+                        object=f'Edge:{e.id}',
+                        target=f'Space:{space.id}',
+                        summary=f"{request.user.username} created edge {new_node.id}->{related_node.id}",
+                        payload={'edge_id': e.id, 'source_id': new_node.id, 'target_id': related_node.id}
+                    )
+                except Exception:
+                    pass
             else:
-                Edge.objects.create(
+                e = Edge.objects.create(
                     source=related_node, 
                     target=new_node, 
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                try:
+                    record_activity(
+                        actor_user=request.user,
+                        type='Add',
+                        object=f'Edge:{e.id}',
+                        target=f'Space:{space.id}',
+                        summary=f"{request.user.username} created edge {related_node.id}->{new_node.id}",
+                        payload={'edge_id': e.id, 'source_id': related_node.id, 'target_id': new_node.id}
+                    )
+                except Exception:
+                    pass
 
         return Response({'node_id': new_node.id}, status=201)
 
@@ -473,6 +589,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
         graph = SpaceGraph(pk)
         graph.load_from_db()
         snapshot = graph.create_snapshot(request.user)
+        try:
+            record_activity(
+                actor_user=request.user,
+                type='Create',
+                object=f'Snapshot:{snapshot.id}',
+                target=f'Space:{space.id}',
+                summary=f"{request.user.username} created a snapshot",
+                payload={'snapshot_id': snapshot.id, 'space_id': space.id}
+            )
+        except Exception:
+            pass
         return Response({'snapshot_id': snapshot.id, 'created_at': snapshot.created_at})
     
     @action(detail=True, methods=['post'], url_path='snapshots/revert')
@@ -487,6 +614,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         graph = SpaceGraph(pk)
         graph.revert_to_snapshot(snapshot_id)
+        try:
+            record_activity(
+                actor_user=request.user,
+                type='Update',
+                object=f'Space:{space.id}',
+                target=f'Snapshot:{snapshot_id}',
+                summary=f"{request.user.username} reverted graph to snapshot {snapshot_id}",
+                payload={'snapshot_id': snapshot_id, 'space_id': space.id}
+            )
+        except Exception:
+            pass
         return Response({'message': 'Graph reverted successfully'})
     
     @action(detail=False, methods=['get'], url_path='wikidata-search')
@@ -635,7 +773,19 @@ class SpaceViewSet(viewsets.ModelViewSet):
             Edge.objects.filter(source=node).delete()
             Edge.objects.filter(target=node).delete()
             Property.objects.filter(node=node).delete()
+            deleted_node_id = node.id
             node.delete()
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Delete',
+                    object=f'Node:{deleted_node_id}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} deleted a node",
+                    payload={'node_id': deleted_node_id, 'space_id': space.id}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Node successfully deleted'}, status=200)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
@@ -673,6 +823,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                             setattr(node, field, value)
                     node.save()
                 
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Update',
+                    object=f'Node:{node.id}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} updated node properties",
+                    payload={'node_id': node.id, 'space_id': space.id}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Node properties updated'}, status=200)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
@@ -690,7 +851,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
             node = Node.objects.get(id=node_id, space_id=pk)
             property_to_delete = Property.objects.get(node=node, statement_id=statement_id)
             property_to_delete.delete()
-            
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Remove',
+                    object=f'Property:{statement_id}',
+                    target=f'Node:{node.id}',
+                    summary=f"{request.user.username} removed a node property",
+                    payload={'node_id': node.id, 'statement_id': statement_id}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Property deleted successfully'}, status=200)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
@@ -726,7 +897,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
             print(f"Updated node location - Country: {node.country}, City: {node.city}, Lat: {node.latitude}, Lng: {node.longitude}")
             
             node.save()
-            
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Update',
+                    object=f'Node:{node.id}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} updated node location",
+                    payload={'node_id': node.id, 'space_id': space.id}
+                )
+            except Exception:
+                pass
             return Response({
                 'message': 'Node location updated successfully',
                 'location': {
@@ -771,6 +952,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
             edge.wikidata_property_id = wikidata_property_id
             edge.save()
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Update',
+                    object=f'Edge:{edge.id}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} updated an edge",
+                    payload={'edge_id': edge.id}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Edge updated successfully'}, status=200)
         except Edge.DoesNotExist:
             return Response({'error': 'Edge not found'}, status=404)
@@ -785,7 +977,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Only collaborators can delete edges'}, status=403)
         try:
             edge = Edge.objects.get(id=edge_id, source__space=space)
+            eid = edge.id
+            sid = edge.source_id
+            tid = edge.target_id
             edge.delete()
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Delete',
+                    object=f'Edge:{eid}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} deleted edge {sid}->{tid}",
+                    payload={'edge_id': eid, 'source_id': sid, 'target_id': tid}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Edge deleted successfully'}, status=200)
         except Edge.DoesNotExist:
             return Response({'error': 'Edge not found'}, status=404)
@@ -815,6 +1021,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 relation_property=label,
                 wikidata_property_id=wikidata_property_id
             )
+            try:
+                record_activity(
+                    actor_user=request.user,
+                    type='Add',
+                    object=f'Edge:{edge.id}',
+                    target=f'Space:{space.id}',
+                    summary=f"{request.user.username} added edge {source.id}->{target.id}",
+                    payload={'edge_id': edge.id, 'source_id': source.id, 'target_id': target.id}
+                )
+            except Exception:
+                pass
             return Response({'message': 'Edge created', 'edge_id': edge.id}, status=201)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
@@ -824,10 +1041,29 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         space = self.get_object()
         user = request.user
-        # Allow only creator or admin (is_staff or is_superuser)
+    
+        # Permission check
         if user != space.creator and not (user.is_staff or user.is_superuser):
             return Response({'detail': 'You do not have permission to delete this space.'}, status=403)
-        return super().destroy(request, *args, **kwargs)
+    
+        try:
+            response = super().destroy(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=400)
+    
+        try:
+            record_activity(
+                actor_user=user,
+                type='Delete',
+                object=f"Space:{space.id}",
+                summary=f"{user.username} deleted space '{space.title}'",
+                payload={'space_id': space.id}
+            )
+        except Exception:
+            pass
+    
+        return response
+
 
     @action(detail=False, methods=['get'], url_path='top-scored', permission_classes=[IsAuthenticated])
     def top_scored(self, request):
