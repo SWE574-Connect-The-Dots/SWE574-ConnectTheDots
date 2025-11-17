@@ -1,50 +1,54 @@
 import React, { useState, useEffect } from "react";
-import reportsMockData from "../../data/reportsMock.json";
 import api from "../../axiosConfig";
 import { API_ENDPOINTS } from "../../constants/config";
+import { useTranslation } from "../../contexts/TranslationContext";
 
 export default function Reports() {
+  const { t } = useTranslation();
   const [reports, setReports] = useState([]);
   const [sortField, setSortField] = useState("reportCount");
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
-  // TODO Backend data (not yet wired to UI)
-  const [backendReports, setBackendReports] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [backendReasons, setBackendReasons] = useState(null);
   const [backendError, setBackendError] = useState(null);
 
-  useEffect(() => {
-    const normalizedReports = reportsMockData.map((report) => ({
-      ...report,
-      itemType: report.itemType === "Discussion" ? "Comment" : report.itemType,
-    }));
-    setReports(normalizedReports);
-  }, []);
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      setBackendError(null);
+      const [reasonsRes, reportsRes] = await Promise.all([
+        api.get(API_ENDPOINTS.REPORTS_REASONS),
+        api.get(API_ENDPOINTS.REPORTS),
+      ]);
+      setBackendReasons(reasonsRes.data);
+      setReports(
+        Array.isArray(reportsRes.data)
+          ? reportsRes.data
+          : reportsRes.data?.results || []
+      );
+    } catch (e) {
+      setBackendError(
+        e?.response?.data || e?.message || "Failed to load reports"
+      );
+      console.error("Back-office reports load error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // TODO: Fetch backend reports and reasons on load (no UI integration yet)
   useEffect(() => {
     let isMounted = true;
-    const fetchBackendData = async () => {
+    const loadData = async () => {
       try {
-        setBackendError(null);
-        const [reasonsRes, reportsRes] = await Promise.all([
-          api.get(API_ENDPOINTS.REPORTS_REASONS),
-          api.get(API_ENDPOINTS.REPORTS),
-        ]);
-        if (!isMounted) return;
-        setBackendReasons(reasonsRes.data);
-        setBackendReports(Array.isArray(reportsRes.data) ? reportsRes.data : reportsRes.data?.results || []);
-        // TODO: For now, do not merge into existing UI; keeping mock-driven table
-        console.debug("Loaded backend reasons:", reasonsRes.data);
-        console.debug("Loaded backend reports:", reportsRes.data);
+        await fetchReports();
       } catch (e) {
         if (!isMounted) return;
-        setBackendError(e?.response?.data || e?.message || "Failed to load reports");
-        console.error("Back-office reports load error:", e);
+        console.error("Failed to load reports:", e);
       }
     };
-    fetchBackendData();
+    loadData();
     return () => {
       isMounted = false;
     };
@@ -71,84 +75,108 @@ export default function Reports() {
     ...new Set(reports.map((report) => report.itemType)),
   ];
 
-  const handleDelete = (reportId) => {
-    setReports(reports.filter((report) => report.id !== reportId));
+  const handleDismiss = async (reportId) => {
+
+    try {
+      setLoading(true);
+      await api.post(`${API_ENDPOINTS.REPORTS}${reportId}/dismiss/`);
+      await fetchReports();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredReports = reports
-    .filter(
-      (report) =>
-        (typeFilter === "All" || report.itemType === typeFilter) &&
-        (report.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          report.itemType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          report.itemId.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    .sort((a, b) => {
-      if (a[sortField] < b[sortField]) {
-        return sortDirection === "asc" ? -1 : 1;
-      }
-      if (a[sortField] > b[sortField]) {
-        return sortDirection === "asc" ? 1 : -1;
-      }
-      return 0;
-    });
+  const handleDeleteDiscussion = async (report) => {
+
+    try {
+      setLoading(true);
+      // endpoint for delete discussion hopefully /spaces/{space_id}/discussions/{discussion_id}/delete/
+      await api.delete(`/spaces/${report.space}/discussions/${report.content_id}/delete/`);
+      await fetchReports();
+    } catch (error) {
+      console.error("Error deleting discussion:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getActionButtons = (report) => {
     const buttons = [];
 
-    if (report.itemType === "Comment" || report.itemType === "Node") {
+    if (report.content_type === "discussion") {
       buttons.push(
-        <button
-          key="delete"
-          onClick={() => handleDelete(report.id)}
-          style={{
-            backgroundColor: "var(--color-danger-dark)",
-            color: "white",
-            border: "none",
-            padding: "5px 10px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "12px",
-          }}
-        >
-          Delete
-        </button>
-      );
-    } else if (report.itemType === "Profile" || report.itemType === "Space") {
-      buttons.push(
-        <button
-          key="archive"
-          onClick={() => handleDelete(report.id)}
-          style={{
-            backgroundColor: "var(--color-danger)",
-            color: "white",
-            border: "none",
-            padding: "5px 10px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "12px",
-          }}
-        >
-          Archive
-        </button>
+        <>
+          <button
+            key="dismiss"
+            onClick={() => handleDismiss(report.id)}
+            disabled={loading}
+            style={{
+              backgroundColor: "var(--color-danger-light)",
+              border: "none",
+              padding: "5px 10px",
+              borderRadius: "4px",
+              fontSize: "12px",
+              marginRight: "5px",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {t("report.dismiss")}
+          </button>
+          <button
+            key="delete"
+            onClick={() => handleDeleteDiscussion(report)}
+            disabled={loading}
+            style={{
+              backgroundColor: "var(--color-danger-dark)",
+              border: "none",
+              padding: "5px 10px",
+              borderRadius: "4px",
+              fontSize: "12px",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {t("common.delete")}
+          </button>
+        </>
       );
     } else {
       buttons.push(
-        <button
-          key="dismiss"
-          onClick={() => handleDelete(report.id)}
-          style={{
-            backgroundColor: "#e74c3c",
-            color: "white",
-            border: "none",
-            padding: "5px 10px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "12px",
-          }}
-        >
-          Dismiss
-        </button>
+        <>
+          <button
+            key="dismiss"
+            onClick={() => handleDismiss(report.id)}
+            style={{
+              backgroundColor: "var(--color-danger-light)",
+              border: "none",
+              padding: "5px 10px",
+              borderRadius: "4px",
+              fontSize: "12px",
+              marginRight: "5px",
+            }}
+          >
+            {t("report.dismiss")}
+
+          </button>
+          <button
+            key="archive"
+            disabled={loading}
+            style={{
+              backgroundColor: "var(--color-danger)",
+              border: "none",
+              padding: "5px 10px",
+              borderRadius: "4px",
+              fontSize: "12px",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {t("report.archive")}
+          </button>
+        </>
       );
     }
 
@@ -210,6 +238,16 @@ export default function Reports() {
         >
           <thead>
             <tr style={{ borderBottom: "2px solid #f1f1f1" }}>
+            <th
+                style={{
+                  padding: "15px",
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+                onClick={() => handleSort("itemId")}
+              >
+                Item ID {getSortIndicator("itemId")}
+              </th>
               <th
                 style={{
                   padding: "15px",
@@ -226,19 +264,9 @@ export default function Reports() {
                   textAlign: "left",
                   cursor: "pointer",
                 }}
-                onClick={() => handleSort("itemName")}
+                onClick={() => handleSort("reporter")}
               >
-                Item Name {getSortIndicator("itemName")}
-              </th>
-              <th
-                style={{
-                  padding: "15px",
-                  textAlign: "left",
-                  cursor: "pointer",
-                }}
-                onClick={() => handleSort("itemId")}
-              >
-                Item ID {getSortIndicator("itemId")}
+                Reporter {getSortIndicator("reporter")}
               </th>
               <th
                 style={{
@@ -260,30 +288,50 @@ export default function Reports() {
               >
                 Report Count {getSortIndicator("reportCount")}
               </th>
+              <th
+                style={{
+                  padding: "15px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                }}
+                onClick={() => handleSort("status")}
+              >
+                Status {getSortIndicator("status")}
+              </th>
               <th style={{ padding: "15px", textAlign: "center" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredReports.map((report, index) => (
-              <tr
-                key={report.id + "-" + report.itemId}
-                style={{
-                  borderBottom: "1px solid #f1f1f1",
-                  backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
-                }}
-              >
-                <td style={{ padding: "12px 15px" }}>{report.itemType}</td>
-                <td style={{ padding: "12px 15px" }}>{report.itemName}</td>
-                <td style={{ padding: "12px 15px" }}>{report.itemId}</td>
-                <td style={{ padding: "12px 15px" }}>{report.dateReported}</td>
-                <td style={{ padding: "12px 15px", textAlign: "center" }}>
-                  <span>{report.reportCount}</span>
-                </td>
-                <td style={{ padding: "12px 15px", textAlign: "center" }}>
-                  {getActionButtons(report)}
-                </td>
-              </tr>
-            ))}
+            {reports &&
+              reports.map((report, index) => (
+                <tr
+                  key={report.id + "-" + report.itemId}
+                  style={{
+                    borderBottom: "1px solid #f1f1f1",
+                    backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
+                  }}
+                >
+                  <td style={{ padding: "12px 15px" }}>{report.id}</td>
+                  <td style={{ padding: "12px 15px" }}>
+                    {report.content_type}
+                  </td>
+                  <td style={{ padding: "12px 15px" }}>
+                    {report.reporter_username}
+                  </td>
+                  <td style={{ padding: "12px 15px" }}>
+                    {new Date(report.updated_at).toLocaleDateString()}
+                  </td>
+                  <td style={{ padding: "12px 15px", textAlign: "center" }}>
+                    <span>{report.entity_report_count}</span>
+                  </td>
+                  <td style={{ padding: "12px 15px", textAlign: "center" }}>
+                    <span>{report.status}</span>
+                  </td>
+                  <td style={{ padding: "12px 15px", textAlign: "center" }}>
+                    {getActionButtons(report)}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -298,7 +346,7 @@ export default function Reports() {
       >
         <div>
           <span>
-            Showing {filteredReports.length} of {reports.length} reports
+            Showing {reports.length} of {reports.length} reports
           </span>
         </div>
         <div>

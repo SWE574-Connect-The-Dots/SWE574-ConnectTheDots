@@ -252,7 +252,10 @@
     "reasonLabel": "Rapor nedeni:",
     "selectReasonPlaceholder": "-- Bir neden seçin --",
     "submitting": "Gönderiliyor...",
-    "submitButton": "Raporu Gönder"
+    "submitButton": "Raporu Gönder",
+    "dismiss": "Yoksay",
+    "archive": "Arşivle"
+
   },
   "property": {
     "searchPlaceholder": "Bir özellik arayın veya özel bir etiket girin...",
