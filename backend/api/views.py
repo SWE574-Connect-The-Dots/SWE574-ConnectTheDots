@@ -467,17 +467,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
         """Get collaborator statistics for a space"""
         space = self.get_object()
         
-        # Get all collaborators for this space
+        
         collaborators = space.collaborators.all()
         
-        # For timeline data, we'll track when each collaborator joined
-        # Since we don't have join dates, we'll use space creation date and distribute over time
+        
         timeline_data = []
         
-        # Get space creation date as the base
+        
         if collaborators.exists():
-            # Simple approach: return current collaborator count
-            # In a real scenario, you'd track when each user joined
+            
             today = timezone.now().date().isoformat()
             timeline_data.append({
                 'date': today,
@@ -505,10 +503,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         space = self.get_object()
         
-        # Get all collaborators for this space
+        
         collaborators = space.collaborators.all()
         
-        # Initialize scores for each collaborator
+        
         collaborator_scores = defaultdict(lambda: {
             'user': None,
             'node_count': 0,
@@ -517,34 +515,33 @@ class SpaceViewSet(viewsets.ModelViewSet):
             'total_score': 0
         })
         
-        # Set user objects for all collaborators
+        
         for user in collaborators:
             collaborator_scores[user.id]['user'] = user
         
-        # Count nodes created by each collaborator (4 points each)
+        
         nodes = Node.objects.filter(space=space, created_by__in=collaborators)
         for node in nodes:
             if node.created_by:
                 collaborator_scores[node.created_by.id]['node_count'] += 1
         
-        # Count edges created by each collaborator (2 points each)
-        # Note: We don't have created_by field on Edge model, so we'll count based on source node creator
+        
         edges = Edge.objects.filter(source__space=space, source__created_by__in=collaborators)
         for edge in edges:
             if edge.source and edge.source.created_by:
                 collaborator_scores[edge.source.created_by.id]['edge_count'] += 1
         
-        # Count discussions by each collaborator (1 point each)
+        
         discussions = Discussion.objects.filter(space=space, user__in=collaborators)
         for discussion in discussions:
             if discussion.user:
                 collaborator_scores[discussion.user.id]['discussion_count'] += 1
         
-        # Calculate total scores
+       
         scored_collaborators = []
         for user_id, data in collaborator_scores.items():
-            if data['user']:  # Only include actual collaborators
-                # Node creation: 4 points, Edge creation: 2 points, Discussion: 1 point
+            if data['user']:  
+                
                 total_score = (data['node_count'] * 4) + (data['edge_count'] * 2) + (data['discussion_count'] * 1)
                 
                 scored_collaborators.append({
@@ -557,7 +554,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     'total_score': total_score
                 })
         
-        # Sort by total score (highest first) and limit to top 10
+        
         scored_collaborators.sort(key=lambda x: x['total_score'], reverse=True)
         top_collaborators = scored_collaborators[:10]
         
@@ -771,10 +768,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     statement_id=prop['statement_id']
                 )
             
-            # Extract location information from updated properties if they exist
+            
             if selected_properties:
                 location_data = extract_location_from_properties(selected_properties)
-                # Update node with location information if any was found
+                
                 if any(location_data.values()):
                     for field, value in location_data.items():
                         if value is not None:
@@ -811,18 +808,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def update_node_location(self, request, pk=None, node_id=None):
         """Update the location information of a node"""
         space = self.get_object()
-        # Allow both space creator and collaborators to update location
+        
         if request.user != space.creator and request.user not in space.collaborators.all():
             return Response({'message': 'Only space members can update node location'}, status=403)
             
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
             
-            # Get location data from request (frontend sends it wrapped in 'location')
+            
             location_data = request.data.get('location', request.data)
             print(f"Received location data: {location_data}")
             
-            # Update node location fields
+            
             node.country = location_data.get('country', '') or None
             node.city = location_data.get('city', '') or None
             node.district = location_data.get('district', '') or None
@@ -942,7 +939,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         """Get top scored spaces based on: Node (4pts) + Edge (2pts) + Contributor (4pts) + Discussion (1pt)"""
         limit = int(request.query_params.get('limit', 10))
         
-        # Get all spaces with their related counts
+        
         spaces = Space.objects.prefetch_related('collaborators', 'tags').all()
         
         spaces_with_scores = []
