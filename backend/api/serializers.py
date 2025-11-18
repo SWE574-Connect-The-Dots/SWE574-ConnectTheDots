@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Profile, Space, Tag, Discussion, DiscussionReaction, Node, Report
+from .models import Profile, Space, Tag, Discussion, DiscussionReaction, Node, Report, Activity
 from .reporting import ALLOWED_REASON_CODES
 from datetime import date
 from rest_framework import serializers
@@ -451,3 +451,62 @@ class ReportSerializer(serializers.ModelSerializer):
     def get_entity_is_reported(self, obj):
         target = self._get_target_entity(obj)
         return getattr(target, 'is_reported', None) if target else None
+    
+class ActivityStreamSerializer(serializers.ModelSerializer):
+    """
+    Serialize Activity rows into ActivityStreams 2.0 compatible entries.
+    """
+    id = serializers.SerializerMethodField()
+    actor = serializers.SerializerMethodField()
+    object = serializers.SerializerMethodField()
+    target = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = [
+            'id',
+            'type',
+            'actor',
+            'object',
+            'target',
+            'summary',
+            'published',
+            'to',
+            'cc',
+            'payload',
+        ]
+
+    def get_id(self, obj):
+        if obj.as2_id:
+            return obj.as2_id
+        return f"urn:activity:{obj.pk}"
+
+    def _format_reference(self, ref):
+        if not ref:
+            return None
+        if ref.startswith('http://') or ref.startswith('https://'):
+            return ref
+        if ':' in ref:
+            entity_type, identifier = ref.split(':', 1)
+            return {
+                'type': entity_type,
+                'id': identifier,
+                'name': ref,
+            }
+        return {'type': 'Object', 'name': ref}
+
+    def get_actor(self, obj):
+        actor = obj.actor or ''
+        if actor.startswith('http://') or actor.startswith('https://'):
+            return actor
+        actor_type = 'Application' if actor.lower() == 'system' else 'Person'
+        return {
+            'type': actor_type,
+            'name': actor or 'system',
+        }
+
+    def get_object(self, obj):
+        return self._format_reference(obj.object)
+
+    def get_target(self, obj):
+        return self._format_reference(obj.target)
