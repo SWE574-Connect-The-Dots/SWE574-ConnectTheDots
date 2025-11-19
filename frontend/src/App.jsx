@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import CreateSpace from "./pages/CreateSpace";
 import SpaceDetail from "./pages/SpaceDetails";
+import SpaceAnalytics from "./pages/SpaceAnalytics";
 import BackOffice from "./pages/BackOffice";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
@@ -138,6 +139,12 @@ function App() {
               path="/spaces/:id"
               element={
                 isAuthenticated ? <SpaceDetail /> : <Navigate to="/login" />
+              }
+            />
+            <Route
+              path="/spaces/:id/analytics"
+              element={
+                isAuthenticated ? <SpaceAnalytics /> : <Navigate to="/login" />
               }
             />
             <Route
