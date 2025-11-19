@@ -82,6 +82,16 @@ class SpaceDetailsViewModel @Inject constructor(
     private val _reportSubmitSuccess = MutableStateFlow<Boolean>(false)
     val reportSubmitSuccess: StateFlow<Boolean> = _reportSubmitSuccess.asStateFlow()
 
+    private val _reportContentType = MutableStateFlow<String?>(null)
+    val reportContentType: StateFlow<String?> = _reportContentType.asStateFlow()
+
+    private val _reportContentId = MutableStateFlow<Int?>(null)
+    val reportContentId: StateFlow<Int?> = _reportContentId.asStateFlow()
+
+    fun getCurrentUsername(): String? {
+        return userPreferencesRepository.getCurrentUsernameSync()
+    }
+
     val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
 
     init {
@@ -279,12 +289,12 @@ class SpaceDetailsViewModel @Inject constructor(
         _voteRequiresCollaboratorError.value = false
     }
 
-    fun fetchReportReasons() {
+    fun fetchReportReasons(contentType: String) {
         viewModelScope.launch {
             _isLoadingReportReasons.value = true
             _error.value = null
 
-            val result = spaceRepository.getReportReasons("space")
+            val result = spaceRepository.getReportReasons(contentType)
             if (result.isSuccess) {
                 _reportReasons.value = result.getOrNull() ?: emptyList()
             } else {
@@ -294,14 +304,23 @@ class SpaceDetailsViewModel @Inject constructor(
         }
     }
 
+    fun prepareReport(contentType: String, contentId: Int) {
+        _reportContentType.value = contentType
+        _reportContentId.value = contentId
+        fetchReportReasons(contentType)
+    }
+
     fun submitReport(reason: String) {
         viewModelScope.launch {
             _isSubmittingReport.value = true
             _error.value = null
 
+            val contentType = _reportContentType.value ?: "space"
+            val contentId = _reportContentId.value ?: spaceId.toIntOrNull() ?: 0
+
             val result = spaceRepository.submitReport(
-                contentType = "space",
-                contentId = spaceId.toIntOrNull() ?: 0,
+                contentType = contentType,
+                contentId = contentId,
                 reason = reason
             )
             if (result.isSuccess) {

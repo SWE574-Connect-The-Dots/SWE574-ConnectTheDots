@@ -121,6 +121,8 @@ fun SpaceDetailsScreen(
     var showCollaboratorDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var reportDialogTitle by remember { mutableStateOf("") }
+    var reportDialogContentType by remember { mutableStateOf("space") }
     var showMenu by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
@@ -291,7 +293,9 @@ fun SpaceDetailsScreen(
                                 },
                                 onClick = {
                                     showMenu = false
-                                    viewModel.fetchReportReasons()
+                                    reportDialogTitle = spaceDetails?.title ?: ""
+                                    reportDialogContentType = "space"
+                                    viewModel.prepareReport("space", spaceDetails?.id ?: 0)
                                     showReportDialog = true
                                 },
                                 leadingIcon = {
@@ -491,10 +495,12 @@ fun SpaceDetailsScreen(
                         .padding(12.dp)
                 ) {
                     // Show current page comments
+                    val currentUsername = viewModel.getCurrentUsername()
                     paginationInfo.currentPageDiscussions.forEach { discussion ->
                         key(discussion.id) {
                             DiscussionCard(
                                 discussion = discussion,
+                                currentUsername = currentUsername,
                                 onVoteClick = { discussionId, voteType ->
                                     val voteValue = when (voteType) {
                                         VoteType.UP -> "up"
@@ -502,6 +508,12 @@ fun SpaceDetailsScreen(
                                         VoteType.NONE -> return@DiscussionCard
                                     }
                                     viewModel.voteDiscussion(discussionId, voteValue)
+                                },
+                                onReportClick = { discussionId ->
+                                    reportDialogTitle = "Discussion by ${discussion.username}"
+                                    reportDialogContentType = "discussion"
+                                    viewModel.prepareReport("discussion", discussionId.toIntOrNull() ?: 0)
+                                    showReportDialog = true
                                 }
                         )
                         }
@@ -686,9 +698,10 @@ fun SpaceDetailsScreen(
 
     LaunchedEffect(reportSubmitSuccess) {
         if (reportSubmitSuccess) {
+            val contentTypeText = if (reportDialogContentType == "space") "space" else "discussion"
             Toast.makeText(
                 context,
-                "Report submitted successfully for space: ${spaceDetails?.title ?: ""}",
+                "Report submitted successfully for $contentTypeText: $reportDialogTitle",
                 Toast.LENGTH_SHORT
             ).show()
             viewModel.resetReportSubmitSuccess()
@@ -696,10 +709,11 @@ fun SpaceDetailsScreen(
         }
     }
 
-    // Report Space Dialog - only show when reasons are loaded
-    if (showReportDialog && spaceDetails != null && !isLoadingReportReasons && reportReasons.isNotEmpty() && !isSubmittingReport) {
+    // Report Dialog - only show when reasons are loaded
+    if (showReportDialog && !isLoadingReportReasons && reportReasons.isNotEmpty() && !isSubmittingReport) {
         ReportSpaceDialog(
-            spaceTitle = spaceDetails!!.title,
+            spaceTitle = reportDialogTitle,
+            contentType = reportDialogContentType,
             reasons = reportReasons.map { it.label },
             reasonCodes = reportReasons.map { it.code },
             onDismiss = { showReportDialog = false },
@@ -714,6 +728,7 @@ fun SpaceDetailsScreen(
 @Composable
 private fun ReportSpaceDialog(
     spaceTitle: String,
+    contentType: String,
     reasons: List<String>,
     reasonCodes: List<String>,
     onDismiss: () -> Unit,
@@ -744,9 +759,9 @@ private fun ReportSpaceDialog(
                     Divider()
                 }
 
-                // Space name with grayish color
+                // Content name with grayish color
                 Text(
-                    text = "Space: $spaceTitle",
+                    text = "${contentType.replaceFirstChar { it.uppercase() }}: $spaceTitle",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
