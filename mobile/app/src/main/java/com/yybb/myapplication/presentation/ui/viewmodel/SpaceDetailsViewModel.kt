@@ -8,6 +8,7 @@ import com.yybb.myapplication.data.UserPreferencesRepository
 import com.yybb.myapplication.data.model.Discussion
 import com.yybb.myapplication.data.model.SpaceDetails
 import com.yybb.myapplication.data.model.toDiscussion
+import com.yybb.myapplication.data.network.dto.ReportReasonItem
 import com.yybb.myapplication.data.repository.ProfileRepository
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,6 +69,18 @@ class SpaceDetailsViewModel @Inject constructor(
     
     private val _voteRequiresCollaboratorError = MutableStateFlow(false)
     val voteRequiresCollaboratorError: StateFlow<Boolean> = _voteRequiresCollaboratorError.asStateFlow()
+
+    private val _isLoadingReportReasons = MutableStateFlow(false)
+    val isLoadingReportReasons: StateFlow<Boolean> = _isLoadingReportReasons.asStateFlow()
+
+    private val _reportReasons = MutableStateFlow<List<ReportReasonItem>>(emptyList())
+    val reportReasons: StateFlow<List<ReportReasonItem>> = _reportReasons.asStateFlow()
+
+    private val _isSubmittingReport = MutableStateFlow(false)
+    val isSubmittingReport: StateFlow<Boolean> = _isSubmittingReport.asStateFlow()
+
+    private val _reportSubmitSuccess = MutableStateFlow<Boolean>(false)
+    val reportSubmitSuccess: StateFlow<Boolean> = _reportSubmitSuccess.asStateFlow()
 
     val spaceId: String = checkNotNull(savedStateHandle["spaceId"])
 
@@ -264,5 +277,43 @@ class SpaceDetailsViewModel @Inject constructor(
 
     fun clearVoteRequiresCollaboratorError() {
         _voteRequiresCollaboratorError.value = false
+    }
+
+    fun fetchReportReasons() {
+        viewModelScope.launch {
+            _isLoadingReportReasons.value = true
+            _error.value = null
+
+            val result = spaceRepository.getReportReasons("space")
+            if (result.isSuccess) {
+                _reportReasons.value = result.getOrNull() ?: emptyList()
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: "Failed to load report reasons"
+            }
+            _isLoadingReportReasons.value = false
+        }
+    }
+
+    fun submitReport(reason: String) {
+        viewModelScope.launch {
+            _isSubmittingReport.value = true
+            _error.value = null
+
+            val result = spaceRepository.submitReport(
+                contentType = "space",
+                contentId = spaceId.toIntOrNull() ?: 0,
+                reason = reason
+            )
+            if (result.isSuccess) {
+                _reportSubmitSuccess.value = true
+            } else {
+                _error.value = result.exceptionOrNull()?.message ?: "Failed to submit report"
+            }
+            _isSubmittingReport.value = false
+        }
+    }
+
+    fun resetReportSubmitSuccess() {
+        _reportSubmitSuccess.value = false
     }
 }

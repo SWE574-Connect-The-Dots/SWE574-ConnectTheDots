@@ -279,3 +279,55 @@ data class VoteDiscussionResponse(
     val toggledOff: Boolean,
     val discussion: DiscussionDto
 )
+
+// Report Reason Item
+data class ReportReasonItem(
+    val code: String,
+    val label: String
+)
+
+// Report Reasons Response
+data class ReportReasonsData(
+    val space: List<ReportReasonItem>?,
+    val node: List<ReportReasonItem>?,
+    val discussion: List<ReportReasonItem>?,
+    val profile: List<ReportReasonItem>?
+)
+
+// Report Response
+data class ReportResponse(
+    val version: Int,
+    val reasons: ReportReasonsData
+)
+
+// Submit Report Request
+data class SubmitReportRequest(
+    @SerializedName("content_type")
+    val contentType: String,
+    @SerializedName("content_id")
+    val contentId: Int,
+    val reason: String
+)
+
+// Submit Report Response
+data class SubmitReportResponse(
+    val id: Int,
+    @SerializedName("content_type")
+    val contentType: String,
+    @SerializedName("content_id")
+    val contentId: Int,
+    val reason: String,
+    val status: String,
+    val space: Int?,
+    val reporter: Int,
+    @SerializedName("reporter_username")
+    val reporterUsername: String,
+    @SerializedName("created_at")
+    val createdAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String,
+    @SerializedName("entity_report_count")
+    val entityReportCount: Int,
+    @SerializedName("entity_is_reported")
+    val entityIsReported: Boolean
+)

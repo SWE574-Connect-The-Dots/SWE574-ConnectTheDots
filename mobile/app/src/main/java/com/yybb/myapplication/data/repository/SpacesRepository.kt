@@ -17,6 +17,10 @@ import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
 import com.yybb.myapplication.data.network.dto.TagDto
 import com.yybb.myapplication.data.network.dto.TagRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
+import com.yybb.myapplication.data.network.dto.ReportResponse
+import com.yybb.myapplication.data.network.dto.ReportReasonItem
+import com.yybb.myapplication.data.network.dto.SubmitReportRequest
+import com.yybb.myapplication.data.network.dto.SubmitReportResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -302,6 +306,67 @@ class SpacesRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // Get report reasons for a specific content type
+    // contentType can be: "space", "node", "discussion", "profile"
+    suspend fun getReportReasons(contentType: String): Result<List<ReportReasonItem>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val response = apiService.getReportReasons()
+                if (response.isSuccessful) {
+                    response.body()?.let { reportResponse ->
+                        val reasons = when (contentType.lowercase()) {
+                            "space" -> reportResponse.reasons.space
+                            "node" -> reportResponse.reasons.node
+                            "discussion" -> reportResponse.reasons.discussion
+                            "profile" -> reportResponse.reasons.profile
+                            else -> null
+                        }
+                        if (reasons != null) {
+                            Result.success(reasons)
+                        } else {
+                            Result.failure(Exception("Invalid content type: $contentType"))
+                        }
+                    } ?: Result.failure(Exception("Failed to get report reasons"))
+                } else {
+                    Result.failure(Exception("Failed to get report reasons: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // Submit report
+    suspend fun submitReport(contentType: String, contentId: Int, reason: String): Result<SubmitReportResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+                val request = SubmitReportRequest(
+                    contentType = contentType,
+                    contentId = contentId,
+                    reason = reason
+                )
+                val response = apiService.submitReport(request)
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        Result.success(it)
+                    } ?: Result.failure(Exception("Failed to submit report"))
+                } else {
+                    Result.failure(Exception("Failed to submit report: ${response.errorBody()?.string()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 }
