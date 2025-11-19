@@ -32,7 +32,7 @@ data class ProfileResponse(
     val bio: String?,
     val profession: String,
     @SerializedName("dob")
-    val dateOfBirth: String,
+    val dateOfBirth: String?,
     @SerializedName("created_at")
     val joinedDate: String,
     @SerializedName("owned_spaces")
