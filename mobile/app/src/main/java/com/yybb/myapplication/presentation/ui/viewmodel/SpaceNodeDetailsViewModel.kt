@@ -592,6 +592,7 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             if (result.isSuccess) {
                 _reportSubmitSuccess.value = true
             } else {
+                _reportSubmitSuccess.value = false
                 _reportError.value = result.exceptionOrNull()?.message ?: "Failed to submit report"
             }
             _isSubmittingReport.value = false

@@ -470,7 +470,7 @@ fun SpaceNodeDetailsScreen(
             )
         }
     ) { innerPadding ->
-        val bottomPadding = innerPadding.calculateBottomPadding() - 48.dp
+        val bottomPadding = innerPadding.calculateBottomPadding() //- 48.dp
         val tabLabels = listOf(
             stringResource(id = R.string.details_tab_label),
             stringResource(id = R.string.connections_tab_label)

@@ -322,17 +322,13 @@ class SpacesRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.let { reportResponse ->
                         val reasons = when (contentType.lowercase()) {
-                            "space" -> reportResponse.reasons.space
-                            "node" -> reportResponse.reasons.node
-                            "discussion" -> reportResponse.reasons.discussion
-                            "profile" -> reportResponse.reasons.profile
-                            else -> null
+                            "space" -> reportResponse.reasons.space ?: emptyList()
+                            "node" -> reportResponse.reasons.node ?: emptyList()
+                            "discussion" -> reportResponse.reasons.discussion ?: emptyList()
+                            "profile" -> reportResponse.reasons.profile ?: emptyList()
+                            else -> emptyList()
                         }
-                        if (reasons != null) {
-                            Result.success(reasons)
-                        } else {
-                            Result.failure(Exception("Invalid content type: $contentType"))
-                        }
+                        Result.success(reasons)
                     } ?: Result.failure(Exception("Failed to get report reasons"))
                 } else {
                     Result.failure(Exception("Failed to get report reasons: ${response.errorBody()?.string()}"))
