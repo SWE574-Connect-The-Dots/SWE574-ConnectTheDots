@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,8 +21,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -85,29 +87,33 @@ fun SpaceNodesScreen(
                             contentDescription = null
                         )
                     }
+                },
+                actions = {
+                    Button(
+                        onClick = onNavigateToAddNode,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(id = R.color.button_join),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.add_node_title),
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.add_node_title),
+                            color = Color.White
+                        )
+                    }
                 }
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToAddNode,
-                containerColor = colorResource(id = R.color.button_join),
-                contentColor = androidx.compose.ui.graphics.Color.White
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_node_title),
-                    tint = androidx.compose.ui.graphics.Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.add_node_title),
-                    color = androidx.compose.ui.graphics.Color.White
-                )
-            }
         }
     ) { innerPadding ->
-        val bottomPadding = (innerPadding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -115,7 +121,7 @@ fun SpaceNodesScreen(
                     start = innerPadding.calculateStartPadding(layoutDirection) + 16.dp,
                     end = innerPadding.calculateEndPadding(layoutDirection) + 16.dp,
                     top = innerPadding.calculateTopPadding() + 12.dp,
-                    bottom = bottomPadding
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp
                 )
         ) {
             when {
@@ -163,8 +169,7 @@ fun SpaceNodesScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 88.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(
                                 items = filteredNodes,

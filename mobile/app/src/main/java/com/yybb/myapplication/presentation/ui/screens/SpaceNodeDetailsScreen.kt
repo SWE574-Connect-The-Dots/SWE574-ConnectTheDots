@@ -90,6 +90,7 @@ import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel.NodeOption
 import androidx.compose.ui.window.DialogProperties
+import com.yybb.myapplication.presentation.ui.screens.LoadingDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,7 +130,11 @@ fun SpaceNodeDetailsScreen(
     val isDeletingNode by viewModel.isDeletingNode.collectAsState()
     val deleteNodeError by viewModel.deleteNodeError.collectAsState()
     val deleteNodeSuccess by viewModel.deleteNodeSuccess.collectAsState()
-    val reportReasons = viewModel.reportReasons
+    val reportReasons by viewModel.reportReasons.collectAsState()
+    val isLoadingReportReasons by viewModel.isLoadingReportReasons.collectAsState()
+    val isSubmittingReport by viewModel.isSubmittingReport.collectAsState()
+    val reportSubmitSuccess by viewModel.reportSubmitSuccess.collectAsState()
+    val reportError by viewModel.reportError.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
@@ -255,18 +260,48 @@ fun SpaceNodeDetailsScreen(
         )
     }
 
-    if (showReportDialog) {
+    if (isLoadingReportReasons) {
+        LoadingDialog(message = "Loading report reasons...")
+    }
+
+    if (isSubmittingReport) {
+        LoadingDialog(message = "Submitting report...")
+    }
+
+    LaunchedEffect(reportSubmitSuccess) {
+        if (reportSubmitSuccess) {
+            Toast.makeText(
+                context,
+                "Report submitted successfully for node: $nodeName",
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.resetReportSubmitSuccess()
+            showReportDialog = false
+        }
+    }
+
+    if (reportError != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearReportError() },
+            title = { Text(stringResource(R.string.error)) },
+            text = { Text(reportError!!) },
+            confirmButton = {
+                Button(onClick = { viewModel.clearReportError() }) {
+                    Text(stringResource(R.string.ok_button))
+                }
+            }
+        )
+    }
+
+    // Report Dialog - only show when reasons are loaded
+    if (showReportDialog && !isLoadingReportReasons && reportReasons.isNotEmpty() && !isSubmittingReport) {
         ReportNodeDialog(
             nodeName = nodeName,
-            reasons = reportReasons,
+            reasons = reportReasons.map { it.label },
+            reasonCodes = reportReasons.map { it.code },
             onDismiss = { showReportDialog = false },
-            onSubmit = { reason ->
-                showReportDialog = false
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.report_node_submitted, nodeName, reason),
-                    Toast.LENGTH_SHORT
-                ).show()
+            onSubmit = { reasonLabel, reasonCode ->
+                viewModel.submitReport(reasonCode)
             }
         )
     }
@@ -408,6 +443,7 @@ fun SpaceNodeDetailsScreen(
                                         text = { Text(stringResource(id = R.string.report_node_title)) },
                                         onClick = {
                                             showMenu = false
+                                            viewModel.fetchReportReasons()
                                             showReportDialog = true
                                         },
                                         leadingIcon = {
@@ -1353,12 +1389,14 @@ private fun AddEdgeDialog(
 private fun ReportNodeDialog(
     nodeName: String,
     reasons: List<String>,
+    reasonCodes: List<String>,
     onDismiss: () -> Unit,
-    onSubmit: (String) -> Unit
+    onSubmit: (String, String) -> Unit
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
-    var selectedReason by remember { mutableStateOf<String?>(null) }
-    var reasonError by remember { mutableStateOf(false) }
+    var selectedReasonIndex by remember { mutableStateOf<Int?>(null) }
+    val defaultPlaceholder = "--select a reason--"
+    val isReportEnabled = selectedReasonIndex != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1395,16 +1433,15 @@ private fun ReportNodeDialog(
                         onExpandedChange = { dropdownExpanded = !dropdownExpanded }
                     ) {
                         OutlinedTextField(
-                            value = selectedReason ?: "",
+                            value = selectedReasonIndex?.let { reasons[it] } ?: "",
                             onValueChange = { },
                             readOnly = true,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(),
                             placeholder = {
-                                Text(text = stringResource(id = R.string.report_node_dialog_reason_placeholder))
+                                Text(text = defaultPlaceholder)
                             },
-                            isError = reasonError,
                             trailingIcon = {
                                 androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(
                                     expanded = dropdownExpanded
@@ -1415,24 +1452,16 @@ private fun ReportNodeDialog(
                             expanded = dropdownExpanded,
                             onDismissRequest = { dropdownExpanded = false }
                         ) {
-                            reasons.forEach { reason ->
+                            reasons.forEachIndexed { index, reason ->
                                 DropdownMenuItem(
                                     text = { Text(reason) },
                                     onClick = {
-                                        selectedReason = reason
-                                        reasonError = false
+                                        selectedReasonIndex = index
                                         dropdownExpanded = false
                                     }
                                 )
                             }
                         }
-                    }
-                    if (reasonError) {
-                        Text(
-                            text = stringResource(id = R.string.report_node_dialog_reason_error),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
                     }
                 }
 
@@ -1444,6 +1473,9 @@ private fun ReportNodeDialog(
                     Button(
                         onClick = onDismiss,
                         shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFBDBDBD),
                             contentColor = Color.Black
@@ -1451,27 +1483,34 @@ private fun ReportNodeDialog(
                     ) {
                         Text(
                             text = stringResource(id = R.string.report_node_dialog_cancel),
-                            maxLines = 1
+                            maxLines = 1,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     Button(
                         onClick = {
-                            val reason = selectedReason
-                            val hasError = reason.isNullOrBlank()
-                            reasonError = hasError
-                            if (!hasError && reason != null) {
-                                onSubmit(reason)
+                            if (isReportEnabled && selectedReasonIndex != null) {
+                                val reasonLabel = reasons[selectedReasonIndex!!]
+                                val reasonCode = reasonCodes[selectedReasonIndex!!]
+                                onSubmit(reasonLabel, reasonCode)
                             }
                         },
+                        enabled = isReportEnabled,
                         shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorResource(id = R.color.button_leave),
                             contentColor = Color.White
                         )
                     ) {
                         Text(
-                            text = stringResource(id = R.string.report_node_dialog_submit),
-                            maxLines = 1
+                            text = "Report",
+                            maxLines = 1,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
