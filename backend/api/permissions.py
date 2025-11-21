@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from rest_framework.exceptions import PermissionDenied
 from .models import Profile, SpaceModerator
 
 class IsCollaboratorOrReadOnly(permissions.BasePermission):
@@ -124,4 +125,23 @@ class CanChangeUserType(permissions.BasePermission):
         except Profile.DoesNotExist:
             pass
         
-        return False 
+        return False
+
+
+class IsNotArchivedUser(permissions.BasePermission):
+    """
+    Custom permission to block archived users from performing any actions.
+    """
+    message = "Your account has been archived and cannot perform any actions."
+    
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return True
+        
+        try:
+            profile = request.user.profile
+            if profile.is_archived:
+                return False
+            return True
+        except Profile.DoesNotExist:
+            return True

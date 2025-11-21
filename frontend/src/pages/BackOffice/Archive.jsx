@@ -1,15 +1,35 @@
 import React, { useState, useEffect } from "react";
-import ArchivedItems from "../../data/archived.json";
+import api from "../../axiosConfig";
+import { API_ENDPOINTS } from "../../constants/config";
+import { useTranslation } from "../../contexts/TranslationContext";
 
 export default function Archive() {
   const [archivedItems, setArchivedItems] = useState([]);
-  const [sortField, setSortField] = useState("archivedDate");
+  const [sortField, setSortField] = useState("archived_at");
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { t } = useTranslation();
+  
+
+  const fetchArchivedItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(API_ENDPOINTS.ARCHIVE);
+      setArchivedItems(response.data || []);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Failed to load archived items");
+      console.error("Failed to load archived items:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setArchivedItems(ArchivedItems);
+    fetchArchivedItems();
   }, []);
 
   const handleSort = (field) => {
@@ -29,7 +49,8 @@ export default function Archive() {
   };
 
   const getTypeBadgeStyle = (type) => {
-    switch (type) {
+    const normalizedType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+    switch (normalizedType) {
       case "Space":
         return {
           backgroundColor: "var(--color-accent)",
@@ -42,6 +63,15 @@ export default function Archive() {
       case "Profile":
         return {
           backgroundColor: "var(--color-purple-selected)",
+          color: "white",
+          padding: "3px 8px",
+          borderRadius: "12px",
+          fontSize: "12px",
+          fontWeight: "bold",
+        };
+      case "Node":
+        return {
+          backgroundColor: "var(--color-purple)",
           color: "white",
           padding: "3px 8px",
           borderRadius: "12px",
@@ -62,30 +92,57 @@ export default function Archive() {
 
   const filteredItems = archivedItems
     .filter(
-      (item) =>
-        (typeFilter === "All" || item.type === typeFilter) &&
-        (item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.archivedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.reason.toLowerCase().includes(searchTerm.toLowerCase()))
+      (item) => {
+        const normalizedType = item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1).toLowerCase();
+        return (
+          (typeFilter === "All" || normalizedType === typeFilter) &&
+          (item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.archived_by_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.reason?.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      }
     )
     .sort((a, b) => {
-      if (a[sortField] < b[sortField]) {
+      const aVal = a[sortField] || "";
+      const bVal = b[sortField] || "";
+      if (aVal < bVal) {
         return sortDirection === "asc" ? -1 : 1;
       }
-      if (a[sortField] > b[sortField]) {
+      if (aVal > bVal) {
         return sortDirection === "asc" ? 1 : -1;
       }
       return 0;
     });
 
-  const handleRestore = (id) => {
-    console.log(`Restoring item with ID: ${id}`);
-    setArchivedItems(archivedItems.filter((item) => item.id !== id));
+  const handleRestore = async (id) => {
+    try {
+      setLoading(true);
+      await api.post(API_ENDPOINTS.ARCHIVE_RESTORE(id));
+      await fetchArchivedItems();
+    } catch (err) {
+      console.error("Failed to restore item:", err);
+      setError(err?.response?.data?.error || err?.message || "Failed to restore item");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div>
       <h2>Archive</h2>
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            color: "#c00",
+            padding: "10px",
+            borderRadius: "4px",
+            marginBottom: "20px",
+          }}
+        >
+          {error}
+        </div>
+      )}
       <div
         style={{
           marginBottom: "20px",
@@ -106,6 +163,7 @@ export default function Archive() {
           >
             <option value="All">All Types</option>
             <option value="Space">Spaces</option>
+            <option value="Node">Nodes</option>
             <option value="Profile">Profiles</option>
           </select>
         </div>
@@ -142,9 +200,9 @@ export default function Archive() {
                   textAlign: "left",
                   cursor: "pointer",
                 }}
-                onClick={() => handleSort("type")}
+                onClick={() => handleSort("content_type")}
               >
-                Type {getSortIndicator("type")}
+                Type {getSortIndicator("content_type")}
               </th>
               <th
                 style={{
@@ -162,9 +220,9 @@ export default function Archive() {
                   textAlign: "left",
                   cursor: "pointer",
                 }}
-                onClick={() => handleSort("archivedBy")}
+                onClick={() => handleSort("archived_by_username")}
               >
-                Archived By {getSortIndicator("archivedBy")}
+                Archived By {getSortIndicator("archived_by_username")}
               </th>
               <th
                 style={{
@@ -172,57 +230,67 @@ export default function Archive() {
                   textAlign: "left",
                   cursor: "pointer",
                 }}
-                onClick={() => handleSort("reason")}
+                onClick={() => handleSort("archived_at")}
               >
-                Reason {getSortIndicator("reason")}
-              </th>
-              <th
-                style={{
-                  padding: "15px",
-                  textAlign: "left",
-                  cursor: "pointer",
-                }}
-                onClick={() => handleSort("archivedDate")}
-              >
-                Date Archived {getSortIndicator("archivedDate")}
+                Date Archived {getSortIndicator("archived_at")}
               </th>
               <th style={{ padding: "15px", textAlign: "center" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item, index) => (
-              <tr
-                key={item.id}
-                style={{
-                  borderBottom: "1px solid #f1f1f1",
-                  backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
-                }}
-              >
-                <td style={{ padding: "12px 15px" }}>
-                  <span style={getTypeBadgeStyle(item.type)}>{item.type}</span>
-                </td>
-                <td style={{ padding: "12px 15px" }}>{item.name}</td>
-                <td style={{ padding: "12px 15px" }}>{item.archivedBy}</td>
-                <td style={{ padding: "12px 15px" }}>{item.reason}</td>
-                <td style={{ padding: "12px 15px" }}>{item.archivedDate}</td>
-                <td style={{ padding: "12px 15px", textAlign: "center" }}>
-                  <button
-                    onClick={() => handleRestore(item.id)}
-                    style={{
-                      backgroundColor: "var(--color-success)",
-                      color: "white",
-                      border: "none",
-                      padding: "5px 10px",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                    }}
-                  >
-                    Restore
-                  </button>
+            {loading && filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{ padding: "20px", textAlign: "center" }}>
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{ padding: "20px", textAlign: "center" }}>
+                  No archived items found
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item, index) => {
+                const normalizedType = item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1).toLowerCase();
+                return (
+                  <tr
+                    key={item.id}
+                    style={{
+                      borderBottom: "1px solid #f1f1f1",
+                      backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
+                    }}
+                  >
+                    <td style={{ padding: "12px 15px" }}>
+                      <span style={getTypeBadgeStyle(item.content_type)}>{normalizedType}</span>
+                    </td>
+                    <td style={{ padding: "12px 15px" }}>{item.name || "N/A"}</td>
+                    <td style={{ padding: "12px 15px" }}>{item.archived_by_username || "Unknown"}</td>
+                    <td style={{ padding: "12px 15px" }}>
+                      {new Date(item.archived_at).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: "12px 15px", textAlign: "center" }}>
+                      <button
+                        onClick={() => handleRestore(item.id)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: "var(--color-success)",
+                          color: "white",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: "4px",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.7 : 1,
+                          fontSize: "12px",
+                        }}
+                      >
+                        {t("backoffice.restore")}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

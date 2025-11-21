@@ -31,6 +31,7 @@ class Profile(models.Model):
     location_name = models.CharField(max_length=255, blank=True, null=True)
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
 
     # optional helper
     def location_display(self):
@@ -95,6 +96,7 @@ class Space(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
     
     def __str__(self):
         return self.title
@@ -151,6 +153,7 @@ class Node(models.Model):
     location_name = models.CharField(max_length=255, blank=True, null=True)
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
@@ -245,6 +248,32 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report({self.content_type} #{self.content_id}, {self.reason}, {self.status})"
+
+
+class Archive(models.Model):
+    CONTENT_SPACE = 'space'
+    CONTENT_NODE = 'node'
+    CONTENT_PROFILE = 'profile'
+    CONTENT_TYPE_CHOICES = [
+        (CONTENT_SPACE, 'Space'),
+        (CONTENT_NODE, 'Node'),
+        (CONTENT_PROFILE, 'Profile'),
+    ]
+    
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES)
+    content_id = models.IntegerField()
+    archived_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='archives_created')
+    archived_at = models.DateTimeField(default=timezone.now)
+    reason = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['content_type', 'content_id']),
+            models.Index(fields=['archived_at']),
+        ]
+    
+    def __str__(self):
+        return f"Archive({self.content_type} #{self.content_id} by {self.archived_by.username})"
 
 
 # AS2 compatible model

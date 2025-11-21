@@ -100,7 +100,8 @@
     "selectNodeToRelate": "İlişkilendirilecek düğümü seçin",
     "nodeAndEdgeAddedSuccessfully": "Düğüm ve bağlantı başarıyla eklendi!",
     "failedToAddNode": "Düğüm eklenemedi.",
-    "addNodeWithEdge": "Bağlantı ile Düğüm Ekle"
+    "addNodeWithEdge": "Bağlantı ile Düğüm Ekle",
+    "archived": "Arşivlendi"
   },
   "spaceAnalytics": {
     "dashboard": "Alan Analitik Paneli",
@@ -236,7 +237,8 @@
     "settings": "Ayarlar",
     "userManagement": "Kullanıcı Yönetimi",
     "contentModeration": "İçerik Denetimi",
-    "archive": "Arşiv"
+    "archive": "Arşiv",
+    "restore": "Restore"
   },
   "errors": {
     "failedToLoadProfile": "Profil verileri yüklenemedi",

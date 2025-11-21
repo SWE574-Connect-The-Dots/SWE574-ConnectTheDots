@@ -100,7 +100,8 @@
     "selectNodeToRelate": "Select node to relate",
     "nodeAndEdgeAddedSuccessfully": "Node and edge added successfully!",
     "failedToAddNode": "Failed to add node.",
-    "addNodeWithEdge": "Add Node with Edge"
+    "addNodeWithEdge": "Add Node with Edge",
+    "archived": "ARCHIVED"
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
@@ -236,7 +237,8 @@
     "settings": "Settings",
     "userManagement": "Users Management",
     "contentModeration": "Content Moderation",
-    "archive": "Archive"
+    "archive": "Archive",
+    "restore": "Restore"
   },
   "errors": {
     "failedToLoadProfile": "Failed to load profile data",

@@ -4,7 +4,7 @@ import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
 import ReportModal from "./ReportModal";
 
-const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
+const SpaceDiscussions = ({ spaceId, isCollaborator, isArchived = false }) => {
   const { t } = useTranslation();
   const [discussions, setDiscussions] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -110,8 +110,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
 
       {isDiscussionsOpen && (
         <div style={{ padding: "10px" }}>
-          {/* Comment form - only visible to collaborators */}
-          {isCollaborator && (
+          {isCollaborator && !isArchived && (
             <form onSubmit={handleSubmitComment}>
               <textarea
                 value={newComment}
@@ -245,11 +244,11 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                       >
                         <button
                           type="button"
-                          onClick={() => handleReact(discussion.id, "up")}
-                          disabled={!isLoggedIn}
+                          onClick={() => !isArchived && handleReact(discussion.id, "up")}
+                          disabled={!isLoggedIn || isArchived}
                           aria-pressed={discussion.user_reaction === "up"}
                           aria-label={t("discussion.thumbsUp")}
-                          title={isLoggedIn ? t("discussion.thumbsUp") : t("discussion.loginToReact")}
+                          title={isArchived ? "Cannot react in archived space" : (isLoggedIn ? t("discussion.thumbsUp") : t("discussion.loginToReact"))}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -272,11 +271,11 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleReact(discussion.id, "down")}
-                          disabled={!isLoggedIn}
+                          onClick={() => !isArchived && handleReact(discussion.id, "down")}
+                          disabled={!isLoggedIn || isArchived}
                           aria-pressed={discussion.user_reaction === "down"}
                           aria-label={t("discussion.thumbsDown")}
-                          title={isLoggedIn ? t("discussion.thumbsDown") : t("discussion.loginToReact")}
+                          title={isArchived ? "Cannot react in archived space" : (isLoggedIn ? t("discussion.thumbsDown") : t("discussion.loginToReact"))}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",

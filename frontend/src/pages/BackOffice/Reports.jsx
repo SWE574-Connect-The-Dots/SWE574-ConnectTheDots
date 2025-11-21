@@ -102,6 +102,22 @@ export default function Reports() {
     }
   };
 
+  const handleArchive = async (report) => {
+    try {
+      setLoading(true);
+      await api.post(API_ENDPOINTS.ARCHIVE_CREATE, {
+        content_type: report.content_type,
+        content_id: report.content_id,
+        reason: report.reason || "Archived from reports"
+      });
+      await fetchReports();
+    } catch (error) {
+      console.error("Error archiving item:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getActionButtons = (report) => {
     const buttons = [];
 
@@ -163,6 +179,7 @@ export default function Reports() {
           </button>
           <button
             key="archive"
+            onClick={() => handleArchive(report)}
             disabled={loading}
             style={{
               backgroundColor: "var(--color-danger)",

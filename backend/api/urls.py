@@ -15,6 +15,9 @@ from .views import (
     list_users_by_type,
     dashboard_stats,
     ActivityStreamView,
+    archive_item,
+    list_archived_items,
+    restore_archived_item,
 )
 
 router = DefaultRouter()
@@ -41,4 +44,9 @@ urlpatterns = [
     
     # Activity stream
     path('activity-stream/', ActivityStreamView.as_view(), name='activity_stream'),
+
+    # Archive endpoints
+    path('archive/', list_archived_items, name='list_archived_items'),
+    path('archive/create/', archive_item, name='archive_item'),
+    path('archive/<int:archive_id>/restore/', restore_archived_item, name='restore_archived_item'),
 ]

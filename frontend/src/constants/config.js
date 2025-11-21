@@ -16,6 +16,9 @@ export const API_ENDPOINTS = {
   PROFILE: (username) => `/profiles/${username}/user_profile/`,
   REPORTS: "/reports/",
   REPORTS_REASONS: "/reports/reasons/",
+  ARCHIVE: "/archive/",
+  ARCHIVE_CREATE: "/archive/create/",
+  ARCHIVE_RESTORE: (archiveId) => `/archive/${archiveId}/restore/`,
 };
 
 export const GRAPH_CONFIG = {
