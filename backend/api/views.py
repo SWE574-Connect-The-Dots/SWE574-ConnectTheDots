@@ -5,14 +5,18 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.urls import reverse
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, record_activity
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, record_activity
 from .graph import SpaceGraph
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer, ActivityStreamSerializer
 from .wikidata import get_wikidata_properties, extract_location_from_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
 from .reporting import REASON_CODES, REASONS_VERSION
@@ -1678,3 +1682,109 @@ def dashboard_stats(request):
     except Exception as e:
         print(f"Dashboard stats error: {str(e)}")  # Add logging
         return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ActivityStreamView(APIView):
+    """
+    Serve a unified ActivityStreams OrderedCollectionPage built from stored Activity rows.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = ActivityStreamSerializer
+    DEFAULT_LIMIT = 25
+    MAX_LIMIT = 100
+
+    def get(self, request):
+        queryset = Activity.objects.all().order_by('-published')
+        queryset = self._apply_filters(request, queryset)
+
+        limit = self._get_limit(request)
+        page = self._get_page(request)
+
+        total_items = queryset.count()
+        start = (page - 1) * limit
+        end = start + limit
+        activities = queryset[start:end]
+
+        serializer = self.serializer_class(activities, many=True, context={'request': request})
+
+        collection_url = self._build_collection_url(request)
+        page_url = self._build_page_url(request, page)
+
+        data = {
+            '@context': 'https://www.w3.org/ns/activitystreams',
+            'id': page_url,
+            'type': 'OrderedCollectionPage',
+            'partOf': collection_url,
+            'totalItems': total_items,
+            'orderedItems': serializer.data,
+        }
+
+        if start > 0:
+            data['prev'] = self._build_page_url(request, page - 1)
+        if end < total_items:
+            data['next'] = self._build_page_url(request, page + 1)
+
+        return Response(data)
+
+    def _apply_filters(self, request, queryset):
+        activity_type = request.query_params.get('type')
+        actor = request.query_params.get('actor')
+        obj = request.query_params.get('object')
+        since = request.query_params.get('since')
+        until = request.query_params.get('until')
+
+        if activity_type:
+            queryset = queryset.filter(type__iexact=activity_type)
+        if actor:
+            queryset = queryset.filter(actor__iexact=actor)
+        if obj:
+            queryset = queryset.filter(object__iexact=obj)
+        if since:
+            queryset = queryset.filter(published__gte=self._parse_datetime(since, 'since'))
+        if until:
+            queryset = queryset.filter(published__lte=self._parse_datetime(until, 'until'))
+
+        return queryset
+
+    def _parse_datetime(self, value, field_name):
+        parsed = parse_datetime(value)
+        if not parsed:
+            raise ValidationError({field_name: 'Invalid ISO 8601 datetime value'})
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+
+    def _get_limit(self, request):
+        raw_limit = request.query_params.get('limit', self.DEFAULT_LIMIT)
+        try:
+            limit = int(raw_limit)
+        except (TypeError, ValueError):
+            raise ValidationError({'limit': 'limit must be an integer'})
+        if limit < 1 or limit > self.MAX_LIMIT:
+            raise ValidationError({'limit': f'limit must be between 1 and {self.MAX_LIMIT}'})
+        return limit
+
+    def _get_page(self, request):
+        raw_page = request.query_params.get('page', 1)
+        try:
+            page = int(raw_page)
+        except (TypeError, ValueError):
+            raise ValidationError({'page': 'page must be an integer'})
+        if page < 1:
+            raise ValidationError({'page': 'page must be at least 1'})
+        return page
+
+    def _build_collection_url(self, request):
+        base_url = request.build_absolute_uri(reverse('activity_stream'))
+        params = request.query_params.copy()
+        params.pop('page', None)
+        if params:
+            return f"{base_url}?{params.urlencode()}"
+        return base_url
+
+    def _build_page_url(self, request, page_number):
+        base_url = request.build_absolute_uri(reverse('activity_stream'))
+        params = request.query_params.copy()
+        params['page'] = page_number
+        encoded = params.urlencode()
+        return f"{base_url}?{encoded}" if encoded else base_url

@@ -14,6 +14,7 @@ from .views import (
     get_user_permissions,
     list_users_by_type,
     dashboard_stats,
+    ActivityStreamView,
 )
 
 router = DefaultRouter()
@@ -37,4 +38,7 @@ urlpatterns = [
     
     # Dashboard endpoint
     path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
+    
+    # Activity stream
+    path('activity-stream/', ActivityStreamView.as_view(), name='activity_stream'),
 ]
