@@ -74,8 +74,11 @@ export default function Reports() {
 
   const handleDeleteDiscussion = async (reportGroup) => {
     const spaceId = reportGroup.content_object?.space;
-    const discussionId = reportGroup.content_id;
-    if (!spaceId || !discussionId) return;
+    const discussionId = reportGroup.content_object?.id;
+    if (!spaceId || !discussionId) {
+        console.error("Missing spaceId or discussionId for deletion", reportGroup);
+        return;
+    };
     try {
       setLoading(true);
       await api.delete(`/spaces/${spaceId}/discussions/${discussionId}/delete/`);

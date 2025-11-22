@@ -354,7 +354,7 @@ class DiscussionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Discussion
-        fields = ['id', 'text', 'created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
+        fields = ['id', 'space', 'text', 'created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
         read_only_fields = ['created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
 
     def get_upvotes(self, obj):
