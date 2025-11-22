@@ -34,6 +34,7 @@ class SpaceNodeDetailsViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: SpaceNodeDetailsViewModel
     private lateinit var mockRepository: SpaceNodeDetailsRepository
+    private lateinit var mockSpacesRepository: com.yybb.myapplication.data.repository.SpacesRepository
     private lateinit var savedStateHandle: SavedStateHandle
 
     private val spaceId = "space123"
@@ -45,6 +46,7 @@ class SpaceNodeDetailsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         mockRepository = mock()
+        mockSpacesRepository = mock()
         savedStateHandle = SavedStateHandle(
             mapOf(
                 "spaceId" to spaceId,
@@ -66,7 +68,7 @@ class SpaceNodeDetailsViewModelTest {
         )
 
         // When
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, handleWithoutLabel)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, handleWithoutLabel)
         advanceUntilIdle()
 
         // Then
@@ -83,7 +85,7 @@ class SpaceNodeDetailsViewModelTest {
                 "nodeId" to nodeId
             )
         )
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, handleWithoutLabel)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, handleWithoutLabel)
         advanceUntilIdle()
 
         // When
@@ -148,7 +150,7 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(listOf(property)))
         whenever(mockRepository.getWikidataEntityProperties(wikidataId))
             .thenReturn(Result.success(listOf(property)))
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         val initialChecked = viewModel.propertyOptions.value.firstOrNull()?.isChecked ?: false
@@ -174,7 +176,7 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.updateNodeProperties(eq(spaceId), eq(nodeId), any()))
             .thenReturn(Result.success(Unit))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         viewModel.togglePropertySelection("prop1")
@@ -203,7 +205,7 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.updateNodeProperties(eq(spaceId), eq(nodeId), any()))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         viewModel.togglePropertySelection("prop1")
@@ -228,7 +230,7 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.getWikidataEntityProperties(wikidataId))
             .thenReturn(Result.success(listOf(property)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         // Clear invocations from initialization
@@ -257,7 +259,7 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
             .thenReturn(Result.success(emptyList()))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         // When
@@ -283,7 +285,7 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.deleteNodeProperty(spaceId, nodeId, "prop1"))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
         advanceUntilIdle()
 
         // When
@@ -512,7 +514,7 @@ class SpaceNodeDetailsViewModelTest {
     }
 
     private suspend fun initializeViewModel() {
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
     }
 
     private fun createMockNodeProperty(
@@ -530,5 +532,101 @@ class SpaceNodeDetailsViewModelTest {
             display = "$propertyLabel: $valueText"
         )
     }
-}
 
+    @Test
+    fun `fetchReportReasons should load node report reasons successfully`() = runTest {
+        val reportReasons = listOf(
+            com.yybb.myapplication.data.network.dto.ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
+            com.yybb.myapplication.data.network.dto.ReportReasonItem("DUPLICATE_NODE", "Duplicate node")
+        )
+
+        setupViewModelWithMocks()
+        whenever(mockSpacesRepository.getReportReasons("node"))
+            .thenReturn(Result.success(reportReasons))
+        initializeViewModel()
+
+        viewModel.fetchReportReasons()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingReportReasons.value)
+        assertEquals(reportReasons, viewModel.reportReasons.value)
+        assertNull(viewModel.reportError.value)
+    }
+
+    @Test
+    fun `fetchReportReasons should set error on failure`() = runTest {
+        val errorMessage = "Failed to load report reasons"
+
+        setupViewModelWithMocks()
+        whenever(mockSpacesRepository.getReportReasons("node"))
+            .thenReturn(Result.failure(Exception(errorMessage)))
+        initializeViewModel()
+
+        viewModel.fetchReportReasons()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingReportReasons.value)
+        assertTrue(viewModel.reportReasons.value.isEmpty())
+        assertEquals(errorMessage, viewModel.reportError.value)
+    }
+
+    @Test
+    fun `submitReport should submit node report successfully`() = runTest {
+        val submitResponse = com.yybb.myapplication.data.network.dto.SubmitReportResponse(
+            id = 1,
+            contentType = "node",
+            contentId = 456,
+            reason = "INAPPROPRIATE",
+            status = "OPEN",
+            space = null,
+            reporter = 1,
+            reporterUsername = "testuser",
+            createdAt = "2024-01-01T00:00:00Z",
+            updatedAt = "2024-01-01T00:00:00Z",
+            entityReportCount = 1,
+            entityIsReported = true
+        )
+
+        setupViewModelWithMocks()
+        whenever(mockSpacesRepository.submitReport("node", 456, "INAPPROPRIATE"))
+            .thenReturn(Result.success(submitResponse))
+        initializeViewModel()
+
+        viewModel.submitReport("INAPPROPRIATE")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isSubmittingReport.value)
+        assertTrue(viewModel.reportSubmitSuccess.value)
+        assertNull(viewModel.reportError.value)
+    }
+
+    @Test
+    fun `resetReportSubmitSuccess should reset success flag`() = runTest {
+        val submitResponse = com.yybb.myapplication.data.network.dto.SubmitReportResponse(
+            id = 1,
+            contentType = "node",
+            contentId = 456,
+            reason = "INAPPROPRIATE",
+            status = "OPEN",
+            space = null,
+            reporter = 1,
+            reporterUsername = "testuser",
+            createdAt = "2024-01-01T00:00:00Z",
+            updatedAt = "2024-01-01T00:00:00Z",
+            entityReportCount = 1,
+            entityIsReported = true
+        )
+
+        setupViewModelWithMocks()
+        whenever(mockSpacesRepository.submitReport("node", 456, "INAPPROPRIATE"))
+            .thenReturn(Result.success(submitResponse))
+        initializeViewModel()
+
+        viewModel.submitReport("INAPPROPRIATE")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.reportSubmitSuccess.value)
+        viewModel.resetReportSubmitSuccess()
+        assertFalse(viewModel.reportSubmitSuccess.value)
+    }
+}

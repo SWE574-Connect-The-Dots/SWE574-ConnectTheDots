@@ -845,5 +845,205 @@ class SpaceDetailsViewModelTest {
             assertTrue(awaitItem())
         }
     }
+
+    @Test
+    fun `fetchReportReasons should load report reasons successfully`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val reportReasons = listOf(
+            com.yybb.myapplication.data.network.dto.ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
+            com.yybb.myapplication.data.network.dto.ReportReasonItem("SPAM", "Spam")
+        )
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.getReportReasons("space"))
+            .thenReturn(Result.success(reportReasons))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.fetchReportReasons("space")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingReportReasons.value)
+        assertEquals(reportReasons, viewModel.reportReasons.value)
+        assertNull(viewModel.error.value)
+    }
+
+    @Test
+    fun `fetchReportReasons should set error on failure`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val errorMessage = "Failed to load report reasons"
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.getReportReasons("space"))
+            .thenReturn(Result.failure(Exception(errorMessage)))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.fetchReportReasons("space")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingReportReasons.value)
+        assertTrue(viewModel.reportReasons.value.isEmpty())
+        assertEquals(errorMessage, viewModel.error.value)
+    }
+
+    @Test
+    fun `prepareReport should set content type and ID and fetch reasons`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val reportReasons = listOf(
+            com.yybb.myapplication.data.network.dto.ReportReasonItem("INAPPROPRIATE", "Inappropriate content")
+        )
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.getReportReasons("space"))
+            .thenReturn(Result.success(reportReasons))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.prepareReport("space", 123)
+        advanceUntilIdle()
+
+        assertEquals(reportReasons, viewModel.reportReasons.value)
+        verify(mockSpacesRepository).getReportReasons("space")
+    }
+
+    @Test
+    fun `submitReport should submit report successfully`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val submitResponse = com.yybb.myapplication.data.network.dto.SubmitReportResponse(
+            id = 1,
+            contentType = "space",
+            contentId = 123,
+            reason = "INAPPROPRIATE",
+            status = "OPEN",
+            space = 123,
+            reporter = 1,
+            reporterUsername = "testuser",
+            createdAt = "2024-01-01T00:00:00Z",
+            updatedAt = "2024-01-01T00:00:00Z",
+            entityReportCount = 1,
+            entityIsReported = true
+        )
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.submitReport("space", 123, "INAPPROPRIATE"))
+            .thenReturn(Result.success(submitResponse))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.prepareReport("space", 123)
+        advanceUntilIdle()
+
+        viewModel.submitReport("INAPPROPRIATE")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isSubmittingReport.value)
+        assertTrue(viewModel.reportSubmitSuccess.value)
+        assertNull(viewModel.error.value)
+    }
+
+    @Test
+    fun `submitReport should set error on failure`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val errorMessage = "Failed to submit report"
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.submitReport("space", 123, "INAPPROPRIATE"))
+            .thenReturn(Result.failure(Exception(errorMessage)))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.prepareReport("space", 123)
+        advanceUntilIdle()
+
+        viewModel.submitReport("INAPPROPRIATE")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isSubmittingReport.value)
+        assertFalse(viewModel.reportSubmitSuccess.value)
+        assertEquals(errorMessage, viewModel.error.value)
+    }
+
+    @Test
+    fun `resetReportSubmitSuccess should reset success flag`() = runTest {
+        val spaceDetails = createTestSpaceDetails()
+        val submitResponse = com.yybb.myapplication.data.network.dto.SubmitReportResponse(
+            id = 1,
+            contentType = "space",
+            contentId = 123,
+            reason = "INAPPROPRIATE",
+            status = "OPEN",
+            space = 123,
+            reporter = 1,
+            reporterUsername = "testuser",
+            createdAt = "2024-01-01T00:00:00Z",
+            updatedAt = "2024-01-01T00:00:00Z",
+            entityReportCount = 1,
+            entityIsReported = true
+        )
+
+        whenever(mockSpacesRepository.getSpaceDetails(testSpaceId)).thenReturn(flowOf(spaceDetails))
+        whenever(mockSpacesRepository.getSpaceDiscussions(testSpaceId)).thenReturn(flowOf(emptyList()))
+        whenever(mockSpacesRepository.submitReport("space", 123, "INAPPROPRIATE"))
+            .thenReturn(Result.success(submitResponse))
+
+        viewModel = SpaceDetailsViewModel(
+            mockContext,
+            mockSpacesRepository,
+            mockProfileRepository,
+            mockUserPreferencesRepository,
+            savedStateHandle
+        )
+        advanceUntilIdle()
+
+        viewModel.prepareReport("space", 123)
+        advanceUntilIdle()
+        viewModel.submitReport("INAPPROPRIATE")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.reportSubmitSuccess.value)
+        viewModel.resetReportSubmitSuccess()
+        assertFalse(viewModel.reportSubmitSuccess.value)
+    }
 }
 

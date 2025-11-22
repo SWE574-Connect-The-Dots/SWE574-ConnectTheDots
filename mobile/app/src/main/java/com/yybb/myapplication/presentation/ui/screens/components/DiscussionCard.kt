@@ -1,5 +1,6 @@
 package com.yybb.myapplication.presentation.ui.screens.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,9 +33,12 @@ import java.util.Locale
 @Composable
 fun DiscussionCard(
     discussion: Discussion,
+    currentUsername: String? = null,
     onVoteClick: (String, VoteType) -> Unit = { _, _ -> },
+    onReportClick: (String) -> Unit = { },
     modifier: Modifier = Modifier
 ) {
+    val isCurrentUserComment = currentUsername != null && discussion.username == currentUsername
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -47,14 +51,33 @@ fun DiscussionCard(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // Commenter name
-            Text(
-                text = discussion.username,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Companion.Bold,
-                color = Color.Companion.Black,
-                modifier = Modifier.Companion.padding(bottom = 4.dp)
-            )
+            // Top row with author name and report button
+            Row(
+                modifier = Modifier.Companion.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Commenter name
+                Text(
+                    text = discussion.username,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Companion.Bold,
+                    color = Color.Companion.Black,
+                    modifier = Modifier.Companion.padding(bottom = 4.dp)
+                )
+                
+                // Report button - only show if not current user's comment
+                if (!isCurrentUserComment) {
+                    Text(
+                        text = "Report",
+                        fontSize = 12.sp,
+                        color = Color.Black,
+                        modifier = Modifier
+                            .clickable { onReportClick(discussion.id.toString()) }
+                            .padding(bottom = 4.dp, start = 8.dp)
+                    )
+                }
+            }
 
             // Comment text
             Text(

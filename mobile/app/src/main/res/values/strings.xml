@@ -55,6 +55,8 @@
     <string name="leave_space_button">Leave Space</string>
     <string name="join_space_button">Join Space</string>
     <string name="delete_space_button">Delete Space</string>
+    <string name="report_space_button">Report Space</string>
+    <string name="space_actions">Space Actions</string>
     <string name="join_collaborator_message">Join as a collaborator to participate in discussions</string>
     <string name="failed_add_disc_message">Failed to add discussion</string>
     <string name="failed_join_space_message">Failed to join space</string>

@@ -32,6 +32,9 @@ import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
 import com.yybb.myapplication.data.network.dto.VoteDiscussionResponse
 import com.yybb.myapplication.data.network.dto.WikidataPropertyDto
+import com.yybb.myapplication.data.network.dto.ReportResponse
+import com.yybb.myapplication.data.network.dto.SubmitReportRequest
+import com.yybb.myapplication.data.network.dto.SubmitReportResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -174,4 +177,12 @@ interface ApiService {
         @Path("id") id: String,
         @Path("edgeId") edgeId: String,
     ): Response<DeleteEdgeResponse>
+
+    @GET("api/reports/reasons/")
+    suspend fun getReportReasons(): Response<ReportResponse>
+
+    @POST("api/reports/")
+    suspend fun submitReport(
+        @Body request: SubmitReportRequest
+    ): Response<SubmitReportResponse>
 }

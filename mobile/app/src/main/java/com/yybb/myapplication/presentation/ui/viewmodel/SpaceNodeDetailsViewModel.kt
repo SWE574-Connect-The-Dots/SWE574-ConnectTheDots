@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.WikidataProperty
+import com.yybb.myapplication.data.network.dto.ReportReasonItem
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
+import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SpaceNodeDetailsViewModel @Inject constructor(
     private val spaceNodeDetailsRepository: SpaceNodeDetailsRepository,
+    private val spacesRepository: SpacesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -152,13 +155,20 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             initialValue = _nodeConnections.value
         )
 
-    val reportReasons: List<String> = listOf(
-        "Incorrect or misleading information",
-        "Offensive or inappropriate content",
-        "Duplicate node",
-        "Spam or promotional content",
-        "Other"
-    )
+    private val _isLoadingReportReasons = MutableStateFlow(false)
+    val isLoadingReportReasons: StateFlow<Boolean> = _isLoadingReportReasons.asStateFlow()
+
+    private val _reportReasons = MutableStateFlow<List<ReportReasonItem>>(emptyList())
+    val reportReasons: StateFlow<List<ReportReasonItem>> = _reportReasons.asStateFlow()
+
+    private val _isSubmittingReport = MutableStateFlow(false)
+    val isSubmittingReport: StateFlow<Boolean> = _isSubmittingReport.asStateFlow()
+
+    private val _reportSubmitSuccess = MutableStateFlow<Boolean>(false)
+    val reportSubmitSuccess: StateFlow<Boolean> = _reportSubmitSuccess.asStateFlow()
+
+    private val _reportError = MutableStateFlow<String?>(null)
+    val reportError: StateFlow<String?> = _reportError.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -554,5 +564,47 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
+    fun fetchReportReasons() {
+        viewModelScope.launch {
+            _isLoadingReportReasons.value = true
+            _reportError.value = null
+
+            val result = spacesRepository.getReportReasons("node")
+            if (result.isSuccess) {
+                _reportReasons.value = result.getOrNull() ?: emptyList()
+            } else {
+                _reportError.value = result.exceptionOrNull()?.message ?: "Failed to load report reasons"
+            }
+            _isLoadingReportReasons.value = false
+        }
+    }
+
+    fun submitReport(reason: String) {
+        viewModelScope.launch {
+            _isSubmittingReport.value = true
+            _reportError.value = null
+
+            val result = spacesRepository.submitReport(
+                contentType = "node",
+                contentId = nodeId.toIntOrNull() ?: 0,
+                reason = reason
+            )
+            if (result.isSuccess) {
+                _reportSubmitSuccess.value = true
+            } else {
+                _reportSubmitSuccess.value = false
+                _reportError.value = result.exceptionOrNull()?.message ?: "Failed to submit report"
+            }
+            _isSubmittingReport.value = false
+        }
+    }
+
+    fun resetReportSubmitSuccess() {
+        _reportSubmitSuccess.value = false
+    }
+
+    fun clearReportError() {
+        _reportError.value = null
+    }
 }
 

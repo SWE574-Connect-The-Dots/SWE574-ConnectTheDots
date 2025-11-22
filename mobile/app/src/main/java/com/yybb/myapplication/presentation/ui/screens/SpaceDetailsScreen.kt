@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,8 +20,15 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -72,6 +81,7 @@ import com.yybb.myapplication.presentation.navigation.Screen
 import com.yybb.myapplication.presentation.ui.screens.components.CollaboratorDialog
 import com.yybb.myapplication.presentation.ui.screens.components.DiscussionCard
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceDetailsViewModel
+import com.yybb.myapplication.presentation.ui.screens.LoadingDialog
 import kotlinx.coroutines.launch
 
 data class Collaborator(
@@ -100,12 +110,20 @@ fun SpaceDetailsScreen(
     val profileLoadSuccess by viewModel.profileLoadSuccess.collectAsState()
     val voteRequiresCollaboratorError by viewModel.voteRequiresCollaboratorError.collectAsState()
     val error by viewModel.error.collectAsState()
+    val isLoadingReportReasons by viewModel.isLoadingReportReasons.collectAsState()
+    val reportReasons by viewModel.reportReasons.collectAsState()
+    val isSubmittingReport by viewModel.isSubmittingReport.collectAsState()
+    val reportSubmitSuccess by viewModel.reportSubmitSuccess.collectAsState()
     
     var newComment by remember { mutableStateOf("") }
     var showSuccessMessage by remember { mutableStateOf(false) }
     var currentPage by remember { mutableStateOf(1) }
     var showCollaboratorDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var reportDialogTitle by remember { mutableStateOf("") }
+    var reportDialogContentType by remember { mutableStateOf("space") }
+    var showMenu by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     var discussionSectionOffset by remember { mutableStateOf(0f) }
@@ -154,6 +172,14 @@ fun SpaceDetailsScreen(
 
     if (isLoadingProfile) {
         LoadingDialog(message = stringResource(R.string.loading_message))
+    }
+
+    if (isLoadingReportReasons) {
+        LoadingDialog(message = "Loading report reasons...")
+    }
+
+    if (isSubmittingReport) {
+        LoadingDialog(message = "Submitting report...")
     }
 
     LaunchedEffect(profileLoadSuccess) {
@@ -209,6 +235,78 @@ fun SpaceDetailsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clickable { showMenu = true }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.space_actions),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            // Delete Space Menu Item (only visible to creator)
+                            if (viewModel.isUserCreator()) {
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = stringResource(R.string.delete_space_button),
+                                            color = colorResource(id = R.color.button_leave)
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = colorResource(id = R.color.button_leave)
+                                        )
+                                    }
+                                )
+                            }
+                            // Report Space Menu Item
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = stringResource(R.string.report_space_button),
+                                        color = Color.Black
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    reportDialogTitle = spaceDetails?.title ?: ""
+                                    reportDialogContentType = "space"
+                                    viewModel.prepareReport("space", spaceDetails?.id ?: 0)
+                                    showReportDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Flag,
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -281,27 +379,6 @@ fun SpaceDetailsScreen(
                             )
                         }
 
-                        // Delete Space Button (only visible to creator)
-                        if (viewModel.isUserCreator()) {
-                            Button(
-                                onClick = {
-                                    showDeleteDialog = true
-                                },
-                                modifier = Modifier
-                                    .width(150.dp)
-                                    .height(52.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = colorResource(id = R.color.button_leave)
-                                )
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.delete_space_button),
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
                     
                     // Space Title
@@ -418,10 +495,12 @@ fun SpaceDetailsScreen(
                         .padding(12.dp)
                 ) {
                     // Show current page comments
+                    val currentUsername = viewModel.getCurrentUsername()
                     paginationInfo.currentPageDiscussions.forEach { discussion ->
                         key(discussion.id) {
                             DiscussionCard(
                                 discussion = discussion,
+                                currentUsername = currentUsername,
                                 onVoteClick = { discussionId, voteType ->
                                     val voteValue = when (voteType) {
                                         VoteType.UP -> "up"
@@ -429,6 +508,12 @@ fun SpaceDetailsScreen(
                                         VoteType.NONE -> return@DiscussionCard
                                     }
                                     viewModel.voteDiscussion(discussionId, voteValue)
+                                },
+                                onReportClick = { discussionId ->
+                                    reportDialogTitle = "Discussion by ${discussion.username}"
+                                    reportDialogContentType = "discussion"
+                                    viewModel.prepareReport("discussion", discussionId.toIntOrNull() ?: 0)
+                                    showReportDialog = true
                                 }
                         )
                         }
@@ -610,6 +695,175 @@ fun SpaceDetailsScreen(
             }
         )
     }
+
+    LaunchedEffect(reportSubmitSuccess) {
+        if (reportSubmitSuccess) {
+            val contentTypeText = if (reportDialogContentType == "space") "space" else "discussion"
+            Toast.makeText(
+                context,
+                "Report submitted successfully for $contentTypeText: $reportDialogTitle",
+                Toast.LENGTH_SHORT
+            ).show()
+            viewModel.resetReportSubmitSuccess()
+            showReportDialog = false
+        }
+    }
+
+    // Report Dialog - only show when reasons are loaded
+    if (showReportDialog && !isLoadingReportReasons && reportReasons.isNotEmpty() && !isSubmittingReport) {
+        ReportSpaceDialog(
+            spaceTitle = reportDialogTitle,
+            contentType = reportDialogContentType,
+            reasons = reportReasons.map { it.label },
+            reasonCodes = reportReasons.map { it.code },
+            onDismiss = { showReportDialog = false },
+            onSubmit = { reasonLabel, reasonCode ->
+                viewModel.submitReport(reasonCode)
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReportSpaceDialog(
+    spaceTitle: String,
+    contentType: String,
+    reasons: List<String>,
+    reasonCodes: List<String>,
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit
+) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    var selectedReasonIndex by remember { mutableStateOf<Int?>(null) }
+    val defaultPlaceholder = "--select a reason--"
+    val isReportEnabled = selectedReasonIndex != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Title: Report Space
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.report_space_button),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Divider()
+                }
+
+                // Content name with grayish color
+                Text(
+                    text = "${contentType.replaceFirstChar { it.uppercase() }}: $spaceTitle",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+
+                // Reason for report section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Reason for report",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = dropdownExpanded,
+                        onExpandedChange = { dropdownExpanded = !dropdownExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedReasonIndex?.let { reasons[it] } ?: "",
+                            onValueChange = { },
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            placeholder = {
+                                Text(text = defaultPlaceholder)
+                            },
+                            trailingIcon = {
+                                androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = dropdownExpanded
+                                )
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false }
+                        ) {
+                            reasons.forEachIndexed { index, reason ->
+                                DropdownMenuItem(
+                                    text = { Text(reason) },
+                                    onClick = {
+                                        selectedReasonIndex = index
+                                        dropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Buttons row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFBDBDBD),
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.cancel_button),
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            if (isReportEnabled && selectedReasonIndex != null) {
+                                val reasonLabel = reasons[selectedReasonIndex!!]
+                                val reasonCode = reasonCodes[selectedReasonIndex!!]
+                                onSubmit(reasonLabel, reasonCode)
+                            }
+                        },
+                        enabled = isReportEnabled,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(id = R.color.button_leave),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.report_space_button),
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
 
 // Data class for pagination info
