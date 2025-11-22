@@ -6,6 +6,75 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, fields):
+    from django.db import connection
+    from django.db.utils import ProgrammingError
+    
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT indexname FROM pg_indexes 
+                WHERE indexname = %s
+            """, [old_name])
+            
+            if cursor.fetchone():
+                try:
+                    cursor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+                except ProgrammingError:
+                    
+                    Model = apps.get_model('api', model_name)
+                    index = models.Index(fields=fields, name=new_name)
+                    schema_editor.add_index(Model, index)
+            else:
+               
+                Model = apps.get_model('api', model_name)
+                index = models.Index(fields=fields, name=new_name)
+                try:
+                    schema_editor.add_index(Model, index)
+                except ProgrammingError:
+                   
+                    pass
+    except Exception:
+        
+        try:
+            Model = apps.get_model('api', model_name)
+            index = models.Index(fields=fields, name=new_name)
+            schema_editor.add_index(Model, index)
+        except Exception:
+           
+            pass
+
+
+def reverse_rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, fields):
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT indexname FROM pg_indexes 
+            WHERE indexname = %s
+        """, [new_name])
+        
+        if cursor.fetchone():
+            cursor.execute(f'ALTER INDEX "{new_name}" RENAME TO "{old_name}"')
+
+
+class SafeRenameIndex(migrations.RunPython):
+    def __init__(self, model_name, old_name, new_name, fields):
+        self.model_name = model_name
+        self.old_name = old_name
+        self.new_name = new_name
+        self.fields = fields
+        
+        super().__init__(
+            lambda apps, schema_editor: rename_index_if_exists(
+                apps, schema_editor, model_name, old_name, new_name, fields
+            ),
+            lambda apps, schema_editor: reverse_rename_index_if_exists(
+                apps, schema_editor, model_name, old_name, new_name, fields
+            )
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -45,26 +114,7 @@ class Migration(migrations.Migration):
                 ("reason", models.TextField(blank=True, null=True)),
             ],
         ),
-        migrations.RenameIndex(
-            model_name="activity",
-            new_name="api_activit_publish_7d0ac6_idx",
-            old_name="api_activi_publish_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="activity",
-            new_name="api_activit_type_f049ed_idx",
-            old_name="api_activi_type_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="activity",
-            new_name="api_activit_actor_97e164_idx",
-            old_name="api_activi_actor_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="activity",
-            new_name="api_activit_object_3e45a7_idx",
-            old_name="api_activi_object_idx",
-        ),
+
         migrations.AddField(
             model_name="node",
             name="is_archived",
