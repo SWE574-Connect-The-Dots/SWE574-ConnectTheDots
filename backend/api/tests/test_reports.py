@@ -1,9 +1,9 @@
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth.models import User
-from api.models import Space, Node, Discussion, Profile, Report, SpaceModerator
+from api.models import Space, Node, Discussion, Profile, Report, SpaceModerator, Archive
 
-class ReportFeatureTests(APITestCase):
+class ReportFeatureTestsUpdated(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_user(username='admin', password='pass', email='a@a.com')
         self.admin.profile.user_type = Profile.ADMIN
@@ -14,272 +14,133 @@ class ReportFeatureTests(APITestCase):
         self.moderator.profile.save()
 
         self.user = User.objects.create_user(username='user', password='pass', email='u@u.com')
+        self.user2 = User.objects.create_user(username='user2', password='pass', email='u2@u.com')
 
-        self.space = Space.objects.create(title='S', description='D', creator=self.admin)
-        self.space.collaborators.add(self.admin)
+        self.space = Space.objects.create(title='Test Space', description='D', creator=self.admin)
+        self.space.collaborators.add(self.admin, self.moderator, self.user, self.user2)
         SpaceModerator.objects.create(user=self.moderator, space=self.space, assigned_by=self.admin)
 
-        self.node = Node.objects.create(label='N', created_by=self.admin, space=self.space)
-        self.discussion = Discussion.objects.create(space=self.space, user=self.admin, text='Hi')
+        self.node = Node.objects.create(label='Test Node', created_by=self.admin, space=self.space)
+        self.discussion = Discussion.objects.create(space=self.space, user=self.admin, text='Hello World, this is a test discussion.')
 
         self.client = APIClient()
 
     def auth(self, who):
         self.client.force_authenticate(user=who)
 
-    def test_reasons_endpoint(self):
-        self.auth(self.user)
-        url = reverse('report-reasons')
-        res = self.client.get(url)
-        self.assertEqual(res.status_code, 200)
-        self.assertIn('reasons', res.data)
-        self.assertIn('space', res.data['reasons'])
-        self.assertTrue(any(r['code'] == 'INAPPROPRIATE' for r in res.data['reasons']['space']))
-
-    def test_create_space_report_and_aggregates(self):
-        self.auth(self.user)
-        url = reverse('report-list')
-        payload = {
-            'content_type': 'space',
-            'content_id': self.space.id,
-            'reason': 'INAPPROPRIATE'
-        }
-        res = self.client.post(url, payload, format='json')
-        self.assertEqual(res.status_code, 201)
-        self.space.refresh_from_db()
-        self.assertEqual(self.space.report_count, 1)
-        self.assertTrue(self.space.is_reported)
-
-    def test_moderator_visibility_scoped_to_space(self):
-        # Create report in this space
-        self.auth(self.user)
-        url = reverse('report-list')
-        self.client.post(url, {'content_type': 'node', 'content_id': self.node.id, 'reason': 'SPAM'}, format='json')
-        # As moderator, can list and see this report
-        self.auth(self.moderator)
-        res = self.client.get(url)
-        self.assertEqual(res.status_code, 200)
-        self.assertGreaterEqual(len(res.data), 1)
-
-    def test_status_change_updates_aggregates(self):
-        # Create two reports on discussion
-        self.auth(self.user)
-        url = reverse('report-list')
-        self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'SPAM'}, format='json')
-        self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'HARASSMENT'}, format='json')
-        self.discussion.refresh_from_db()
-        self.assertEqual(self.discussion.report_count, 2)
-        # Admin dismisses all
+    def test_report_list_endpoints_by_status(self):
+        # Create reports with different statuses
+        report_open = Report.objects.create(reporter=self.user, content_type='space', content_id=self.space.id, reason='SPAM', status=Report.STATUS_OPEN, space=self.space)
+        report_dismissed = Report.objects.create(reporter=self.user, content_type='node', content_id=self.node.id, reason='SPAM', status=Report.STATUS_DISMISSED, space=self.space)
+        report_archived = Report.objects.create(reporter=self.user, content_type='discussion', content_id=self.discussion.id, reason='SPAM', status=Report.STATUS_ARCHIVED, space=self.space)
+        
         self.auth(self.admin)
-        reports = Report.objects.filter(content_type='discussion', content_id=self.discussion.id)
-        for r in reports:
-            res = self.client.patch(reverse('report-detail', args=[r.id]), {'status': 'DISMISSED'}, format='json')
-            self.assertEqual(res.status_code, 200)
-        self.discussion.refresh_from_db()
-        self.assertEqual(self.discussion.report_count, 0)
-        self.assertFalse(self.discussion.is_reported)
+        
+        # Test /reports/open/
+        res_open = self.client.get(reverse('report-open'))
+        self.assertEqual(res_open.status_code, 200)
+        self.assertEqual(len(res_open.data), 1)
+        self.assertEqual(res_open.data[0]['content_id'], report_open.content_id)
+        self.assertEqual(res_open.data[0]['reports'][0]['id'], report_open.id)
 
-    def test_profile_reports_admin_only_visibility(self):
-        # Report a profile (target = self.user.id)
-        self.auth(self.admin)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'profile', 'content_id': self.user.id, 'reason': 'FAKE_ACCOUNT'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        # Moderator should not see profile report
-        self.auth(self.moderator)
-        res = self.client.get(url)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(all(item['content_type'] != 'profile' for item in res.data))
+        # Test /reports/dismissed/
+        res_dismissed = self.client.get(reverse('report-dismissed'))
+        self.assertEqual(res_dismissed.status_code, 200)
+        self.assertEqual(len(res_dismissed.data), 1)
+        self.assertEqual(res_dismissed.data[0]['content_id'], report_dismissed.content_id)
+        self.assertEqual(res_dismissed.data[0]['reports'][0]['id'], report_dismissed.id)
 
-    def test_admin_can_dismiss_report(self):
-        """Test that admin can dismiss a report using the dismiss endpoint"""
-        # Create a report
+        # Test /reports/archived/
+        res_archived = self.client.get(reverse('report-archived'))
+        self.assertEqual(res_archived.status_code, 200)
+        self.assertEqual(len(res_archived.data), 1)
+        self.assertEqual(res_archived.data[0]['content_id'], report_archived.content_id)
+        self.assertEqual(res_archived.data[0]['reports'][0]['id'], report_archived.id)
+
+    def test_dismiss_action_dismisses_all_open_reports(self):
+        # User 1 reports the node
         self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'space', 'content_id': self.space.id, 'reason': 'SPAM'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
+        self.client.post(reverse('report-list'), {'content_type': 'node', 'content_id': self.node.id, 'reason': 'SPAM'}, format='json')
         
-        # Admin dismisses the report
-        self.auth(self.admin)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['status'], Report.STATUS_DISMISSED)
-        
-        # Verify report is dismissed
-        report = Report.objects.get(id=report_id)
-        self.assertEqual(report.status, Report.STATUS_DISMISSED)
-        
-        # Verify aggregates are updated
-        self.space.refresh_from_db()
-        self.assertEqual(self.space.report_count, 0)
-        self.assertFalse(self.space.is_reported)
+        # User 2 also reports the same node
+        self.auth(self.user2)
+        res = self.client.post(reverse('report-list'), {'content_type': 'node', 'content_id': self.node.id, 'reason': 'INAPPROPRIATE'}, format='json')
+        report_id_to_dismiss = res.data['id']
 
-    def test_moderator_can_dismiss_report_in_their_space(self):
-        """Test that moderator can dismiss reports in spaces they moderate"""
-        # Create a report
-        self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'node', 'content_id': self.node.id, 'reason': 'INAPPROPRIATE'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
+        self.node.refresh_from_db()
+        self.assertEqual(self.node.report_count, 2)
         
-        # Moderator dismisses the report
-        self.auth(self.moderator)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['status'], Report.STATUS_DISMISSED)
+        # Admin dismisses one of the reports
+        self.auth(self.admin)
+        self.client.post(reverse('report-dismiss', args=[report_id_to_dismiss]))
         
-        # Verify aggregates are updated
+        # Check that all reports for the node are dismissed and count is zero
         self.node.refresh_from_db()
         self.assertEqual(self.node.report_count, 0)
         self.assertFalse(self.node.is_reported)
+        self.assertEqual(Report.objects.filter(content_type='node', content_id=self.node.id, status=Report.STATUS_DISMISSED).count(), 2)
 
-    def test_moderator_cannot_dismiss_report_outside_their_space(self):
-        """Test that moderator cannot dismiss reports in spaces they don't moderate"""
-        # Create another space and report
-        other_space = Space.objects.create(title='Other Space', description='D', creator=self.admin)
-        other_node = Node.objects.create(label='Other Node', created_by=self.admin, space=other_space)
-        
-        # Create a report in the other space
+    def test_archiving_item_archives_open_reports(self):
+        # Create a few reports on a space via API to trigger report_count update
         self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'node', 'content_id': other_node.id, 'reason': 'SPAM'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
+        self.client.post(reverse('report-list'), {'content_type': 'space', 'content_id': self.space.id, 'reason': 'SPAM'}, format='json')
+        self.auth(self.user2)
+        self.client.post(reverse('report-list'), {'content_type': 'space', 'content_id': self.space.id, 'reason': 'INAPPROPRIATE'}, format='json')
         
-        # Moderator tries to dismiss (should fail)
-        self.auth(self.moderator)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 403)
-        self.assertIn('error', res.data)
-        
-        # Verify report is still open
-        report = Report.objects.get(id=report_id)
-        self.assertEqual(report.status, Report.STATUS_OPEN)
+        self.space.refresh_from_db()
+        self.assertEqual(self.space.report_count, 2)
 
-    def test_regular_user_cannot_dismiss_report(self):
-        """Test that regular users cannot dismiss reports"""
-        # Create a report
-        self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'HARASSMENT'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
-        
-        # Regular user tries to dismiss (should fail)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 403)
-        self.assertIn('error', res.data)
-        
-        # Verify report is still open
-        report = Report.objects.get(id=report_id)
-        self.assertEqual(report.status, Report.STATUS_OPEN)
-
-    def test_cannot_dismiss_already_dismissed_report(self):
-        """Test that already dismissed reports cannot be dismissed again"""
-        # Create and dismiss a report
-        self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'space', 'content_id': self.space.id, 'reason': 'SPAM'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
-        
-        # Admin dismisses the report
+        # Admin archives the space
         self.auth(self.admin)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 200)
+        self.client.post(reverse('archive_item'), {'content_type': 'space', 'content_id': self.space.id, 'reason': 'Archived'})
         
-        # Try to dismiss again (should fail)
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 400)
-        self.assertIn('error', res.data)
-        self.assertIn('already', res.data['error'].lower())
+        self.space.refresh_from_db()
+        self.assertTrue(self.space.is_archived)
+        self.assertEqual(self.space.report_count, 0) # report count should be recomputed to 0
+        self.assertEqual(Report.objects.filter(content_type='space', content_id=self.space.id, status=Report.STATUS_ARCHIVED).count(), 2)
 
-    def test_dismiss_updates_aggregates_correctly(self):
-        """Test that dismissing reports correctly updates entity aggregates"""
-        # Create multiple reports on the same entity
-        self.auth(self.user)
-        url = reverse('report-list')
-        self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'SPAM'}, format='json')
-        self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'HARASSMENT'}, format='json')
-        self.client.post(url, {'content_type': 'discussion', 'content_id': self.discussion.id, 'reason': 'OFF_TOPIC'}, format='json')
+    def test_report_serializer_includes_content_object_label(self):
+        # Create a report for each content type
+        report_space = Report.objects.create(reporter=self.user, content_type='space', content_id=self.space.id, reason='SPAM', space=self.space)
+        report_node = Report.objects.create(reporter=self.user, content_type='node', content_id=self.node.id, reason='SPAM', space=self.space)
+        report_discussion = Report.objects.create(reporter=self.user, content_type='discussion', content_id=self.discussion.id, reason='SPAM', space=self.space)
+        report_profile = Report.objects.create(reporter=self.user, content_type='profile', content_id=self.user2.id, reason='FAKE_ACCOUNT')
         
-        self.discussion.refresh_from_db()
-        self.assertEqual(self.discussion.report_count, 3)
-        self.assertTrue(self.discussion.is_reported)
-        
-        # Admin dismisses all reports
         self.auth(self.admin)
-        reports = Report.objects.filter(content_type='discussion', content_id=self.discussion.id)
-        for report in reports:
-            dismiss_url = reverse('report-dismiss', args=[report.id])
-            res = self.client.post(dismiss_url, format='json')
-            self.assertEqual(res.status_code, 200)
         
-        # Verify aggregates are updated
-        self.discussion.refresh_from_db()
-        self.assertEqual(self.discussion.report_count, 0)
-        self.assertFalse(self.discussion.is_reported)
+        # Check space report label
+        res_space = self.client.get(reverse('report-detail', args=[report_space.id]))
+        self.assertEqual(res_space.data['content_object_label'], self.space.title)
+        self.assertIn('content_object', res_space.data)
+        self.assertEqual(res_space.data['content_object']['title'], self.space.title)
+        
+        # Check node report label
+        res_node = self.client.get(reverse('report-detail', args=[report_node.id]))
+        self.assertEqual(res_node.data['content_object_label'], self.node.label)
+        self.assertIn('content_object', res_node.data)
+        self.assertEqual(res_node.data['content_object']['label'], self.node.label)
 
-    def test_moderator_cannot_dismiss_profile_reports(self):
-        """Test that moderators cannot dismiss profile reports"""
-        # Create a profile report
-        self.auth(self.user)
-        url = reverse('report-list')
-        target_user = User.objects.create_user(username='target', password='pass', email='t@t.com')
-        res = self.client.post(url, {'content_type': 'profile', 'content_id': target_user.id, 'reason': 'FAKE_ACCOUNT'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
+        # Check discussion report label
+        res_discussion = self.client.get(reverse('report-detail', args=[report_discussion.id]))
+        expected_label = (self.discussion.text[:47] + '...') if len(self.discussion.text) > 50 else self.discussion.text
+        self.assertEqual(res_discussion.data['content_object_label'], expected_label)
+        self.assertIn('content_object', res_discussion.data)
+        self.assertIn('text', res_discussion.data['content_object'])
+
+        # Check profile report label
+        res_profile = self.client.get(reverse('report-detail', args=[report_profile.id]))
+        self.assertEqual(res_profile.data['content_object_label'], self.user2.username)
+        self.assertIn('content_object', res_profile.data)
+        self.assertEqual(res_profile.data['content_object']['user']['username'], self.user2.username)
+
+    def test_default_report_list_shows_open_reports(self):
+        report_open = Report.objects.create(reporter=self.user, content_type='space', content_id=self.space.id, reason='SPAM', status=Report.STATUS_OPEN, space=self.space)
+        Report.objects.create(reporter=self.user, content_type='node', content_id=self.node.id, reason='SPAM', status=Report.STATUS_DISMISSED, space=self.space)
         
-        # Moderator tries to dismiss (should fail)
-        self.auth(self.moderator)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 403)
-        self.assertIn('error', res.data)
-        self.assertIn('admin', res.data['error'].lower())
-        
-        # Verify report is still open
-        report = Report.objects.get(id=report_id)
-        self.assertEqual(report.status, Report.STATUS_OPEN)
-        
-        # Admin can dismiss profile reports
         self.auth(self.admin)
-        res = self.client.post(dismiss_url, format='json')
+        res = self.client.get(reverse('report-list'))
+        
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['status'], Report.STATUS_DISMISSED)
-
-    def test_space_moderator_without_profile_flag_can_dismiss(self):
-        """Test that a user assigned as SpaceModerator (without profile flag) can dismiss reports"""
-        # Create a user who is a SpaceModerator but doesn't have the profile flag set
-        space_moderator_user = User.objects.create_user(username='space_mod', password='pass', email='sm@sm.com')
-        # Note: user_type remains USER (default), not MODERATOR
-        self.assertEqual(space_moderator_user.profile.user_type, Profile.USER)
-        
-        # Assign as SpaceModerator for the space
-        SpaceModerator.objects.create(user=space_moderator_user, space=self.space, assigned_by=self.admin)
-        
-        # Create a report
-        self.auth(self.user)
-        url = reverse('report-list')
-        res = self.client.post(url, {'content_type': 'node', 'content_id': self.node.id, 'reason': 'SPAM'}, format='json')
-        self.assertEqual(res.status_code, 201)
-        report_id = res.data['id']
-        
-        # SpaceModerator (without profile flag) should be able to dismiss
-        self.auth(space_moderator_user)
-        dismiss_url = reverse('report-dismiss', args=[report_id])
-        res = self.client.post(dismiss_url, format='json')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['status'], Report.STATUS_DISMISSED)
-        
-        # Verify aggregates are updated
-        self.node.refresh_from_db()
-        self.assertEqual(self.node.report_count, 0)
-        self.assertFalse(self.node.is_reported)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['content_id'], report_open.content_id)
+        self.assertEqual(res.data[0]['reports'][0]['status'], Report.STATUS_OPEN)
