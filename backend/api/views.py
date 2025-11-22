@@ -1907,10 +1907,11 @@ class ActivityStreamView(APIView):
         return f"{base_url}?{encoded}" if encoded else base_url
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
 def archive_item(request):
-    """Archive a Space, Node, or Profile. Only admins can archive."""
+    """Archive a Space, Node, or Profile. Admins can archive anything, moderators can archive items in their spaces."""
     try:
+        user = request.user
         content_type = request.data.get('content_type')
         content_id = request.data.get('content_id')
         reason = request.data.get('reason', '')
@@ -1920,6 +1921,31 @@ def archive_item(request):
         
         if content_type not in [Archive.CONTENT_SPACE, Archive.CONTENT_NODE, Archive.CONTENT_PROFILE]:
             return Response({'error': 'Invalid content_type'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if content_type == Archive.CONTENT_PROFILE:
+                return Response({'error': 'Profile archives can only be managed by admins'}, status=403)
+            
+            if content_type == Archive.CONTENT_SPACE:
+                try:
+                    space = Space.objects.get(id=content_id)
+                    if space.id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Space.DoesNotExist:
+                    return Response({'error': 'Space not found'}, status=404)
+            
+            elif content_type == Archive.CONTENT_NODE:
+                try:
+                    node = Node.objects.get(id=content_id)
+                    if node.space_id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Node.DoesNotExist:
+                    return Response({'error': 'Node not found'}, status=404)
         
         if content_type == Archive.CONTENT_SPACE:
             try:
@@ -1966,11 +1992,34 @@ def archive_item(request):
         return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
 def list_archived_items(request):
-    """List all archived items. Only admins can view archives."""
+    """List archived items. Admins see all, moderators see only items from their spaces."""
     try:
-        archives = Archive.objects.all().order_by('-archived_at')
+        user = request.user
+        
+        if user.is_staff or user.is_superuser or user.profile.is_admin():
+            archives = Archive.objects.all().order_by('-archived_at')
+        else:
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            if user.profile.is_moderator() or len(moderated_space_ids) > 0:
+                space_archives = Archive.objects.filter(
+                    content_type=Archive.CONTENT_SPACE,
+                    content_id__in=moderated_space_ids
+                )
+                
+                node_ids_in_moderated_spaces = Node.objects.filter(
+                    space_id__in=moderated_space_ids
+                ).values_list('id', flat=True)
+                node_archives = Archive.objects.filter(
+                    content_type=Archive.CONTENT_NODE,
+                    content_id__in=list(node_ids_in_moderated_spaces)
+                )
+                
+                archives = (space_archives | node_archives).order_by('-archived_at')
+            else:
+                archives = Archive.objects.none()
+        
         serializer = ArchiveSerializer(archives, many=True)
         return Response(serializer.data)
         
@@ -1979,11 +2028,37 @@ def list_archived_items(request):
         return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
 def restore_archived_item(request, archive_id):
-    """Restore an archived item. Only admins can restore."""
+    """Restore an archived item. Admins can restore anything, moderators can restore items from their spaces."""
     try:
+        user = request.user
         archive = Archive.objects.get(id=archive_id)
+        
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if archive.content_type == Archive.CONTENT_PROFILE:
+                return Response({'error': 'Profile archives can only be restored by admins'}, status=403)
+            
+            if archive.content_type == Archive.CONTENT_SPACE:
+                try:
+                    space = Space.objects.get(id=archive.content_id)
+                    if space.id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Space.DoesNotExist:
+                    return Response({'error': 'Space not found'}, status=404)
+            
+            elif archive.content_type == Archive.CONTENT_NODE:
+                try:
+                    node = Node.objects.get(id=archive.content_id)
+                    if node.space_id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Node.DoesNotExist:
+                    return Response({'error': 'Node not found'}, status=404)
         
         if archive.content_type == Archive.CONTENT_SPACE:
             try:

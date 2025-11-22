@@ -66,15 +66,17 @@ class IsAdmin(permissions.BasePermission):
             return False
 
 class IsAdminOrModerator(permissions.BasePermission):
-    """
-    Custom permission to allow admins and moderators.
-    """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
         try:
             profile = request.user.profile
-            return profile.is_admin() or profile.is_moderator()
+            if profile.is_admin():
+                return True
+            if profile.is_moderator():
+                return True
+            has_moderator_assignments = SpaceModerator.objects.filter(user=request.user).exists()
+            return has_moderator_assignments
         except Profile.DoesNotExist:
             return False
 
