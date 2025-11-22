@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Routes, Route, useLocation } from "react-router-dom";
+import { useTranslation } from "../contexts/TranslationContext";
 import Users from "./BackOffice/Users";
 import Analytics from "./BackOffice/Analytics";
 import Reports from "./BackOffice/Reports";
@@ -7,6 +8,7 @@ import Overview from "./BackOffice/Overview";
 import Archive from "./BackOffice/Archive";
 
 const BackOffice = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("dashboard");
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,7 +64,7 @@ const BackOffice = () => {
                   fontSize: "16px",
                 }}
               >
-                Dashboard
+                {t("backoffice.dashboard")}
               </div>
             </li>
             <li>
@@ -80,7 +82,7 @@ const BackOffice = () => {
                   fontSize: "16px",
                 }}
               >
-                Users Management
+                {t("backoffice.userManagement")}
               </div>
             </li>
             <li>
@@ -99,7 +101,7 @@ const BackOffice = () => {
                   fontSize: "16px",
                 }}
               >
-                Analytics
+                {t("backoffice.analytics")}
               </div>
             </li>
             <li>
@@ -117,7 +119,7 @@ const BackOffice = () => {
                   fontSize: "16px",
                 }}
               >
-                Reports
+                {t("backoffice.reports")}
               </div>
             </li>
             <li>
@@ -135,7 +137,7 @@ const BackOffice = () => {
                   fontSize: "16px",
                 }}
               >
-                Archive
+                {t("backoffice.archive")}
               </div>
             </li>
           </ul>

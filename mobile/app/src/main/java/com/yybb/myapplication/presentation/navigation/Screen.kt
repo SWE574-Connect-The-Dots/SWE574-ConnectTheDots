@@ -10,7 +10,38 @@ sealed class Screen(val route: String) {
     object SpaceDetails : Screen("space_details/{spaceId}") {
         fun createRoute(spaceId: Int) = "space_details/$spaceId"
     }
+    object SpaceNodes : Screen("space_nodes/{spaceId}") {
+        fun createRoute(spaceId: Int) = "space_nodes/$spaceId"
+    }
+    object AddNode : Screen("add_node/{spaceId}") {
+        fun createRoute(spaceId: Int) = "add_node/$spaceId"
+    }
+    object SpaceNodeDetails : Screen("space_node_details/{spaceId}/{nodeId}/{nodeLabel}/{nodeWikidataId}") {
+        fun createRoute(spaceId: String, nodeId: String, nodeLabel: String, nodeWikidataId: String?): String {
+            val encodedLabel = android.net.Uri.encode(nodeLabel)
+            val encodedWikidata = android.net.Uri.encode(nodeWikidataId ?: "")
+            return "space_node_details/$spaceId/$nodeId/$encodedLabel/$encodedWikidata"
+        }
+    }
+    object EdgeDetails : Screen("edge_details/{spaceId}/{edgeId}/{edgeLabel}/{sourceId}/{sourceName}/{targetId}/{targetName}/{currentNodeId}") {
+        fun createRoute(spaceId: String, edgeId: String, edgeLabel: String, sourceId: String, sourceName: String, targetId: String, targetName: String, currentNodeId: String): String {
+            val encodedLabel = android.net.Uri.encode(edgeLabel)
+            val encodedSourceName = android.net.Uri.encode(sourceName)
+            val encodedTargetName = android.net.Uri.encode(targetName)
+            return "edge_details/$spaceId/$edgeId/$encodedLabel/$sourceId/$encodedSourceName/$targetId/$encodedTargetName/$currentNodeId"
+        }
+    }
+    object WebView : Screen("webview/{url}") {
+        fun createRoute(url: String): String {
+            val encodedUrl = android.net.Uri.encode(url)
+            return "webview/$encodedUrl"
+        }
+    }
+    object CreateSpace : Screen("create_space")
     object EditProfile : Screen("edit_profile")
+    object Profile : Screen("profile/{username}") {
+        fun createRoute(username: String) = "profile/$username"
+    }
     object AllSpaces : Screen("all_spaces/{spaceType}") {
         fun createRoute(spaceType: SpaceType) = "all_spaces/${spaceType.name}"
     }

@@ -1,4 +1,4 @@
-name: CI (Docker Compose)
+name: Web App CI - Feature/Bugfix/Refactor
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - "bugfix/*"
       - "refactor/*"
     paths-ignore:
-      - "mobile/**"           # ignore mobile changes
+      - "mobile/**"           
 
 permissions:
   contents: read
@@ -102,6 +102,43 @@ jobs:
           $COMPOSE_CMD logs db
           exit 1
 
+      - name: Check Django migrations for conflicts
+        run: |
+          echo " Checking Django migrations for potential issues..."
+          
+          # Check for conflicts using our custom script
+          CONFLICT_CHECK_RESULT=0
+          $COMPOSE_CMD exec -T api python manage_migrations.py check || CONFLICT_CHECK_RESULT=$?
+          
+          # Test migration plan (this will fail if there are unresolvable conflicts)
+          echo " Testing migration plan..."
+          $COMPOSE_CMD exec -T \
+            -e PGHOST=db \
+            -e PGPORT=5432 \
+            -e PGUSER='${{ secrets.DB_USER }}' \
+            -e PGPASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e PGDATABASE='${{ secrets.DB_NAME }}' \
+            -e DB_HOST=db \
+            -e DB_PORT=5432 \
+            -e DB_USER='${{ secrets.DB_USER }}' \
+            -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+            -e DB_NAME='${{ secrets.DB_NAME }}' \
+            -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
+            api python manage.py migrate --plan
+          
+          # Fail the step if conflicts were detected
+          if [ $CONFLICT_CHECK_RESULT -ne 0 ]; then
+            echo " Migration conflicts detected. Manual resolution required."
+            echo " Steps to resolve:"
+            echo "   1. Run: python manage_migrations.py analyze"
+            echo "   2. Follow manual resolution guidance"
+            echo "   3. Coordinate with team member who created conflicting migration"
+            echo "   4. Test resolution thoroughly before committing"
+            exit 1
+          fi
+          
+          echo " Migration validation passed"
+
       - name: Django migrate & collectstatic
         run: |
           # Override at exec-time so Django/libpq cannot fall back to the UNIX socket
@@ -133,15 +170,19 @@ jobs:
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
             api python manage.py collectstatic --noinput || true
       
-      - name: Run Django tests
+      - name: Run Django tests with coverage
         run: |
-          echo "Running backend tests..."
+          echo "Running backend tests with coverage..."
           $COMPOSE_CMD exec -T \
             -e DJANGO_SETTINGS_MODULE=backend.settings_test \
             api sh -lc "
               python manage.py migrate --noinput &&
               mkdir -p /app/test-reports &&
-              python runtests.py
+              pip install coverage >/dev/null 2>&1 || true &&
+              coverage run --source='api' runtests.py &&
+              coverage xml -o /app/test-reports/coverage.xml &&
+              coverage html -d /app/test-reports/htmlcov &&
+              coverage report -m
             "
 
       - name: Copy test reports from container
@@ -157,7 +198,7 @@ jobs:
         if: always()
         with:
           name: Backend Django Tests
-          path: infra/api/test-reports/*.xml
+          path: infra/api/test-reports/TEST-*.xml
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -165,7 +206,23 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: infra/api/test-reports/*.xml
+          files: infra/api/test-reports/TEST-*.xml
+
+      - name: Generate coverage report markdown
+        run: |
+          mkdir -p infra/api/test-reports
+          echo "### Coverage Report" > infra/api/test-reports/coverage_report.md
+          echo '' >> infra/api/test-reports/coverage_report.md
+          echo '```text' >> infra/api/test-reports/coverage_report.md
+          $COMPOSE_CMD exec -T api sh -lc "coverage report -m" >> infra/api/test-reports/coverage_report.md
+          echo '```' >> infra/api/test-reports/coverage_report.md
+          echo "Coverage markdown generated at infra/api/test-reports/coverage_report.md"
+
+      
+      - name: Append coverage to job summary
+        if: always()
+        run: |
+          cat infra/api/test-reports/coverage_report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Smoke test API
         env:

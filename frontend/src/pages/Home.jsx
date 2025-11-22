@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import "../ConnectTheDots.css";
 
-export default function Home({ setIsAuthenticated, currentUser }) {
+export default function Home({ currentUser }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const [searchValue, setSearchValue] = useState("");
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "trending";
@@ -17,28 +18,6 @@ export default function Home({ setIsAuthenticated, currentUser }) {
   const [spaceToDelete, setSpaceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsAuthenticated(false);
-    navigate("/login");
-  };
-
-  const handleOnCreateSpace = () => {
-    navigate("/create-space");
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
-
-  const handleSearchButtonClick = () => {
-    if (searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
 
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
@@ -137,8 +116,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
       setSpaceToDelete(null);
     } catch (err) {
       setDeleteError(
-        err.response?.data?.detail ||
-          "Failed to delete space. Please try again."
+        err.response?.data?.detail || t("errors.failedToDeleteSpace")
       );
     } finally {
       setDeleting(false);
@@ -153,13 +131,13 @@ export default function Home({ setIsAuthenticated, currentUser }) {
           className={`tab ${activeTab === "trending" ? "active" : ""}`}
           onClick={() => handleTabChange("trending")}
         >
-          Trending
+          {t("space.trending")}
         </div>
         <div
           className={`tab ${activeTab === "new" ? "active" : ""}`}
           onClick={() => handleTabChange("new")}
         >
-          New
+          {t("space.new")}
         </div>
       </div>
       {/* Space Cards */}
@@ -169,6 +147,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
             key={space.id}
             className="space-card"
             style={{ position: "relative" }}
+            onClick={() => navigateToSpace(space)}
           >
             <div
               className="space-header"
@@ -182,19 +161,32 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                 <h2
                   className="space-title"
                   style={{ cursor: "pointer", margin: 0 }}
-                  onClick={() => navigateToSpace(space)}
                 >
                   {space.title}
                 </h2>
+                {space.is_archived && (
+                  <span
+                    style={{
+                      backgroundColor: "var(--color-gray-400)",
+                      color: "var(--color-white)",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {t("space.archived")}
+                  </span>
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div className="contributors">
-                  Contributors: {space.collaborators?.length || 0}
+                  {t("space.contributors")}: {space.collaborators?.length || 0}
                 </div>
                 {canDeleteSpace(space) && (
                   <button
                     className="delete-button"
-                    title="Delete"
+                    title={t("common.delete")}
                     style={{
                       background: "#e53935",
                       color: "white",
@@ -218,7 +210,7 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                       (e.currentTarget.style.background = "#e53935")
                     }
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 )}
               </div>
@@ -245,22 +237,25 @@ export default function Home({ setIsAuthenticated, currentUser }) {
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleJoinLeaveSpace(
-                    space.id,
-                    space.collaborators?.includes(
-                      localStorage.getItem("username")
-                    )
-                  );
+                  if (!space.is_archived) {
+                    handleJoinLeaveSpace(
+                      space.id,
+                      space.collaborators?.includes(
+                        localStorage.getItem("username")
+                      )
+                    );
+                  }
                 }}
-                disabled={loadingSpaces[space.id]}
+                disabled={loadingSpaces[space.id] || space.is_archived}
+                style={space.is_archived ? { opacity: 0.5, cursor: "not-allowed" } : {}}
               >
                 {loadingSpaces[space.id]
-                  ? "Processing..."
+                  ? t("common.processing")
                   : space.collaborators?.includes(
                       localStorage.getItem("username")
                     )
-                  ? "LEAVE"
-                  : "JOIN"}
+                  ? t("space.leave")
+                  : t("space.join")}
               </button>
             </div>
           </div>
@@ -271,28 +266,31 @@ export default function Home({ setIsAuthenticated, currentUser }) {
         <div className="modal-backdrop">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Confirm Delete</h3>
+              <h3>{t("space.confirmDelete")}</h3>
             </div>
             <div className="modal-body">
               <p>
-                Are you sure you want to delete the space "
-                {spaceToDelete?.title}"? This action cannot be undone.
+                {t("space.confirmDeleteMessage", {
+                  title: spaceToDelete?.title,
+                })}
               </p>
-              {deleteError && <div style={{ color: "#BD4902" }}>{deleteError}</div>}
+              {deleteError && (
+                <div style={{ color: "#BD4902" }}>{deleteError}</div>
+              )}
             </div>
             <div className="modal-footer">
               <button
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleting}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 style={{ background: "#BD4902", color: "#FFFFFF" }}
                 disabled={deleting}
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? t("space.deleting") : t("common.delete")}
               </button>
             </div>
           </div>

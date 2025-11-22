@@ -26,7 +26,7 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            resValue("string", "base_url", "http://16.171.162.104:8000/")
+            resValue("string", "base_url", "http://13.60.195.193:8000/")
             resValue("string", "app_name", "(Dev) Connect-The-Dots")
         }
         create("production") {

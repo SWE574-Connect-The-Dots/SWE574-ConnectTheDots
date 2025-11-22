@@ -21,6 +21,12 @@
   --color-purple-selected: #7209B7;
   --color-teal-dark: #215D69;
   --color-header-bg: #2F2F2F;
+  --color-panel-bg: #f1f1f1;
+  --color-item-bg: #f9f9f9;
+  --color-item-own-bg: #e6f4ff;
+  --color-wikidata: #0072B2;
+  --color-wikidata-bg: #E3F2FD;
+  --color-wikidata-border: #0072B2;
 
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -41,6 +47,7 @@ a {
   color: var(--color-accent);
   text-decoration: inherit;
 }
+
 a:hover {
   color: var(--color-accent-hover);
 }
@@ -50,7 +57,7 @@ body {
   place-items: top;
   min-width: 320px;
   min-height: 100vh;
-  color: var(--color-text)
+  color: var(--color-text);
 }
 
 h1 {
@@ -70,12 +77,9 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: var(--color-accent-hover);
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
 @media (prefers-color-scheme: light) {
@@ -83,9 +87,11 @@ button:focus-visible {
     color: var(--color-text);
     background-color: var(--color-bg);
   }
+
   a:hover {
     color: var(--color-accent-hover);
   }
+
   button {
     background-color: var(--color-accent);
     color: var(--color-white);

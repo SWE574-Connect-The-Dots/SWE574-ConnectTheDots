@@ -29,6 +29,7 @@ const useGraphData = (spaceId) => {
       const dagreNode = dagreGraph.node(node.id);
       return {
         ...node,
+        data: { ...node.data },
         position: {
           x: dagreNode.x - nodeWidth / 2,
           y: dagreNode.y - nodeHeight / 2,
@@ -47,7 +48,6 @@ const useGraphData = (spaceId) => {
       const nodesResponse = await api.get(`/spaces/${spaceId}/nodes/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      const nodesData = nodesResponse.data;
 
       let edgesData = [];
       try {
@@ -59,41 +59,82 @@ const useGraphData = (spaceId) => {
         console.warn("Edges endpoint not implemented yet");
       }
 
-      const flowNodes = nodesData.map((node) => ({
+      const nodesData = Array.isArray(nodesResponse.data)
+        ? nodesResponse.data
+        : [];
+      const validNodes = nodesData.filter((n) => n && n.id && n.label);
+
+      const flowNodes = validNodes.map((node) => ({
         id: node.id.toString(),
         type: "circular",
         position: { x: 0, y: 0 },
         data: {
           label: node.label,
           wikidata_id: node.wikidata_id || null,
+          // Include location data
+          country: node.country || null,
+          city: node.city || null,
+          district: node.district || null,
+          street: node.street || null,
+          latitude: node.latitude || null,
+          longitude: node.longitude || null,
+          location_name: node.location_name || null,
         },
+        // Also include location data at top level for backward compatibility
+        country: node.country || null,
+        city: node.city || null,
+        district: node.district || null,
+        street: node.street || null,
+        latitude: node.latitude || null,
+        longitude: node.longitude || null,
+        location_name: node.location_name || null,
       }));
 
-      const flowEdges = edgesData.map((edge) => ({
-        id: edge.id.toString(),
-        source: edge.source.toString(),
-        target: edge.target.toString(),
-        label: edge.label,
-        animated: false,
-        style: {
-          stroke: 'var(--color-border-1)',
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: "arrowclosed",
-          color: 'var(--color-border-1)',
-        },
-        labelStyle: {
-          background: 'var(--color-white)',
-          color: 'var(--color-text)',
-          padding: 4,
-          fontWeight: 600,
-          fontSize: 12,
-          borderRadius: 4,
-          border: '1px solid var(--color-border-2)',
-          zIndex: 10,
-        },
-      }));
+      const edgesDataArray = Array.isArray(edgesData) ? edgesData : [];
+      const validEdges = edgesDataArray.filter(
+        (e) => e && e.id && e.source && e.target
+      );
+
+      const flowEdges = validEdges.map((edge) => {
+        const isWikidata = edge.wikidata_property_id;
+        const displayLabel = isWikidata 
+          ? `${edge.label} [${edge.wikidata_property_id}]`
+          : edge.label;
+
+        return {
+          id: edge.id.toString(),
+          source: edge.source.toString(),
+          target: edge.target.toString(),
+          label: displayLabel,
+          data: {
+            wikidata_property_id: edge.wikidata_property_id,
+            original_label: edge.label,
+          },
+          animated: false,
+          style: {
+            stroke: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
+            strokeWidth: isWikidata ? 3 : 2,
+            strokeDasharray: isWikidata ? '0' : '5,5',
+          },
+          markerEnd: {
+            type: "arrowclosed",
+            color: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
+          },
+          labelStyle: {
+            background: isWikidata ? 'var(--color-wikidata-bg)' : 'var(--color-white)',
+            color: 'var(--color-text)',
+            padding: isWikidata ? '6px 10px' : '4px 8px',
+            fontWeight: 600,
+            fontSize: 12,
+            borderRadius: 6,
+            border: isWikidata 
+              ? '2px solid var(--color-wikidata-border)' 
+              : '1px solid var(--color-border-2)',
+            zIndex: 10,
+            boxShadow: isWikidata ? '0 2px 4px rgba(0,114,178,0.2)' : 'none',
+          },
+        };
+      });
 
       const layoutedNodes = layoutNodesWithDagre(flowNodes, flowEdges);
 

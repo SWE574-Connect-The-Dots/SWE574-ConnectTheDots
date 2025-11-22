@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import Search from '../pages/Search';
 import api from '../axiosConfig';
 import { vi } from 'vitest';
+import { API_ENDPOINTS } from '../constants/config';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -129,7 +130,7 @@ describe('Search Component', () => {
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledTimes(2);
-      expect(api.get).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
+      expect(api.get).toHaveBeenLastCalledWith(API_ENDPOINTS.SEARCH, expect.objectContaining({
         params: { q: 'react' }
       }));
     });
@@ -167,7 +168,7 @@ describe('Search Component', () => {
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledTimes(2);
-      expect(api.get).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
+      expect(api.get).toHaveBeenLastCalledWith(API_ENDPOINTS.SEARCH, expect.objectContaining({
         params: { q: 'django' }
       }));
     });

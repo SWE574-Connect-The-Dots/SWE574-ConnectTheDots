@@ -1,16 +1,48 @@
 package com.yybb.myapplication.data.network
 
+import com.yybb.myapplication.data.network.dto.AddDiscussionRequest
+import com.yybb.myapplication.data.network.dto.AddEdgeRequest
+import com.yybb.myapplication.data.network.dto.AddEdgeResponse
+import com.yybb.myapplication.data.network.dto.AddNodeRequest
+import com.yybb.myapplication.data.network.dto.AddNodeResponse
+import com.yybb.myapplication.data.network.dto.CreateSpaceRequest
+import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
+import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
+import com.yybb.myapplication.data.network.dto.DeleteEdgeResponse
+import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
+import com.yybb.myapplication.data.network.dto.DiscussionDto
 import com.yybb.myapplication.data.network.dto.LoginRequest
 import com.yybb.myapplication.data.network.dto.LoginResponse
 import com.yybb.myapplication.data.network.dto.ProfileResponse
 import com.yybb.myapplication.data.network.dto.RegisterRequest
+import com.yybb.myapplication.data.network.dto.SpaceDetailsResponse
+import com.yybb.myapplication.data.network.dto.SpaceMembershipResponse
+import com.yybb.myapplication.data.network.dto.NodePropertyResponse
+import com.yybb.myapplication.data.network.dto.NodeWikidataPropertyResponse
+import com.yybb.myapplication.data.network.dto.SpaceEdgeResponse
+import com.yybb.myapplication.data.network.dto.SpaceNodeResponse
+import com.yybb.myapplication.data.network.dto.TagDto
+import com.yybb.myapplication.data.network.dto.TagRequest
+import com.yybb.myapplication.data.network.dto.TagResponse
+import com.yybb.myapplication.data.network.dto.UpdateEdgeRequest
+import com.yybb.myapplication.data.network.dto.UpdateEdgeResponse
+import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
+import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesResponse
 import com.yybb.myapplication.data.network.dto.UpdateProfileRequest
+import com.yybb.myapplication.data.network.dto.VoteDiscussionRequest
+import com.yybb.myapplication.data.network.dto.VoteDiscussionResponse
+import com.yybb.myapplication.data.network.dto.WikidataPropertyDto
+import com.yybb.myapplication.data.network.dto.ReportResponse
+import com.yybb.myapplication.data.network.dto.SubmitReportRequest
+import com.yybb.myapplication.data.network.dto.SubmitReportResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("api/register/")
@@ -29,4 +61,128 @@ interface ApiService {
     suspend fun updateProfile(
         @Body request: UpdateProfileRequest
     ): Response<ProfileResponse>
+
+    @GET("api/tags/search_wikidata/")
+    suspend fun getTagWikidata(@Query("query") tagQuery: String): Response<List<TagDto>>
+
+    @POST("api/tags/")
+    suspend fun createTag(@Body request: TagRequest): Response<TagResponse>
+
+    @POST("api/spaces/")
+    suspend fun createSpace(@Body request: CreateSpaceRequest): Response<CreateSpaceResponse>
+
+    @GET("api/spaces/new/")
+    suspend fun getNewSpaces(): Response<List<SpaceDetailsResponse>>
+
+    @GET("api/spaces/trending/")
+    suspend fun getTrendingSpaces(): Response<List<SpaceDetailsResponse>>
+
+    @GET("api/spaces/{id}/")
+    suspend fun getSpaceById(@Path("id") id: String): Response<SpaceDetailsResponse>
+
+    @GET("api/spaces/{id}/discussions/")
+    suspend fun getSpaceDiscussions(@Path("id") id: String): Response<List<DiscussionDto>>
+
+    @POST("api/spaces/{id}/discussions/add/")
+    suspend fun addDiscussion(@Path("id") id: String, @Body request: AddDiscussionRequest): Response<DiscussionDto>
+
+    @POST("api/spaces/{id}/leave/")
+    suspend fun leaveSpace(@Path("id") id: String): Response<SpaceMembershipResponse>
+
+    @POST("api/spaces/{id}/join/")
+    suspend fun joinSpace(@Path("id") id: String): Response<SpaceMembershipResponse>
+
+    @DELETE("api/spaces/{id}/")
+    suspend fun deleteSpace(@Path("id") id: String): Response<Unit>
+
+    @POST("api/spaces/{id}/discussions/{discussionId}/react/")
+    suspend fun voteDiscussion(
+        @Path("id") id: String,
+        @Path("discussionId") discussionId: String,
+        @Body request: VoteDiscussionRequest
+    ): Response<VoteDiscussionResponse>
+
+    @GET("api/spaces/{id}/nodes/")
+    suspend fun getSpaceNodes(@Path("id") id: String): Response<List<SpaceNodeResponse>>
+
+    @GET("api/spaces/{id}/edges/")
+    suspend fun getSpaceEdges(@Path("id") id: String): Response<List<SpaceEdgeResponse>>
+
+    @GET("api/spaces/{id}/nodes/{nodeId}/properties/")
+    suspend fun getNodeProperties(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+    ): Response<List<NodePropertyResponse>>
+
+    @GET("api/spaces/wikidata-entity-properties/{propertyId}/")
+    suspend fun getWikidataPropertiesNode(@Path("propertyId") propertyId: String): Response<List<NodeWikidataPropertyResponse>>
+
+    @PUT("api/spaces/{id}/nodes/{nodeId}/update-properties/")
+    suspend fun updateNodeProperties(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+        @Body request: UpdateNodePropertiesRequest
+    ): Response<UpdateNodePropertiesResponse>
+
+    @DELETE("api/spaces/{id}/nodes/{nodeId}/properties/{statementId}/")
+    suspend fun deleteNodeProperty(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+        @Path("statementId") statementId: String
+    ): Response<UpdateNodePropertiesResponse>
+
+    @GET("api/spaces/wikidata-property-search/")
+    suspend fun searchWikidataProperties(
+        @Query("q") query: String
+    ): Response<List<WikidataPropertyDto>>
+
+    @GET("api/spaces/wikidata-search/")
+    suspend fun searchWikidataEntities(
+        @Query("q") query: String
+    ): Response<List<WikidataPropertyDto>>
+
+    @POST("api/spaces/{id}/edges/add/")
+    suspend fun addEdgeToSpaceGraph(
+        @Path("id") id: String,
+        @Body request: AddEdgeRequest
+    ): Response<AddEdgeResponse>
+
+    @POST("api/spaces/{id}/add-node/")
+    suspend fun addNode(
+        @Path("id") id: String,
+        @Body request: AddNodeRequest
+    ): Response<AddNodeResponse>
+
+    @POST("api/spaces/{id}/snapshots/create/")
+    suspend fun createSnapshot(
+        @Path("id") id: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<CreateSnapshotResponse>
+
+    @DELETE("api/spaces/{id}/nodes/{nodeId}/")
+    suspend fun deleteNode(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String
+    ): Response<DeleteNodeResponse>
+
+    @PUT("api/spaces/{id}/edges/{edgeId}/update/")
+    suspend fun updateEdgeDetails(
+        @Path("id") id: String,
+        @Path("edgeId") edgeId: String,
+        @Body request: UpdateEdgeRequest
+    ): Response<UpdateEdgeResponse>
+
+    @DELETE("api/spaces/{id}/edges/{edgeId}/delete/")
+    suspend fun deleteEdge(
+        @Path("id") id: String,
+        @Path("edgeId") edgeId: String,
+    ): Response<DeleteEdgeResponse>
+
+    @GET("api/reports/reasons/")
+    suspend fun getReportReasons(): Response<ReportResponse>
+
+    @POST("api/reports/")
+    suspend fun submitReport(
+        @Body request: SubmitReportRequest
+    ): Response<SubmitReportResponse>
 }

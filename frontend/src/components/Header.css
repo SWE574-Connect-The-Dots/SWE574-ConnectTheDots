@@ -13,14 +13,14 @@
 }
 
 .profile-toggle:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--color-gray-200);
 }
 
 .dropdown-menu {
   position: absolute;
   right: 0;
   top: 100%;
-  background-color: white;
+  background-color: var(--color-white);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 4px;
   min-width: 180px;
@@ -34,7 +34,7 @@
   display: block;
   padding: 10px 15px;
   text-decoration: none;
-  color: #333;
+  color: var(--color-text);
   width: 100%;
   text-align: left;
   border: none;
@@ -46,10 +46,45 @@
 
 .dropdown-menu a:hover,
 .dropdown-menu button:hover {
-  background-color: #f5f5f5;
+  background-color: var(--color-bg);
 }
 
 .dropdown-menu a:not(:last-child),
 .dropdown-menu button:not(:last-child) {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+/* Language Switcher Styles */
+.language-switcher {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.language-switcher button {
+  padding: 6px 12px;
+  border: 1px solid var(--color-gray-300);
+  background-color: var(--color-white);
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.language-switcher button:hover {
+  background-color: var(--color-gray-200);
+  border-color: var(--color-gray-400);
+}
+
+.language-switcher button.active {
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  border-color: var(--color-accent);
+}
+
+.language-switcher button.active:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }

@@ -38,7 +38,7 @@ services:
       context: ../frontend
       dockerfile: ./Dockerfile
       args:
-        API_URL: http://16.171.162.104:8000/api
+        API_URL: http://13.60.195.193:8000/api
     ports:
       - "3000:80"
     depends_on:
@@ -50,5 +50,31 @@ services:
       retries: 12
       start_period: 10s
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_config:/etc/grafana
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   postgres_data:
+  grafana_data:
+  grafana_config:
+

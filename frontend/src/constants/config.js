@@ -5,13 +5,20 @@ export const API_ENDPOINTS = {
   SNAPSHOTS: (spaceId) => `/spaces/${spaceId}/snapshots/`,
   DISCUSSIONS: (spaceId) => `/spaces/${spaceId}/discussions/`,
   ADD_DISCUSSION: (spaceId) => `/spaces/${spaceId}/discussions/add/`,
+  DISCUSSION_REACT: (spaceId, discussionId) => `/spaces/${spaceId}/discussions/${discussionId}/react/`,
   WIKIDATA_SEARCH: "/spaces/wikidata-search/",
+  WIKIDATA_PROPERTY_SEARCH: "/spaces/wikidata-property-search/",
   WIKIDATA_PROPERTIES: (entityId) =>
     `/spaces/wikidata-entity-properties/${entityId}/`,
   SEARCH: "/search/",
   PROFILE_ME: "/profiles/me/",
   UPDATE_PROFILE: "/profiles/update_profile/",
   PROFILE: (username) => `/profiles/${username}/user_profile/`,
+  REPORTS: "/reports/",
+  REPORTS_REASONS: "/reports/reasons/",
+  ARCHIVE: "/archive/",
+  ARCHIVE_CREATE: "/archive/create/",
+  ARCHIVE_RESTORE: (archiveId) => `/archive/${archiveId}/restore/`,
 };
 
 export const GRAPH_CONFIG = {

@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
+import ReportModal from "./ReportModal";
 
-const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
+const SpaceDiscussions = ({ spaceId, isCollaborator, isArchived = false }) => {
+  const { t } = useTranslation();
   const [discussions, setDiscussions] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDiscussionsOpen, setIsDiscussionsOpen] = useState(true);
+  const [reportingDiscussion, setReportingDiscussion] = useState(null);
   const currentUsername = localStorage.getItem("username");
+  const isLoggedIn = !!localStorage.getItem("token");
 
   useEffect(() => {
     // Initial fetch of discussions
@@ -30,7 +35,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       setError("");
     } catch (err) {
       console.error("Error fetching discussions:", err);
-      setError("Failed to load discussions");
+      setError(t("errors.failedToLoadDiscussions"));
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -59,14 +64,30 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
       await fetchDiscussions(false);
     } catch (err) {
       console.error("Error adding comment:", err);
-      setError("Failed to add comment");
+      setError(t("errors.failedToAddComment"));
+    }
+  };
+
+  const handleReact = async (discussionId, value) => {
+    try {
+      const response = await api.post(
+        API_ENDPOINTS.DISCUSSION_REACT(spaceId, discussionId),
+        { value }
+      );
+      const updated = response.data.discussion;
+      setDiscussions((prev) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
+      );
+    } catch (err) {
+      console.error("Error reacting to comment:", err);
+      setError(t("errors.failedToUpdateReaction"));
     }
   };
 
   return (
     <div
       style={{
-        border: "1px solid #ddd",
+        border: "1px solid var(--color-gray-300)",
         borderRadius: "4px",
         marginTop: "20px",
         overflow: "hidden",
@@ -74,7 +95,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
     >
       <div
         style={{
-          backgroundColor: "#f1f1f1",
+          backgroundColor: "var(--color-panel-bg)",
           padding: "10px",
           cursor: "pointer",
           display: "flex",
@@ -83,24 +104,23 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
         }}
         onClick={() => setIsDiscussionsOpen(!isDiscussionsOpen)}
       >
-        <strong>Discussions</strong>
+        <strong>{t("discussion.discussions")}</strong>
         <span>{isDiscussionsOpen ? "▲" : "▼"}</span>
       </div>
 
       {isDiscussionsOpen && (
         <div style={{ padding: "10px" }}>
-          {/* Comment form - only visible to collaborators */}
-          {isCollaborator && (
+          {isCollaborator && !isArchived && (
             <form onSubmit={handleSubmitComment}>
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
+                placeholder={t("discussion.addComment")}
                 style={{
                   width: "100%",
                   padding: "8px",
                   borderRadius: "4px",
-                  border: "1px solid #ddd",
+                  border: "1px solid var(--color-gray-300)",
                   marginBottom: "10px",
                   minHeight: "60px",
                   resize: "vertical",
@@ -109,8 +129,8 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
               <button
                 type="submit"
                 style={{
-                  backgroundColor: "#1a73e8",
-                  color: "white",
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
                   border: "none",
                   padding: "8px 16px",
                   borderRadius: "4px",
@@ -118,7 +138,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                 }}
                 disabled={!newComment.trim()}
               >
-                Post Comment
+                {t("discussion.postComment")}
               </button>
             </form>
           )}
@@ -129,22 +149,24 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
               style={{
                 marginBottom: "15px",
                 fontStyle: "italic",
-                color: "#666",
+                color: "var(--color-text-secondary)",
               }}
             >
-              Join as a collaborator to participate in discussions
+              {t("discussion.joinToParticipate")}
             </div>
           )}
 
           {/* Error message */}
           {error && (
-            <div style={{ color: "red", margin: "10px 0" }}>{error}</div>
+            <div style={{ color: "var(--color-danger)", margin: "10px 0" }}>
+              {error}
+            </div>
           )}
 
           {/* Comments list - visible to everyone */}
           <div style={{ marginTop: "20px" }}>
             {loading ? (
-              <p>Loading discussions...</p>
+              <p>{t("common.loading")}</p>
             ) : discussions.length > 0 ? (
               <div
                 style={{
@@ -164,9 +186,9 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         borderRadius: "8px",
                         backgroundColor:
                           discussion.username === currentUsername
-                            ? "#e6f4ff"
-                            : "#f9f9f9",
-                        border: "1px solid #eee",
+                            ? "var(--color-item-own-bg)"
+                            : "var(--color-item-bg)",
+                        border: "1px solid var(--color-gray-200)",
                         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                       }}
                     >
@@ -178,9 +200,27 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                         }}
                       >
                         <strong>{discussion.username}</strong>
+                        {isLoggedIn && discussion.username !== currentUsername && (
+                          <button
+                            onClick={() => {
+                              setReportingDiscussion(discussion);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--color-text-secondary)",
+                              cursor: "pointer",
+                              fontSize: "0.8rem",
+                              padding: "2px 5px",
+                            }}
+                            title={t("discussion.reportComment")}
+                          >
+                            {t("common.report")}
+                          </button>
+                        )}
                       </div>
                       <div>
-                        <small style={{ color: "#666" }}>
+                        <small style={{ color: "var(--color-text-secondary)" }}>
                           {new Date(discussion.created_at).toLocaleString()}
                         </small>
                       </div>
@@ -193,15 +233,88 @@ const SpaceDiscussions = ({ spaceId, isCollaborator }) => {
                       >
                         {discussion.text}
                       </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "center",
+                          marginTop: "10px",
+                        }}
+                        aria-label="Comment reactions"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => !isArchived && handleReact(discussion.id, "up")}
+                          disabled={!isLoggedIn || isArchived}
+                          aria-pressed={discussion.user_reaction === "up"}
+                          aria-label={t("discussion.thumbsUp")}
+                          title={isArchived ? "Cannot react in archived space" : (isLoggedIn ? t("discussion.thumbsUp") : t("discussion.loginToReact"))}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 10px",
+                            borderRadius: "6px",
+                            border:
+                              discussion.user_reaction === "up"
+                                ? "2px solid var(--color-accent)"
+                                : "1px solid var(--color-gray-300)",
+                            background: "var(--color-white)",
+                            color: "var(--color-text)",
+                            cursor: isLoggedIn ? "pointer" : "not-allowed",
+                            fontWeight:
+                              discussion.user_reaction === "up" ? 600 : 500,
+                          }}
+                        >
+                          <span aria-hidden="true">👍</span>
+                          <span>{discussion.upvotes ?? 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => !isArchived && handleReact(discussion.id, "down")}
+                          disabled={!isLoggedIn || isArchived}
+                          aria-pressed={discussion.user_reaction === "down"}
+                          aria-label={t("discussion.thumbsDown")}
+                          title={isArchived ? "Cannot react in archived space" : (isLoggedIn ? t("discussion.thumbsDown") : t("discussion.loginToReact"))}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 10px",
+                            borderRadius: "6px",
+                            border:
+                              discussion.user_reaction === "down"
+                                ? "2px solid var(--color-accent)"
+                                : "1px solid var(--color-gray-300)",
+                            background: "var(--color-white)",
+                            color: "var(--color-text)",
+                            cursor: isLoggedIn ? "pointer" : "not-allowed",
+                            fontWeight:
+                              discussion.user_reaction === "down" ? 600 : 500,
+                          }}
+                        >
+                          <span aria-hidden="true">👎</span>
+                          <span>{discussion.downvotes ?? 0}</span>
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <p>No discussions yet</p>
+              <p>{t("discussion.noDiscussions")}</p>
             )}
           </div>
         </div>
+      )}
+
+      {reportingDiscussion && (
+        <ReportModal
+          contentId={reportingDiscussion.id}
+          contentType="discussion"
+          contentTitle={`Comment by ${reportingDiscussion.username}`}
+          onClose={() => setReportingDiscussion(null)}
+        />
       )}
     </div>
   );
