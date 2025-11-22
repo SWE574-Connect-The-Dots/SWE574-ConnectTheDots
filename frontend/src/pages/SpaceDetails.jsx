@@ -448,6 +448,7 @@ const SpaceDetails = () => {
           city: spaceResponse.data.city || "",
           district: spaceResponse.data.district || "",
           street: spaceResponse.data.street || "",
+          is_archived: spaceResponse.data.is_archived || false,
         });
 
         const username = localStorage.getItem("username");
@@ -946,6 +947,7 @@ const SpaceDetails = () => {
         city: spaceResponse.data.city || "",
         district: spaceResponse.data.district || "",
         street: spaceResponse.data.street || "",
+        is_archived: spaceResponse.data.is_archived || false,
       });
     } catch (error) {
       console.error("Error joining/leaving space:", error);
@@ -1148,9 +1150,13 @@ const SpaceDetails = () => {
             <button
               className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
               onClick={() => {
-                handleJoinLeaveSpace();
-                setShowDropdown(false);
+                if (!space.is_archived) {
+                  handleJoinLeaveSpace();
+                  setShowDropdown(false);
+                }
               }}
+              disabled={space.is_archived}
+              style={space.is_archived ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               data-testid={isCollaborator ? "leave-space-button" : "header-join-space-button"}
               role="menuitem"
             >
@@ -1174,10 +1180,13 @@ const SpaceDetails = () => {
               <button
                 className="dropdown-item delete-action"
                 onClick={() => {
-                  handleDeleteClick();
-                  setShowDropdown(false);
+                  if (!space.is_archived) {
+                    handleDeleteClick();
+                    setShowDropdown(false);
+                  }
                 }}
-                disabled={deleting}
+                disabled={deleting || space.is_archived}
+                style={space.is_archived ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 role="menuitem"
               >
                 {t("common.delete")}
@@ -1224,7 +1233,23 @@ const SpaceDetails = () => {
             gap: 8,
           }}
         >
-          <h2 style={{ margin: 0 }}>{space.title}</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>{space.title}</span>
+            {space.is_archived && (
+              <span
+                style={{
+                  backgroundColor: "#757575",
+                  color: "white",
+                  padding: "4px 12px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                {t("space.archived")}
+              </span>
+            )}
+          </h2>
           <SpaceActionsDropdown />
         </div>
         <p>{space.description}</p>
@@ -1504,8 +1529,8 @@ const SpaceDetails = () => {
           ))}
         </ol>
 
-        {/* Revert Graph Section - Only show if collaborator */}
-        {isCollaborator && (
+        {/* Revert Graph Section - Only show if collaborator and not archived */}
+        {isCollaborator && !space.is_archived && (
           <>
             <h3>Revert Graph to Previous State</h3>
             {snapshots.length > 0 ? (
@@ -1551,8 +1576,8 @@ const SpaceDetails = () => {
           </>
         )}
 
-        {/* Add Node Section - Only show if collaborator */}
-        {isCollaborator && (
+        {/* Add Node Section - Only show if collaborator and not archived */}
+        {isCollaborator && !space.is_archived && (
           <>
             <h3>{t("space.addNodeFromWikidata")}</h3>
             <div>
@@ -1948,16 +1973,19 @@ const SpaceDetails = () => {
         {!isCollaborator && (
           <div className="non-collaborator-box">
             <p>
-              Join this space as a collaborator to add nodes and modify the
-              graph.
+              {space.is_archived 
+                ? "This space is archived and cannot be joined or modified."
+                : "Join this space as a collaborator to add nodes and modify the graph."}
             </p>
-            <button
-              className="join-button"
-              onClick={handleJoinLeaveSpace}
-              data-testid="bottom-join-space-button"
-            >
-              JOIN SPACE
-            </button>
+            {!space.is_archived && (
+              <button
+                className="join-button"
+                onClick={handleJoinLeaveSpace}
+                data-testid="bottom-join-space-button"
+              >
+                JOIN SPACE
+              </button>
+            )}
           </div>
         )}
 
@@ -2057,7 +2085,7 @@ const SpaceDetails = () => {
         </div>
 
         {/* Add discussions component */}
-        <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} />
+        <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} isArchived={space.is_archived} />
       </div>
 
       {/* Node detail modal */}
@@ -2065,11 +2093,12 @@ const SpaceDetails = () => {
         <NodeDetailModal
           node={selectedNode}
           onClose={handleCloseModal}
-          onNodeDelete={handleNodeDelete}
-          onNodeUpdate={handleNodeUpdate}
+          onNodeDelete={space.is_archived ? null : handleNodeDelete}
+          onNodeUpdate={space.is_archived ? null : handleNodeUpdate}
           spaceId={id}
           currentUser={localStorage.getItem("username")}
           spaceCreator={space.creator_username}
+          isArchived={space.is_archived}
         />
       )}
 
@@ -2079,9 +2108,10 @@ const SpaceDetails = () => {
           sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
           targetNode={nodes.find((n) => n.id === selectedEdge.target)}
           onClose={() => setSelectedEdge(null)}
-          onEdgeUpdate={fetchGraphData}
-          onEdgeDelete={fetchGraphData}
+          onEdgeUpdate={space.is_archived ? null : fetchGraphData}
+          onEdgeDelete={space.is_archived ? null : fetchGraphData}
           spaceId={id}
+          isArchived={space.is_archived}
         />
       )}
 

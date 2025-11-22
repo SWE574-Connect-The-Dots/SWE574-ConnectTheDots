@@ -14,11 +14,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, record_activity
+from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer, ActivityStreamSerializer
+from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer, ActivityStreamSerializer, ArchiveSerializer
 from .wikidata import get_wikidata_properties, extract_location_from_properties
-from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType
+from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType, IsNotArchivedUser
 from .reporting import REASON_CODES, REASONS_VERSION
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -100,7 +100,8 @@ def search(request):
     ).distinct().order_by('-created_at')
     
     users = User.objects.filter(
-        username__icontains=query
+        username__icontains=query,
+        profile__is_archived=False
     ).order_by('username')
     
 
@@ -129,7 +130,17 @@ class IsCreatorOrReadOnly(permissions.BasePermission):
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_permissions(self):
+        """
+        Read operations need IsAuthenticated.
+        Create/Update operations need IsAuthenticated + IsNotArchivedUser.
+        """
+        if self.action in ['list', 'retrieve', 'search_wikidata']:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsNotArchivedUser]
+        return [permission() for permission in permission_classes]
     
     @action(detail=False, methods=['get'])
     def search_wikidata(self, request):
@@ -203,15 +214,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
         """
         Custom permissions based on action:
         - discussions and wikidata_search endpoints are open to all (no permission required)
-        - join/leave/check-collaborator/add_discussion/delete_discussion endpoints need only IsAuthenticated
-        - other write operations require IsCollaboratorOrReadOnly
+        - join/leave/check-collaborator/add_discussion/delete_discussion endpoints need IsAuthenticated + IsNotArchivedUser
+        - other write operations require IsAuthenticated + IsCollaboratorOrReadOnly + IsNotArchivedUser
+        - read operations (list, retrieve) only need IsAuthenticated
         """
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
-        elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion']:
+        elif self.action in ['list', 'retrieve', 'trending', 'new', 'top_scored', 'collaborators', 'top_collaborators', 
+                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties']:
             permission_classes = [permissions.IsAuthenticated]
+        elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion',
+                             'react_discussion', 'add_node', 'delete_node', 'update_node_properties', 'delete_node_property',
+                             'update_node_location', 'update_edge', 'delete_edge', 'add_edge', 'create_snapshot', 'revert_snapshot']:
+            permission_classes = [permissions.IsAuthenticated, IsNotArchivedUser]
         else:
-            permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly]
+            permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly, IsNotArchivedUser]
         return [permission() for permission in permission_classes]
         
     def perform_create(self, serializer):
@@ -251,6 +268,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
         space = self.get_object()
         user = request.user
         
+        if space.is_archived:
+            return Response({'message': 'Cannot join an archived space'}, status=403)
+        
         if user in space.collaborators.all():
             return Response({'message': 'You are already a collaborator of this space'}, status=400)
             
@@ -271,6 +291,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def leave_space(self, request, pk=None):
         space = self.get_object()
         user = request.user
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot leave an archived space'}, status=403)
         
         if user == space.creator:
             return Response({'message': 'Creator cannot leave the space'}, status=400)
@@ -315,6 +338,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
         space = self.get_object()
         user = request.user
         
+        if space.is_archived:
+            return Response({'message': 'Cannot add discussions to an archived space'}, status=403)
+        
         # Check if user is a collaborator
         if user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can add discussions'}, status=403)
@@ -347,6 +373,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def react_discussion(self, request, pk=None, discussion_id=None):
         """Upvote or downvote a discussion. Auth required, anyone can react."""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot react to discussions in an archived space'}, status=403)
+        
         try:
             discussion = Discussion.objects.get(id=discussion_id, space=space)
         except Discussion.DoesNotExist:
@@ -432,6 +462,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
         space = self.get_object()
         user = request.user
         
+        if space.is_archived:
+            return Response({'error': 'Cannot delete discussions in an archived space'}, status=403)
+        
         try:
             discussion = Discussion.objects.get(id=discussion_id, space=space)
         except Discussion.DoesNotExist:
@@ -468,6 +501,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-node')
     def add_node(self, request, pk=None):
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot add nodes to an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can add nodes'}, status=403)
             
@@ -557,7 +594,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
-        nodes = Node.objects.filter(space_id=pk)
+        nodes = Node.objects.filter(space_id=pk, is_archived=False)
         data = []
         for node in nodes:
             node_data = {
@@ -660,13 +697,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
             collaborator_scores[user.id]['user'] = user
         
         
-        nodes = Node.objects.filter(space=space, created_by__in=collaborators)
+        nodes = Node.objects.filter(space=space, created_by__in=collaborators, is_archived=False)
         for node in nodes:
             if node.created_by:
                 collaborator_scores[node.created_by.id]['node_count'] += 1
         
         
-        edges = Edge.objects.filter(source__space=space, source__created_by__in=collaborators)
+        edges = Edge.objects.filter(
+            source__space=space, 
+            source__created_by__in=collaborators,
+            source__is_archived=False,
+            target__is_archived=False
+        )
         for edge in edges:
             if edge.source and edge.source.created_by:
                 collaborator_scores[edge.source.created_by.id]['edge_count'] += 1
@@ -712,6 +754,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='snapshots/create')
     def create_snapshot(self, request, pk=None):
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot create snapshots for an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can create snapshots'}, status=403)
             
@@ -734,6 +780,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='snapshots/revert')
     def revert_snapshot(self, request, pk=None):
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot revert snapshots for an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can revert snapshots'}, status=403)
             
@@ -894,6 +944,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def delete_node(self, request, pk=None, node_id=None):
         """Delete a node and its associated edges and properties"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot delete nodes in an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can delete nodes'}, status=403)
             
@@ -925,6 +979,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def update_node_properties(self, request, pk=None, node_id=None):
         """Update the properties of a node"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot update nodes in an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can update nodes'}, status=403)
             
@@ -973,6 +1031,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def delete_node_property(self, request, pk=None, node_id=None, statement_id=None):
         """Delete a single property from a node by its statement_id"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot delete node properties in an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can update nodes'}, status=403)
         
@@ -1003,6 +1065,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def update_node_location(self, request, pk=None, node_id=None):
         """Update the location information of a node"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot update nodes in an archived space'}, status=403)
         
         if request.user != space.creator and request.user not in space.collaborators.all():
             return Response({'message': 'Only space members can update node location'}, status=403)
@@ -1059,6 +1124,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def update_edge(self, request, pk=None, edge_id=None):
         """Update the label and/or direction of an edge"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot update edges in an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can update edges'}, status=403)
         try:
@@ -1102,6 +1171,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def delete_edge(self, request, pk=None, edge_id=None):
         """Delete an edge from the graph"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot delete edges in an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can delete edges'}, status=403)
         try:
@@ -1131,6 +1204,10 @@ class SpaceViewSet(viewsets.ModelViewSet):
     def add_edge(self, request, pk=None):
         """Add an edge between two existing nodes in the space"""
         space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'message': 'Cannot add edges to an archived space'}, status=403)
+        
         if request.user not in space.collaborators.all():
             return Response({'message': 'Only collaborators can add edges'}, status=403)
         source_id = request.data.get('source_id')
@@ -1167,9 +1244,20 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
+    def update(self, request, *args, **kwargs):
+        space = self.get_object()
+        
+        if space.is_archived:
+            return Response({'detail': 'Cannot update an archived space'}, status=403)
+        
+        return super().update(request, *args, **kwargs)
+    
     def destroy(self, request, *args, **kwargs):
         space = self.get_object()
         user = request.user
+        
+        if space.is_archived:
+            return Response({'detail': 'Cannot delete an archived space'}, status=403)
     
         # Permission check
         if user != space.creator and not (user.is_staff or user.is_superuser):
@@ -1204,9 +1292,9 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         spaces_with_scores = []
         for space in spaces:
-            # Count nodes and edges
-            node_count = Node.objects.filter(space=space).count()
-            edge_count = Edge.objects.filter(source__space=space).count()
+            # Count nodes and edges (excluding archived nodes)
+            node_count = Node.objects.filter(space=space, is_archived=False).count()
+            edge_count = Edge.objects.filter(source__space=space, source__is_archived=False, target__is_archived=False).count()
             
             # Count collaborators 
             collaborator_count = space.collaborators.count()
@@ -1247,7 +1335,19 @@ class SpaceViewSet(viewsets.ModelViewSet):
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    permission_classes = [permissions.IsAuthenticated, IsProfileOwner]
+    
+    def get_permissions(self):
+        """
+        Read operations need IsAuthenticated + IsProfileOwner.
+        Update operations need IsAuthenticated + IsProfileOwner + IsNotArchivedUser.
+        """
+        if self.action in ['list', 'retrieve', 'me', 'user_profile']:
+            permission_classes = [permissions.IsAuthenticated, IsProfileOwner]
+        elif self.action in ['update', 'partial_update', 'update_profile']:
+            permission_classes = [permissions.IsAuthenticated, IsProfileOwner, IsNotArchivedUser]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsProfileOwner]
+        return [permission() for permission in permission_classes]
 
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -1282,7 +1382,21 @@ class ProfileViewSet(viewsets.ModelViewSet):
 class ReportViewSet(viewsets.ModelViewSet):
     queryset = Report.objects.all().order_by('-created_at')
     serializer_class = ReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_permissions(self):
+        """
+        Read operations only need IsAuthenticated.
+        Create operations need IsAuthenticated + IsNotArchivedUser.
+        Update operations are for admins/moderators only (handled separately).
+        """
+        if self.action in ['list', 'retrieve', 'reasons']:
+            permission_classes = [permissions.IsAuthenticated]
+        elif self.action == 'create':
+            permission_classes = [permissions.IsAuthenticated, IsNotArchivedUser]
+        else:
+            # Other actions (update, partial_update, dismiss) have their own permission checks in the methods
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         user = self.request.user
@@ -1654,10 +1768,10 @@ def dashboard_stats(request):
         if not (profile.is_admin() or profile.is_moderator()):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Get total counts
-        total_users = User.objects.count()
-        total_spaces = Space.objects.count()
-        total_graph_nodes = Node.objects.count()
+        # Get total counts (excluding archived items)
+        total_users = User.objects.filter(profile__is_archived=False).count()
+        total_spaces = Space.objects.filter(is_archived=False).count()
+        total_graph_nodes = Node.objects.filter(is_archived=False).count()
         
         # Simplified active discussions count - just count all discussions for now
         total_discussions = Discussion.objects.count()
@@ -1665,8 +1779,11 @@ def dashboard_stats(request):
         # For now, use total discussions as active discussions
         active_discussions = total_discussions
         
-        # Get additional useful stats
-        total_edges = Edge.objects.count()
+        # Get additional useful stats (excluding archived items)
+        total_edges = Edge.objects.filter(
+            source__is_archived=False,
+            target__is_archived=False
+        ).count()
         
         return Response({
             'totalUsers': total_users,
@@ -1788,3 +1905,192 @@ class ActivityStreamView(APIView):
         params['page'] = page_number
         encoded = params.urlencode()
         return f"{base_url}?{encoded}" if encoded else base_url
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def archive_item(request):
+    """Archive a Space, Node, or Profile. Admins can archive anything, moderators can archive items in their spaces."""
+    try:
+        user = request.user
+        content_type = request.data.get('content_type')
+        content_id = request.data.get('content_id')
+        reason = request.data.get('reason', '')
+        
+        if not content_type or not content_id:
+            return Response({'error': 'content_type and content_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if content_type not in [Archive.CONTENT_SPACE, Archive.CONTENT_NODE, Archive.CONTENT_PROFILE]:
+            return Response({'error': 'Invalid content_type'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if content_type == Archive.CONTENT_PROFILE:
+                return Response({'error': 'Profile archives can only be managed by admins'}, status=403)
+            
+            if content_type == Archive.CONTENT_SPACE:
+                try:
+                    space = Space.objects.get(id=content_id)
+                    if space.id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Space.DoesNotExist:
+                    return Response({'error': 'Space not found'}, status=404)
+            
+            elif content_type == Archive.CONTENT_NODE:
+                try:
+                    node = Node.objects.get(id=content_id)
+                    if node.space_id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Node.DoesNotExist:
+                    return Response({'error': 'Node not found'}, status=404)
+        
+        if content_type == Archive.CONTENT_SPACE:
+            try:
+                space = Space.objects.get(id=content_id)
+                if space.is_archived:
+                    return Response({'error': 'Space is already archived'}, status=status.HTTP_400_BAD_REQUEST)
+                space.is_archived = True
+                space.save(update_fields=['is_archived'])
+            except Space.DoesNotExist:
+                return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+        elif content_type == Archive.CONTENT_NODE:
+            try:
+                node = Node.objects.get(id=content_id)
+                if node.is_archived:
+                    return Response({'error': 'Node is already archived'}, status=status.HTTP_400_BAD_REQUEST)
+                node.is_archived = True
+                node.save(update_fields=['is_archived'])
+            except Node.DoesNotExist:
+                return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+        elif content_type == Archive.CONTENT_PROFILE:
+            try:
+                profile = Profile.objects.get(user__id=content_id)
+                if profile.is_archived:
+                    return Response({'error': 'Profile is already archived'}, status=status.HTTP_400_BAD_REQUEST)
+                profile.is_archived = True
+                profile.save(update_fields=['is_archived'])
+            except Profile.DoesNotExist:
+                return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        archive = Archive.objects.create(
+            content_type=content_type,
+            content_id=content_id,
+            archived_by=request.user,
+            reason=reason
+        )
+        
+        serializer = ArchiveSerializer(archive)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        print(f"Archive error: {str(e)}")
+        return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def list_archived_items(request):
+    """List archived items. Admins see all, moderators see only items from their spaces."""
+    try:
+        user = request.user
+        
+        if user.is_staff or user.is_superuser or user.profile.is_admin():
+            archives = Archive.objects.all().order_by('-archived_at')
+        else:
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            if user.profile.is_moderator() or len(moderated_space_ids) > 0:
+                space_archives = Archive.objects.filter(
+                    content_type=Archive.CONTENT_SPACE,
+                    content_id__in=moderated_space_ids
+                )
+                
+                node_ids_in_moderated_spaces = Node.objects.filter(
+                    space_id__in=moderated_space_ids
+                ).values_list('id', flat=True)
+                node_archives = Archive.objects.filter(
+                    content_type=Archive.CONTENT_NODE,
+                    content_id__in=list(node_ids_in_moderated_spaces)
+                )
+                
+                archives = (space_archives | node_archives).order_by('-archived_at')
+            else:
+                archives = Archive.objects.none()
+        
+        serializer = ArchiveSerializer(archives, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        print(f"List archives error: {str(e)}")
+        return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def restore_archived_item(request, archive_id):
+    """Restore an archived item. Admins can restore anything, moderators can restore items from their spaces."""
+    try:
+        user = request.user
+        archive = Archive.objects.get(id=archive_id)
+        
+        if not (user.is_staff or user.is_superuser or user.profile.is_admin()):
+            moderated_space_ids = list(SpaceModerator.objects.filter(user=user).values_list('space_id', flat=True))
+            is_moderator = user.profile.is_moderator() or len(moderated_space_ids) > 0
+            
+            if not is_moderator:
+                return Response({'error': 'Insufficient permissions'}, status=403)
+            if archive.content_type == Archive.CONTENT_PROFILE:
+                return Response({'error': 'Profile archives can only be restored by admins'}, status=403)
+            
+            if archive.content_type == Archive.CONTENT_SPACE:
+                try:
+                    space = Space.objects.get(id=archive.content_id)
+                    if space.id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Space.DoesNotExist:
+                    return Response({'error': 'Space not found'}, status=404)
+            
+            elif archive.content_type == Archive.CONTENT_NODE:
+                try:
+                    node = Node.objects.get(id=archive.content_id)
+                    if node.space_id not in moderated_space_ids:
+                        return Response({'error': 'You are not a moderator of this space'}, status=403)
+                except Node.DoesNotExist:
+                    return Response({'error': 'Node not found'}, status=404)
+        
+        if archive.content_type == Archive.CONTENT_SPACE:
+            try:
+                space = Space.objects.get(id=archive.content_id)
+                space.is_archived = False
+                space.save(update_fields=['is_archived'])
+            except Space.DoesNotExist:
+                return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+        elif archive.content_type == Archive.CONTENT_NODE:
+            try:
+                node = Node.objects.get(id=archive.content_id)
+                node.is_archived = False
+                node.save(update_fields=['is_archived'])
+            except Node.DoesNotExist:
+                return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+        elif archive.content_type == Archive.CONTENT_PROFILE:
+            try:
+                profile = Profile.objects.get(user__id=archive.content_id)
+                profile.is_archived = False
+                profile.save(update_fields=['is_archived'])
+            except Profile.DoesNotExist:
+                return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        archive.delete()
+        
+        return Response({'message': 'Item restored successfully'}, status=status.HTTP_200_OK)
+        
+    except Archive.DoesNotExist:
+        return Response({'error': 'Archive not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Restore error: {str(e)}")
+        return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

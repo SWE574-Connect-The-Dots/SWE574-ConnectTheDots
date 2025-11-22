@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Profile, Space, Tag, Discussion, DiscussionReaction, Node, Report, Activity
+from .models import Profile, Space, Tag, Discussion, DiscussionReaction, Node, Report, Activity, Archive
 from .reporting import ALLOWED_REASON_CODES
 from datetime import date
 from rest_framework import serializers
@@ -283,9 +283,9 @@ class SpaceSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'created_at', 'creator_username',
             'country', 'city', 'district', 'street', 'latitude', 'longitude',
-            'tags', 'tag_ids', 'collaborators'
+            'tags', 'tag_ids', 'collaborators', 'is_archived'
         ]
-        read_only_fields = ['creator_username', 'created_at']
+        read_only_fields = ['creator_username', 'created_at', 'is_archived']
     
     def get_collaborators(self, obj):
         return [user.username for user in obj.collaborators.all()]
@@ -510,3 +510,35 @@ class ActivityStreamSerializer(serializers.ModelSerializer):
 
     def get_target(self, obj):
         return self._format_reference(obj.target)
+
+
+class ArchiveSerializer(serializers.ModelSerializer):
+    archived_by_username = serializers.ReadOnlyField(source='archived_by.username')
+    name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Archive
+        fields = ['id', 'content_type', 'content_id', 'archived_by', 'archived_by_username', 'archived_at', 'reason', 'name']
+        read_only_fields = ['archived_by', 'archived_by_username', 'archived_at']
+    
+    def get_name(self, obj):
+        """Get the name/title of the archived item"""
+        if obj.content_type == Archive.CONTENT_SPACE:
+            try:
+                space = Space.objects.get(id=obj.content_id)
+                return space.title
+            except Space.DoesNotExist:
+                return f"Space #{obj.content_id} (deleted)"
+        elif obj.content_type == Archive.CONTENT_NODE:
+            try:
+                node = Node.objects.get(id=obj.content_id)
+                return node.label
+            except Node.DoesNotExist:
+                return f"Node #{obj.content_id} (deleted)"
+        elif obj.content_type == Archive.CONTENT_PROFILE:
+            try:
+                profile = Profile.objects.get(user__id=obj.content_id)
+                return profile.user.username
+            except Profile.DoesNotExist:
+                return f"User #{obj.content_id} (deleted)"
+        return "Unknown"

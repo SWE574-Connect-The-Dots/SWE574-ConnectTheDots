@@ -164,6 +164,20 @@ export default function Home({ currentUser }) {
                 >
                   {space.title}
                 </h2>
+                {space.is_archived && (
+                  <span
+                    style={{
+                      backgroundColor: "var(--color-gray-400)",
+                      color: "var(--color-white)",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {t("space.archived")}
+                  </span>
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div className="contributors">
@@ -223,14 +237,17 @@ export default function Home({ currentUser }) {
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleJoinLeaveSpace(
-                    space.id,
-                    space.collaborators?.includes(
-                      localStorage.getItem("username")
-                    )
-                  );
+                  if (!space.is_archived) {
+                    handleJoinLeaveSpace(
+                      space.id,
+                      space.collaborators?.includes(
+                        localStorage.getItem("username")
+                      )
+                    );
+                  }
                 }}
-                disabled={loadingSpaces[space.id]}
+                disabled={loadingSpaces[space.id] || space.is_archived}
+                style={space.is_archived ? { opacity: 0.5, cursor: "not-allowed" } : {}}
               >
                 {loadingSpaces[space.id]
                   ? t("common.processing")

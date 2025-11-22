@@ -390,8 +390,20 @@ const MapView = () => {
               onMouseEnter={(e) => e.target.style.boxShadow = "0 2px 6px rgba(0,0,0,0.1)"}
               onMouseLeave={(e) => e.target.style.boxShadow = "none"}
             >
-              <div style={{ fontWeight: "600", color: "#333", marginBottom: "5px", fontSize: "14px", lineHeight: "1.3" }}>
-                {space.title}
+              <div style={{ fontWeight: "600", color: "#333", marginBottom: "5px", fontSize: "14px", lineHeight: "1.3", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>{space.title}</span>
+                {space.is_archived && (
+                  <span style={{
+                    backgroundColor: "#757575",
+                    color: "white",
+                    padding: "1px 6px",
+                    borderRadius: "3px",
+                    fontSize: "10px",
+                    fontWeight: "600",
+                  }}>
+                    ARCHIVED
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: "12px", color: "#666", marginBottom: "5px", lineHeight: "1.3" }}>
                 {space.description?.slice(0, 80)}

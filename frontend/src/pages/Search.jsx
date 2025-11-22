@@ -187,7 +187,21 @@ const Search = () => {
                         (e.currentTarget.style.backgroundColor = "#FFFFFF")
                       }
                     >
-                      <h3 style={{ margin: "0 0 10px 0", color: 'var(--color-text)' }}>{space.title}</h3>
+                      <h3 style={{ margin: "0 0 10px 0", color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{space.title}</span>
+                        {space.is_archived && (
+                          <span style={{
+                            backgroundColor: "#757575",
+                            color: "white",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                          }}>
+                            {t("space.archived")}
+                          </span>
+                        )}
+                      </h3>
                       <p style={{ margin: "0 0 10px 0", color: 'var(--color-text-secondary)' }}>
                         {space.description}
                       </p>
