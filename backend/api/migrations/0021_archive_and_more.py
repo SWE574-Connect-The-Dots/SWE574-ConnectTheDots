@@ -8,19 +8,41 @@ from django.db import migrations, models
 
 def rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, fields):
     from django.db import connection
+    from django.db.utils import ProgrammingError
     
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT indexname FROM pg_indexes 
-            WHERE indexname = %s
-        """, [old_name])
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT indexname FROM pg_indexes 
+                WHERE indexname = %s
+            """, [old_name])
+            
+            if cursor.fetchone():
+                try:
+                    cursor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+                except ProgrammingError:
+                    
+                    Model = apps.get_model('api', model_name)
+                    index = models.Index(fields=fields, name=new_name)
+                    schema_editor.add_index(Model, index)
+            else:
+               
+                Model = apps.get_model('api', model_name)
+                index = models.Index(fields=fields, name=new_name)
+                try:
+                    schema_editor.add_index(Model, index)
+                except ProgrammingError:
+                   
+                    pass
+    except Exception:
         
-        if cursor.fetchone():
-            cursor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
-        else:
+        try:
             Model = apps.get_model('api', model_name)
             index = models.Index(fields=fields, name=new_name)
             schema_editor.add_index(Model, index)
+        except Exception:
+           
+            pass
 
 
 def reverse_rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, fields):
@@ -92,30 +114,7 @@ class Migration(migrations.Migration):
                 ("reason", models.TextField(blank=True, null=True)),
             ],
         ),
-        SafeRenameIndex(
-            model_name="activity",
-            old_name="api_activi_publish_idx",
-            new_name="api_activit_publish_7d0ac6_idx",
-            fields=["published"]
-        ),
-        SafeRenameIndex(
-            model_name="activity",
-            old_name="api_activi_type_idx",
-            new_name="api_activit_type_f049ed_idx",
-            fields=["type"]
-        ),
-        SafeRenameIndex(
-            model_name="activity",
-            old_name="api_activi_actor_idx",
-            new_name="api_activit_actor_97e164_idx",
-            fields=["actor"]
-        ),
-        SafeRenameIndex(
-            model_name="activity",
-            old_name="api_activi_object_idx",
-            new_name="api_activit_object_3e45a7_idx",
-            fields=["object"]
-        ),
+
         migrations.AddField(
             model_name="node",
             name="is_archived",

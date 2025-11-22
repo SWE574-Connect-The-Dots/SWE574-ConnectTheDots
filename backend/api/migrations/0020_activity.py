@@ -27,19 +27,19 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='activity',
-            index=models.Index(fields=['published'], name='api_activi_publish_idx'),
+            index=models.Index(fields=['published'], name='api_activit_publish_7d0ac6_idx'),
         ),
         migrations.AddIndex(
             model_name='activity',
-            index=models.Index(fields=['type'], name='api_activi_type_idx'),
+            index=models.Index(fields=['type'], name='api_activit_type_f049ed_idx'),
         ),
         migrations.AddIndex(
             model_name='activity',
-            index=models.Index(fields=['actor'], name='api_activi_actor_idx'),
+            index=models.Index(fields=['actor'], name='api_activit_actor_97e164_idx'),
         ),
         migrations.AddIndex(
             model_name='activity',
-            index=models.Index(fields=['object'], name='api_activi_object_idx'),
+            index=models.Index(fields=['object'], name='api_activit_object_3e45a7_idx'),
         ),
     ]
 
