@@ -9,7 +9,6 @@ from django.db import migrations, models
 def rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, fields):
     from django.db import connection
     
-    # Check if the old index exists
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT indexname FROM pg_indexes 
@@ -17,10 +16,8 @@ def rename_index_if_exists(apps, schema_editor, model_name, old_name, new_name, 
         """, [old_name])
         
         if cursor.fetchone():
-            # Old index exists, rename it
             cursor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
         else:
-            # Old index doesn't exist, create the new one directly
             Model = apps.get_model('api', model_name)
             index = models.Index(fields=fields, name=new_name)
             schema_editor.add_index(Model, index)
