@@ -10,6 +10,7 @@ export default function Reports() {
   const [backendError, setBackendError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [modalData, setModalData] = useState(null);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -178,13 +179,96 @@ export default function Reports() {
     }
   };
 
+  const getLabel = (group) => {
+    const obj = group.content_object;
+    if (obj) {
+      if (group.content_type === 'discussion') {
+        return (obj.text?.substring(0, 50) || '') + '...';
+      }
+      return obj.label || obj.title || obj.user?.username || 'N/A';
+    }
+    return 'N/A';
+  }
+
   const itemTypes = [
     "All",
     ...new Set(reports.map((report) => report.content_type)),
   ];
 
+  const ReportDetailModal = ({ data, onClose }) => {
+    if (!data) return null;
+
+    const renderContentDetails = () => {
+      const { content_type, content_object } = data;
+      if (!content_object) return <p>Content data is not available.</p>;
+
+      switch (content_type) {
+        case "discussion":
+          return (
+            <div>
+              <h4>Discussion Text:</h4>
+              <p style={{ whiteSpace: "pre-wrap" }}>{content_object.text}</p>
+            </div>
+          );
+        case "space":
+          return (
+            <div>
+              <h4>Space: {content_object.title}</h4>
+              <p>{content_object.description}</p>
+            </div>
+          );
+        case "node":
+          return (
+            <div>
+              <h4>Node: {content_object.label}</h4>
+              <p>Wikidata ID: {content_object.wikidata_id}</p>
+            </div>
+          );
+        case "profile":
+          return (
+            <div>
+              <h4>Profile: {content_object.user?.username}</h4>
+              <p>Bio: {content_object.bio}</p>
+            </div>
+          );
+        default:
+          return <p>Unknown content type.</p>;
+      }
+    };
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ backgroundColor: 'var(--color-white)', padding: '2rem', borderRadius: '8px', width: '80%', maxWidth: '800px', color: 'var(--color-text)' }}>
+          <h3>Report Details</h3>
+          {renderContentDetails()}
+          <h4 style={{marginTop: '1rem'}}>Individual Reports ({data.reports.length})</h4>
+          <table style={{width: '100%', marginTop: '0.5rem'}}>
+            <thead>
+              <tr>
+                <th style={{textAlign: 'left'}}>Reporter</th>
+                <th style={{textAlign: 'left'}}>Reason</th>
+                <th style={{textAlign: 'left'}}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.reports.map(report => (
+                <tr key={report.id}>
+                  <td>{report.reporter_username}</td>
+                  <td>{report.reason}</td>
+                  <td>{new Date(report.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={onClose} style={{marginTop: '1.5rem'}}>Close</button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
+      <ReportDetailModal data={modalData} onClose={() => setModalData(null)} />
       <h2>Reports</h2>
        <div
          style={{
@@ -245,7 +329,7 @@ export default function Reports() {
               <th style={{ padding: "15px", textAlign: "left" }}>Date</th>
               <th style={{ padding: "15px", textAlign: "center" }}>Report Count</th>
               <th style={{ padding: "15px", textAlign: "center" }}>Status</th>
-              <th style={{ padding: "15px", textAlign: "center", width: '150px' }}>Actions</th>
+              <th style={{ padding: "15px", textAlign: "center", width: '200px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -271,7 +355,23 @@ export default function Reports() {
                     <span>{report.status}</span>
                   </td>
                   <td style={{ padding: "12px 15px", textAlign: "center" }}>
-                    {getActionButtons(report._group)}
+                    <div style={{ display: "flex", gap: "5px", justifyContent: 'center' }}>
+                      <button
+                        onClick={() => setModalData(report._group)}
+                        style={{
+                          backgroundColor: "var(--color-accent)",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        See Details
+                      </button>
+                      {getActionButtons(report._group)}
+                    </div>
                   </td>
                 </tr>
               ))}
