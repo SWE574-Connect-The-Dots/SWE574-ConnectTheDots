@@ -16,7 +16,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
-from .serializers import RegisterSerializer, SpaceSerializer, TagSerializer, UserSerializer, ProfileSerializer, DiscussionSerializer, ReportSerializer, ActivityStreamSerializer, ArchiveSerializer
+from .serializers import (RegisterSerializer, SpaceSerializer, TagSerializer, 
+                          UserSerializer, ProfileSerializer, DiscussionSerializer, 
+                          ReportSerializer, ActivityStreamSerializer, ArchiveSerializer,
+                          NodeSerializer)
 from .wikidata import get_wikidata_properties, extract_location_from_properties
 from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAdminOrModerator, IsSpaceModerator, CanChangeUserType, IsNotArchivedUser
 from .reporting import REASON_CODES, REASONS_VERSION
@@ -210,6 +213,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
     queryset = Space.objects.all()
     serializer_class = SpaceSerializer
     
+    def _format_node_label(self, node):
+        if not node:
+            return "Unknown node"
+        label = getattr(node, 'label', None)
+        if label:
+            return f"'{label}'"
+        node_id = getattr(node, 'id', None)
+        return f"Node #{node_id}" if node_id is not None else "Unknown node"
+
+    def _format_edge_summary(self, username, source_node, relation_label, target_node):
+        relation = relation_label or "connection"
+        source_label = self._format_node_label(source_node)
+        target_label = self._format_node_label(target_node)
+        return f"{username} created edge {source_label} -[{relation}]-> {target_label}"
+
     def get_permissions(self):
         """
         Custom permissions based on action:
@@ -561,12 +579,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     wikidata_property_id=wikidata_property_id
                 )
                 try:
+                    edge_summary = self._format_edge_summary(
+                        request.user.username,
+                        new_node,
+                        edge_label or e.relation_property,
+                        related_node,
+                    )
                     record_activity(
                         actor_user=request.user,
                         type='Add',
                         object=f'Edge:{e.id}',
                         target=f'Space:{space.id}',
-                        summary=f"{request.user.username} created edge {new_node.id}->{related_node.id}",
+                        summary=edge_summary,
                         payload={'edge_id': e.id, 'source_id': new_node.id, 'target_id': related_node.id}
                     )
                 except Exception:
@@ -579,12 +603,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     wikidata_property_id=wikidata_property_id
                 )
                 try:
+                    edge_summary = self._format_edge_summary(
+                        request.user.username,
+                        related_node,
+                        edge_label or e.relation_property,
+                        new_node,
+                    )
                     record_activity(
                         actor_user=request.user,
                         type='Add',
                         object=f'Edge:{e.id}',
                         target=f'Space:{space.id}',
-                        summary=f"{request.user.username} created edge {related_node.id}->{new_node.id}",
+                        summary=edge_summary,
                         payload={'edge_id': e.id, 'source_id': related_node.id, 'target_id': new_node.id}
                     )
                 except Exception:
@@ -764,17 +794,6 @@ class SpaceViewSet(viewsets.ModelViewSet):
         graph = SpaceGraph(pk)
         graph.load_from_db()
         snapshot = graph.create_snapshot(request.user)
-        try:
-            record_activity(
-                actor_user=request.user,
-                type='Create',
-                object=f'Snapshot:{snapshot.id}',
-                target=f'Space:{space.id}',
-                summary=f"{request.user.username} created a snapshot",
-                payload={'snapshot_id': snapshot.id, 'space_id': space.id}
-            )
-        except Exception:
-            pass
         return Response({'snapshot_id': snapshot.id, 'created_at': snapshot.created_at})
     
     @action(detail=True, methods=['post'], url_path='snapshots/revert')
@@ -1228,12 +1247,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 wikidata_property_id=wikidata_property_id
             )
             try:
+                edge_summary = self._format_edge_summary(
+                    request.user.username,
+                    source,
+                    label,
+                    target,
+                )
                 record_activity(
                     actor_user=request.user,
                     type='Add',
                     object=f'Edge:{edge.id}',
                     target=f'Space:{space.id}',
-                    summary=f"{request.user.username} added edge {source.id}->{target.id}",
+                    summary=edge_summary,
                     payload={'edge_id': edge.id, 'source_id': source.id, 'target_id': target.id}
                 )
             except Exception:
@@ -1380,7 +1405,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
         return Profile.objects.all()
 
 class ReportViewSet(viewsets.ModelViewSet):
-    queryset = Report.objects.all().order_by('-created_at')
+    queryset = Report.objects.all()
     serializer_class = ReportSerializer
     
     def get_permissions(self):
@@ -1398,6 +1423,31 @@ class ReportViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
 
+    def _get_report_subject_label(self, report):
+        try:
+            if report.content_type == Report.CONTENT_SPACE:
+                space = report.space or Space.objects.filter(id=report.content_id).first()
+                return space.title if space else f"Space #{report.content_id}"
+            if report.content_type == Report.CONTENT_NODE:
+                node = Node.objects.filter(id=report.content_id).first()
+                if node and hasattr(node, 'label'):
+                    return f"Node: {node.label}"
+                return f"Node #{report.content_id}"
+            if report.content_type == Report.CONTENT_DISCUSSION:
+                discussion = Discussion.objects.filter(id=report.content_id).first()
+                if discussion and discussion.text:
+                    snippet = (discussion.text[:30] + '…') if len(discussion.text) > 30 else discussion.text
+                    return f"Discussion \"{snippet}\""
+                return f"Discussion #{report.content_id}"
+            if report.content_type == Report.CONTENT_PROFILE:
+                profile = Profile.objects.filter(user__id=report.content_id).first()
+                if profile and profile.user:
+                    return profile.user.username
+                return f"Profile #{report.content_id}"
+        except Exception:
+            pass
+        return f"{report.content_type.title()} #{report.content_id}"
+
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -1412,9 +1462,147 @@ class ReportViewSet(viewsets.ModelViewSet):
         # Regular users: no listing
         return qs.none()
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+
+        content_type = instance.content_type
+        content_id = instance.content_id
+        content_object_data = None
+        ModelClass, SerializerClass = None, None
+
+        if content_type == 'space':
+            ModelClass, SerializerClass = Space, SpaceSerializer
+        elif content_type == 'node':
+            ModelClass, SerializerClass = Node, NodeSerializer
+        elif content_type == 'discussion':
+            ModelClass, SerializerClass = Discussion, DiscussionSerializer
+        elif content_type == 'profile':
+            ModelClass, SerializerClass = Profile, ProfileSerializer
+
+        if ModelClass:
+            try:
+                instance_qs = ModelClass.objects
+                if content_type == 'profile':
+                    content_instance = instance_qs.get(user__id=content_id)
+                else:
+                    content_instance = instance_qs.get(id=content_id)
+                
+                context = {'request': self.request} if SerializerClass == DiscussionSerializer else {}
+                content_object_data = SerializerClass(content_instance, context=context).data
+            except ModelClass.DoesNotExist:
+                content_object_data = {'error': f'{content_type} with id {content_id} not found.'}
+        
+        data['content_object'] = content_object_data
+        return Response(data)
+
+    def _get_grouped_reports(self, status):
+        queryset = self.get_queryset().filter(status=status).order_by('-created_at')
+
+        grouped_reports = {}
+        for report in queryset:
+            key = (report.content_type, report.content_id)
+            if key not in grouped_reports:
+                grouped_reports[key] = {
+                    'content_type': report.content_type,
+                    'content_id': report.content_id,
+                    'content_object': None,
+                    'reports': []
+                }
+            grouped_reports[key]['reports'].append(report)
+
+        content_keys = list(grouped_reports.keys())
+        for content_type, content_id in content_keys:
+            key = (content_type, content_id)
+            ModelClass, SerializerClass = None, None
+            if content_type == 'space':
+                ModelClass, SerializerClass = Space, SpaceSerializer
+            elif content_type == 'node':
+                ModelClass, SerializerClass = Node, NodeSerializer
+            elif content_type == 'discussion':
+                ModelClass, SerializerClass = Discussion, DiscussionSerializer
+            elif content_type == 'profile':
+                ModelClass, SerializerClass = Profile, ProfileSerializer
+            
+            if ModelClass:
+                try:
+                    instance_qs = ModelClass.objects
+                    if content_type == 'profile':
+                        instance = instance_qs.get(user__id=content_id)
+                    else:
+                        instance = instance_qs.get(id=content_id)
+                    
+                    context = {'request': self.request} if SerializerClass == DiscussionSerializer else {}
+                    grouped_reports[key]['content_object'] = SerializerClass(instance, context=context).data
+                except ModelClass.DoesNotExist:
+                    grouped_reports[key]['content_object'] = {'error': f'{content_type} with id {content_id} not found.'}
+                    
+        ReportSerializerClass = self.get_serializer_class()
+        for key, group in grouped_reports.items():
+            group['reports'] = ReportSerializerClass(group['reports'], many=True).data
+
+        return list(grouped_reports.values())
+
+    def list(self, request, *args, **kwargs):
+        """
+        By default, list only OPEN reports, grouped by content.
+        For other statuses, use /reports/dismissed/ or /reports/archived/.
+        """
+        grouped_data = self._get_grouped_reports(Report.STATUS_OPEN)
+        page = self.paginate_queryset(grouped_data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(grouped_data)
+
+    @action(detail=False, methods=['get'], url_path='open')
+    def open(self, request):
+        """List all reports with OPEN status, grouped by content."""
+        grouped_data = self._get_grouped_reports(Report.STATUS_OPEN)
+        page = self.paginate_queryset(grouped_data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(grouped_data)
+
+    @action(detail=False, methods=['get'], url_path='dismissed')
+    def dismissed(self, request):
+        """List all reports with DISMISSED status, grouped by content."""
+        grouped_data = self._get_grouped_reports(Report.STATUS_DISMISSED)
+        page = self.paginate_queryset(grouped_data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(grouped_data)
+
+    @action(detail=False, methods=['get'], url_path='archived')
+    def archived(self, request):
+        """List all reports with ARCHIVED status, grouped by content."""
+        grouped_data = self._get_grouped_reports(Report.STATUS_ARCHIVED)
+        page = self.paginate_queryset(grouped_data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(grouped_data)
+
     def perform_create(self, serializer):
         report = serializer.save()
         _recompute_entity_reports(report.content_type, report.content_id)
+        try:
+            space_reference = f"Space:{report.space_id}" if report.space_id else None
+            subject_label = self._get_report_subject_label(report)
+            record_activity(
+                actor_user=self.request.user,
+                type='Report',
+                object=f"{report.content_type}:{report.content_id}",
+                target=space_reference,
+                summary=f"{self.request.user.username} reported {subject_label}",
+                payload={
+                    'report_id': report.id,
+                    'space_id': report.space_id,
+                    'status': report.status,
+                    'reason': report.reason,
+                },
+            )
+        except Exception:
+            pass
 
     def partial_update(self, request, *args, **kwargs):
         # Get report directly from database to check permissions before filtering
@@ -1472,15 +1660,20 @@ class ReportViewSet(viewsets.ModelViewSet):
             if not SpaceModerator.objects.filter(user=user, space=report.space).exists():
                 return Response({'error': 'You are not a moderator of this space'}, status=403)
 
-        # Only dismiss if currently open
-        if report.status != Report.STATUS_OPEN:
-            return Response({'error': f'Report is already {report.status.lower()}'}, status=400)
+        open_reports = Report.objects.filter(
+            content_type=report.content_type,
+            content_id=report.content_id,
+            status=Report.STATUS_OPEN
+        )
 
-        report.status = Report.STATUS_DISMISSED
-        report.save(update_fields=['status', 'updated_at'])
+        if not open_reports.exists():
+            return Response({'error': 'There are no open reports for this item to dismiss'}, status=400)
+
+        open_reports.update(status=Report.STATUS_DISMISSED, updated_at=timezone.now())
+
         _recompute_entity_reports(report.content_type, report.content_id)
-        serializer = self.get_serializer(report)
-        return Response(serializer.data)
+        
+        return Response({'message': 'All open reports for this item have been dismissed.'})
 
     @action(detail=False, methods=['get'], url_path='reasons')
     def reasons(self, request):
@@ -1946,6 +2139,14 @@ def archive_item(request):
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Node.DoesNotExist:
                     return Response({'error': 'Node not found'}, status=404)
+        
+        Report.objects.filter(
+            content_type=content_type,
+            content_id=content_id,
+            status=Report.STATUS_OPEN
+        ).update(status=Report.STATUS_ARCHIVED, updated_at=timezone.now())
+
+        _recompute_entity_reports(content_type, content_id)
         
         if content_type == Archive.CONTENT_SPACE:
             try:

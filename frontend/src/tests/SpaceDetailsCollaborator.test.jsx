@@ -115,7 +115,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsNonCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -164,7 +164,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for initial API calls
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -196,7 +196,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -224,7 +224,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for initial API calls
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -256,7 +256,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for initial API calls
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -270,7 +270,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -299,7 +299,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         expect.any(Object)
       );
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -332,7 +332,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -360,7 +360,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for initial API calls and verify initial state
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -378,7 +378,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsNonCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -406,7 +406,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         expect.any(Object)
       );
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -479,7 +479,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -507,7 +507,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for the component to load
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -535,7 +535,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsNonCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -563,7 +563,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for the component to load
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -597,7 +597,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsNonCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -625,7 +625,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
     // Wait for initial API calls
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });
@@ -646,7 +646,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES(spaceId)) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + `/${spaceId}/`) {
+      } else if (url === API_ENDPOINTS.SPACES + `${spaceId}/`) {
         return Promise.resolve({ data: mockSpaceDataAsCollaborator });
       } else if (url === API_ENDPOINTS.DISCUSSIONS(spaceId)) {
         return Promise.resolve({
@@ -675,7 +675,7 @@ describe("SpaceDetails Component - Collaboration Functionality", () => {
         expect.any(Object)
       );
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + `/${spaceId}/`,
+        API_ENDPOINTS.SPACES + `${spaceId}/`,
         expect.any(Object)
       );
     });

@@ -127,3 +127,314 @@ class ActivityStreamViewTests(APITestCase):
         self.assertEqual(len(body_page_2['orderedItems']), 1)
         self.assertIn('prev', body_page_2)
 
+    def test_filters_by_since_last_day(self):
+        """Test filtering activities from the last 1 day"""
+        now = timezone.now()
+        
+        activity_2_days_ago = Activity.objects.create(
+            as2_id='urn:uuid:444',
+            type='Create',
+            actor='charlie',
+            object='Space:2',
+            summary='Old space created',
+            published=now - timedelta(days=2),
+        )
+        activity_1_day_ago = Activity.objects.create(
+            as2_id='urn:uuid:555',
+            type='Join',
+            actor='dave',
+            object='Space:2',
+            summary='Dave joined yesterday',
+            published=now - timedelta(days=1, minutes=-5), 
+        )
+        activity_12_hours_ago = Activity.objects.create(
+            as2_id='urn:uuid:666',
+            type='Add',
+            actor='eve',
+            object='Edge:100',
+            summary='Edge added 12h ago',
+            published=now - timedelta(hours=12),
+        )
+        activity_1_hour_ago = Activity.objects.create(
+            as2_id='urn:uuid:777',
+            type='Create',
+            actor='frank',
+            object='Node:50',
+            summary='Node created 1h ago',
+            published=now - timedelta(hours=1),
+        )
+        
+        one_day_ago = (now - timedelta(days=1)).isoformat()
+        response = self.client.get(self.url, {'since': one_day_ago})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:555', returned_ids)  
+        self.assertIn('urn:uuid:666', returned_ids) 
+        self.assertIn('urn:uuid:777', returned_ids)  
+        self.assertNotIn('urn:uuid:444', returned_ids)  
+        self.assertEqual(body['totalItems'], 6)  
+
+    def test_filters_by_since_exact_boundary(self):
+        """Test filtering with exact 1 day boundary"""
+        now = timezone.now()
+        exactly_one_day_ago = now - timedelta(days=1)
+        
+        activity_exact = Activity.objects.create(
+            as2_id='urn:uuid:888',
+            type='Create',
+            actor='grace',
+            object='Space:3',
+            summary='Exactly 1 day ago',
+            published=exactly_one_day_ago,
+        )
+        
+        activity_just_before = Activity.objects.create(
+            as2_id='urn:uuid:999',
+            type='Join',
+            actor='henry',
+            object='Space:3',
+            summary='Just before 1 day',
+            published=exactly_one_day_ago - timedelta(seconds=1),
+        )
+        
+        since_value = exactly_one_day_ago.isoformat()
+        response = self.client.get(self.url, {'since': since_value})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:888', returned_ids) 
+        self.assertNotIn('urn:uuid:999', returned_ids)  
+
+    def test_filters_by_object_parameter(self):
+        """Test filtering by object parameter (space-specific filtering)"""
+        now = timezone.now()
+        
+        activity_space1 = Activity.objects.create(
+            as2_id='urn:uuid:aaa',
+            type='Create',
+            actor='alice',
+            object='Space:1',
+            summary='Space 1 activity',
+            published=now - timedelta(minutes=10),
+        )
+        activity_space2 = Activity.objects.create(
+            as2_id='urn:uuid:bbb',
+            type='Join',
+            actor='bob',
+            object='Space:2',
+            summary='Space 2 activity',
+            published=now - timedelta(minutes=5),
+        )
+        activity_space1_2 = Activity.objects.create(
+            as2_id='urn:uuid:ccc',
+            type='Add',
+            actor='alice',
+            object='Space:1',
+            summary='Another Space 1 activity',
+            published=now - timedelta(minutes=1),
+        )
+        
+        response = self.client.get(self.url, {'object': 'Space:1'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:aaa', returned_ids)
+        self.assertIn('urn:uuid:ccc', returned_ids)
+        self.assertNotIn('urn:uuid:bbb', returned_ids)
+        self.assertEqual(body['totalItems'], 4)
+
+    def test_filters_by_since_and_object_combined(self):
+        """Test combining since and object filters"""
+        now = timezone.now()
+        
+        old_activity = Activity.objects.create(
+            as2_id='urn:uuid:ddd',
+            type='Create',
+            actor='alice',
+            object='Space:1',
+            summary='Old Space 1 activity',
+            published=now - timedelta(days=2),
+        )
+        
+        recent_activity = Activity.objects.create(
+            as2_id='urn:uuid:eee',
+            type='Join',
+            actor='bob',
+            object='Space:1',
+            summary='Recent Space 1 activity',
+            published=now - timedelta(hours=12),
+        )
+        
+        other_space_activity = Activity.objects.create(
+            as2_id='urn:uuid:fff',
+            type='Add',
+            actor='charlie',
+            object='Space:2',
+            summary='Recent Space 2 activity',
+            published=now - timedelta(hours=6),
+        )
+        
+        one_day_ago = (now - timedelta(days=1)).isoformat()
+        response = self.client.get(self.url, {
+            'since': one_day_ago,
+            'object': 'Space:1'
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:eee', returned_ids)  
+        self.assertNotIn('urn:uuid:ddd', returned_ids)  
+        self.assertNotIn('urn:uuid:fff', returned_ids) 
+
+    def test_filters_by_actor_parameter(self):
+        """Test filtering by actor parameter"""
+        now = timezone.now()
+        
+        activity_alice = Activity.objects.create(
+            as2_id='urn:uuid:ggg',
+            type='Create',
+            actor='alice',
+            object='Space:4',
+            summary='Alice activity',
+            published=now - timedelta(minutes=10),
+        )
+        activity_bob = Activity.objects.create(
+            as2_id='urn:uuid:hhh',
+            type='Join',
+            actor='bob',
+            object='Space:4',
+            summary='Bob activity',
+            published=now - timedelta(minutes=5),
+        )
+        
+        response = self.client.get(self.url, {'actor': 'alice'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:ggg', returned_ids)
+        self.assertIn('urn:uuid:111', returned_ids) 
+        self.assertNotIn('urn:uuid:hhh', returned_ids)
+        self.assertNotIn('urn:uuid:222', returned_ids)  
+
+    def test_invalid_since_parameter(self):
+        """Test error handling for invalid since parameter"""
+        response = self.client.get(self.url, {'since': 'invalid-date'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('since', response.json())
+
+    def test_invalid_until_parameter(self):
+        """Test error handling for invalid until parameter"""
+        response = self.client.get(self.url, {'until': 'not-a-date'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('until', response.json())
+
+    def test_filters_by_until_parameter(self):
+        """Test filtering by until parameter"""
+        now = timezone.now()
+        
+        activity_old = Activity.objects.create(
+            as2_id='urn:uuid:iii',
+            type='Create',
+            actor='alice',
+            object='Space:5',
+            summary='Old activity',
+            published=now - timedelta(days=3),
+        )
+        activity_recent = Activity.objects.create(
+            as2_id='urn:uuid:jjj',
+            type='Join',
+            actor='bob',
+            object='Space:5',
+            summary='Recent activity',
+            published=now - timedelta(hours=1),
+        )
+        
+        two_days_ago = (now - timedelta(days=2)).isoformat()
+        response = self.client.get(self.url, {'until': two_days_ago})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:iii', returned_ids) 
+        self.assertNotIn('urn:uuid:jjj', returned_ids)  
+
+    def test_filters_by_since_and_until_combined(self):
+        """Test combining since and until filters for date range"""
+        now = timezone.now()
+        
+        activity_old = Activity.objects.create(
+            as2_id='urn:uuid:kkk',
+            type='Create',
+            actor='alice',
+            object='Space:6',
+            summary='Too old',
+            published=now - timedelta(days=5),
+        )
+        activity_in_range = Activity.objects.create(
+            as2_id='urn:uuid:lll',
+            type='Join',
+            actor='bob',
+            object='Space:6',
+            summary='In range',
+            published=now - timedelta(days=2),
+        )
+        activity_recent = Activity.objects.create(
+            as2_id='urn:uuid:mmm',
+            type='Add',
+            actor='charlie',
+            object='Space:6',
+            summary='Too recent',
+            published=now - timedelta(hours=1),
+        )
+        
+        four_days_ago = (now - timedelta(days=4)).isoformat()
+        one_day_ago = (now - timedelta(days=1)).isoformat()
+        response = self.client.get(self.url, {
+            'since': four_days_ago,
+            'until': one_day_ago
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertNotIn('urn:uuid:kkk', returned_ids) 
+        self.assertIn('urn:uuid:lll', returned_ids) 
+        self.assertNotIn('urn:uuid:mmm', returned_ids)  
+
+    def test_case_insensitive_filters(self):
+        """Test that type, actor, and object filters are case insensitive"""
+        now = timezone.now()
+        
+        activity = Activity.objects.create(
+            as2_id='urn:uuid:nnn',
+            type='Create',
+            actor='Alice',
+            object='Space:7',
+            summary='Case test',
+            published=now - timedelta(minutes=5),
+        )
+        
+        response = self.client.get(self.url, {'type': 'create'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:nnn', returned_ids)
+        
+        response = self.client.get(self.url, {'actor': 'alice'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:nnn', returned_ids)
+        
+        response = self.client.get(self.url, {'object': 'space:7'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        returned_ids = [item['id'] for item in body['orderedItems']]
+        self.assertIn('urn:uuid:nnn', returned_ids)
+

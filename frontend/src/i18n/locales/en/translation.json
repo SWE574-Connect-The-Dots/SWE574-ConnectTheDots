@@ -181,6 +181,14 @@
     "edgeExistsInDirection": "Edge in this direction already exists",
     "toggleDirection": "Toggle direction"
   },
+  "activity": {
+    "globalTitle": "Latest activity",
+    "spaceTitle": "Activity in this space",
+    "empty": "No activity yet",
+    "refresh": "Refresh",
+    "unknownActor": "Someone",
+    "unknownEvent": "Recent update"
+  },
   "profile": {
     "profile": "Profile",
     "editProfile": "Edit Profile",
@@ -259,7 +267,8 @@
     "networkError": "Network error. Please check your connection.",
     "unauthorized": "You are not authorized to perform this action.",
     "notFound": "The requested resource was not found.",
-    "validationError": "Please check your input and try again."
+    "validationError": "Please check your input and try again.",
+    "failedToLoadActivity": "Failed to load activity stream."
   },
   "messages": {
     "saveSuccess": "Changes saved successfully.",
