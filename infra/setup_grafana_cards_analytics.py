@@ -21,7 +21,7 @@ GRAFANA_PASSWORD = os.getenv("GRAFANA_PASSWORD", "admin")
 
 # PostgreSQL configuration (from .env file)
 POSTGRES_CONFIG = {
-    "host": os.getenv("POSTGRES_HOST", "db"),
+    "host": "infra-db-1",
     "port": os.getenv("POSTGRES_PORT", "5432"),
     "database": os.getenv("POSTGRES_DB", "mydb"),
     "username": os.getenv("POSTGRES_USER", "myuser"),
@@ -101,7 +101,7 @@ def create_postgresql_datasource(session):
         print(f"Response: {response.text}")
         return None
 
-def create_user_cards_dashboard(session):
+def create_user_cards_dashboard(session,datasource_uid):
     """Create dashboard with user metric cards - daily, weekly, monthly"""
     
     # Combined daily user query
@@ -225,7 +225,7 @@ def create_user_cards_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "table",
                             "rawQuery": True,
                             "rawSql": daily_users_query,
@@ -294,7 +294,7 @@ def create_user_cards_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "table",
                             "rawQuery": True,
                             "rawSql": weekly_users_query,
@@ -363,7 +363,7 @@ def create_user_cards_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "table",
                             "rawQuery": True,
                             "rawSql": monthly_users_query,
@@ -382,7 +382,21 @@ def create_user_cards_dashboard(session):
         "overwrite": True
     }
 
-def create_combined_analytics_dashboard(session):
+    print("Creating combined analytics dashboard...")
+    
+    response = session.post(f"{GRAFANA_URL}/api/dashboards/db", 
+                          data=json.dumps(dashboard_config))
+    
+    if response.status_code == 200:
+        result = response.json()
+        print(f"Successfully created combined analytics dashboard: {result.get('url', 'Unknown URL')}")
+        return result
+    else:
+        print(f"Failed to create combined analytics dashboard. Status: {response.status_code}")
+        print(f"Response: {response.text}")
+        return None
+
+def create_combined_analytics_dashboard(session, datasource_uid):
     """Create combined dashboard with both user and space metrics"""
     
     # Combined daily user query
@@ -663,7 +677,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": daily_users_query,
@@ -724,7 +738,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": weekly_users_query,
@@ -785,7 +799,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": monthly_users_query,
@@ -847,7 +861,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": daily_spaces_query,
@@ -908,7 +922,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": weekly_spaces_query,
@@ -969,7 +983,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": monthly_spaces_query,
@@ -1031,7 +1045,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": daily_nodes_query,
@@ -1092,7 +1106,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": weekly_nodes_query,
@@ -1153,7 +1167,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": monthly_nodes_query,
@@ -1215,7 +1229,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": daily_edges_query,
@@ -1276,7 +1290,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": weekly_edges_query,
@@ -1337,7 +1351,7 @@ def create_combined_analytics_dashboard(session):
                         "textMode": "value_and_name"
                     },
                     "targets": [{
-                        "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                        "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                         "format": "table",
                         "rawQuery": True,
                         "rawSql": monthly_edges_query,
@@ -1403,11 +1417,16 @@ def main():
         time.sleep(2)
         
         # Create combined analytics dashboard
-        dashboard = create_combined_analytics_dashboard(session)
+        dashboard = create_combined_analytics_dashboard(session, datasource['uid'])
         if not dashboard:
             print("Failed to create combined analytics dashboard")
             return False
-        
+        user_dashboard = create_user_cards_dashboard(session, datasource['uid'])
+        if not user_dashboard:
+            print("Failed to create user cards dashboard")
+            return False
+
+
         print("\n=== Setup Complete! ===")
         print(f"Grafana Dashboard URL: {GRAFANA_URL}")
         print("\nCreated dashboard:")
