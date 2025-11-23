@@ -13,6 +13,7 @@ import SpaceDiscussions from "../components/SpaceDiscussions";
 import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
+import ActivityStream from "../components/ActivityStream";
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -1214,7 +1215,7 @@ const SpaceDetails = () => {
       style={{
         width: "100%",
         margin: "0 auto",
-        padding: "20px",
+        padding: "20px 20px 20px 60px",
         display: "flex",
         overflowX: "hidden",
         boxSizing: "border-box",
@@ -2029,7 +2030,16 @@ const SpaceDetails = () => {
       </div>
 
       {/* Collaborators sidebar */}
-      <div style={{ width: "250px" }}>
+      <div
+        style={{
+          width: "260px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        <ActivityStream spaceId={id} dense />
+
         <div
           style={{
             border: "1px solid #68686B",
@@ -2050,7 +2060,9 @@ const SpaceDetails = () => {
             }}
             onClick={() => setIsCollaboratorsOpen(!isCollaboratorsOpen)}
           >
-            <strong>{t("space.collaborators")} ({space.collaborators.length})</strong>
+            <strong>
+              {t("space.collaborators")} ({space.collaborators.length})
+            </strong>
             <span>{isCollaboratorsOpen ? "▲" : "▼"}</span>
           </div>
 

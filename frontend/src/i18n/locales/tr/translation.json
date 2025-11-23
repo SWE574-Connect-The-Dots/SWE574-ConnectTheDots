@@ -181,6 +181,14 @@
     "edgeExistsInDirection": "Bu yönde bağlantı zaten mevcut",
     "toggleDirection": "Yönü değiştir"
   },
+  "activity": {
+    "globalTitle": "Son etkinlikler",
+    "spaceTitle": "Bu alandaki etkinlikler",
+    "empty": "Henüz etkinlik yok",
+    "refresh": "Yenile",
+    "unknownActor": "Bir kullanıcı",
+    "unknownEvent": "Yeni bir güncelleme"
+  },
   "profile": {
     "profile": "Profil",
     "editProfile": "Profili Düzenle",
@@ -259,7 +267,8 @@
     "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edin.",
     "unauthorized": "Bu işlemi gerçekleştirmek için yetkiniz yok.",
     "notFound": "İstenen kaynak bulunamadı.",
-    "validationError": "Lütfen bilgilerinizi kontrol edip tekrar deneyin."
+    "validationError": "Lütfen bilgilerinizi kontrol edip tekrar deneyin.",
+    "failedToLoadActivity": "Etkinlik akışı yüklenemedi."
   },
   "messages": {
     "saveSuccess": "Değişiklikler başarıyla kaydedildi.",
