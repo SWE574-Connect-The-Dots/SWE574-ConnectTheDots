@@ -101,7 +101,7 @@ def create_postgresql_datasource(session):
         print(f"Response: {response.text}")
         return None
 
-def create_space_growth_dashboard(session):
+def create_space_growth_dashboard(session, datasource_uid):
     """Create dashboard showing space creation analytics over time"""
     
     # SQL query for daily total spaces (cumulative)
@@ -212,7 +212,7 @@ def create_space_growth_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "time_series",
                             "group": [],
                             "metricColumn": "none",
@@ -270,7 +270,7 @@ def create_space_growth_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "time_series",
                             "group": [],
                             "metricColumn": "none",
@@ -330,7 +330,7 @@ def create_space_growth_dashboard(session):
                     },
                     "targets": [
                         {
-                            "datasource": {"type": "grafana-postgresql-datasource", "uid": "ef322m43946psb"},
+                            "datasource": {"type": "grafana-postgresql-datasource", "uid": datasource_uid},
                             "format": "time_series",
                             "group": [],
                             "metricColumn": "none",
@@ -407,7 +407,7 @@ def main():
         time.sleep(2)
         
         # Create dashboard
-        dashboard = create_space_growth_dashboard(session)
+        dashboard = create_space_growth_dashboard(session, datasource['uid'])
         if not dashboard:
             print("Failed to create dashboard")
             return False
