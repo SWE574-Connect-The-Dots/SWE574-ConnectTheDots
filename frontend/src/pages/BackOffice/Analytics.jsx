@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import analyticsData from "../../data/analyticsMock.json";
+import { GRAFANA_URLS } from "../../config/grafanaUrls";
 
 export default function Analytics() {
   const [data, setData] = useState(null);
@@ -230,11 +231,11 @@ export default function Analytics() {
             <div>
               <iframe
                 src={overallMetricsTimeframe === "daily" 
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760125907305&to=1762717907305&timezone=browser&refresh=5m&theme=light&panelId=panel-1&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.usersDaily
                   : overallMetricsTimeframe === "weekly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760126507307&to=1762718507307&timezone=browser&refresh=5m&theme=light&panelId=panel-2&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.usersWeekly
                   : overallMetricsTimeframe === "monthly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760126507307&to=1762718507307&timezone=browser&refresh=5m&theme=light&panelId=panel-3&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.usersMonthly
                   : `PLACEHOLDER_USER_${overallMetricsTimeframe.toUpperCase()}`
                 }
                 width="100%"
@@ -248,11 +249,11 @@ export default function Analytics() {
             <div>
               <iframe
                 src={overallMetricsTimeframe === "daily" 
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760127119389&to=1762719119389&timezone=browser&refresh=5m&theme=light&panelId=panel-4&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.spacesDaily
                   : overallMetricsTimeframe === "weekly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760127119389&to=1762719119389&timezone=browser&refresh=5m&theme=light&panelId=panel-5&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.spacesWeekly
                   : overallMetricsTimeframe === "monthly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760127119389&to=1762719119389&timezone=browser&refresh=5m&theme=light&panelId=panel-6&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.spacesMonthly
                   : `PLACEHOLDER_SPACE_${overallMetricsTimeframe.toUpperCase()}`
                 }
                 width="100%"
@@ -369,11 +370,11 @@ export default function Analytics() {
             <div>
               <iframe
                 src={contentStatsTimeframe === "daily" 
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-7&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.nodesDaily
                   : contentStatsTimeframe === "weekly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-8&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.nodesWeekly
                   : contentStatsTimeframe === "monthly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-9&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.nodesMonthly
                   : `PLACEHOLDER_NODE_${contentStatsTimeframe.toUpperCase()}`
                 }
                 width="100%"
@@ -387,11 +388,11 @@ export default function Analytics() {
             <div>
               <iframe
                 src={contentStatsTimeframe === "daily" 
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-10&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.edgesDaily
                   : contentStatsTimeframe === "weekly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-11&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.edgesWeekly
                   : contentStatsTimeframe === "monthly"
-                  ? "http://localhost:3001/d-solo/93eda550-a653-4581-b14f-0f060bfa6a69/connectthedots-analytics-dashboard?orgId=1&from=1760124654947&to=1762716654947&timezone=browser&refresh=5m&theme=light&panelId=panel-12&__feature.dashboardSceneSolo=true"
+                  ? GRAFANA_URLS.edgesMonthly
                   : `PLACEHOLDER_EDGE_${contentStatsTimeframe.toUpperCase()}`
                 }
                 width="100%"
@@ -549,8 +550,8 @@ export default function Analytics() {
               </div>
 
               <iframe
-                key={selectedPanel} // re-render when panel changes //change ip before pr
-                src={`http://localhost:3001/d-solo/17bba15f-5cf5-4e4f-b26f-4c6130594eb5/connectthedots-user-growth-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                key={selectedPanel} // re-render when panel changes
+                src={GRAFANA_URLS.getUserTrendUrl(selectedPanel)}
                 width="100%"
                 height="400"
                 frameBorder="0"
@@ -606,8 +607,8 @@ export default function Analytics() {
               </div>
 
               <iframe
-                key={selectedPanel} // re-render when panel changes //change ip before pr
-                src={`http://localhost:3001/d-solo/82544b7e-ff84-4bef-8e0c-7f86efca450f/connectthedots-node-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                key={selectedPanel} // re-render when panel changes
+                src={GRAFANA_URLS.getNodeTrendUrl(selectedPanel)}
                 width="100%"
                 height="400"
                 frameBorder="0"
@@ -663,8 +664,8 @@ export default function Analytics() {
               </div>
 
               <iframe
-                key={selectedPanel} // re-render when panel changes //change ip before pr
-                src={`http://localhost:3001/d-solo/05f712d2-fe25-452b-95e2-b7168d3c6745/connectthedots-space-analytics?orgId=1&refresh=5m&theme=light&panelId=${selectedPanel}&__feature.dashboardSceneSolo=true`}
+                key={selectedPanel} // re-render when panel changes
+                src={GRAFANA_URLS.getSpaceTrendUrl(selectedPanel)}
                 width="100%"
                 height="400"
                 frameBorder="0"
