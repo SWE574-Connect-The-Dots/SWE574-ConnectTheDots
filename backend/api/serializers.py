@@ -336,6 +336,16 @@ class SpaceSerializer(serializers.ModelSerializer):
         
         return super().update(instance, validated_data)
 
+class NodeSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.ReadOnlyField(source='created_by.username')
+    class Meta:
+        model = Node
+        fields = [
+            'id', 'label', 'wikidata_id', 'created_at', 'created_by_username', 
+            'space', 'country', 'city', 'district', 'street', 
+            'latitude', 'longitude', 'location_name', 'is_archived'
+        ]
+
 class DiscussionSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     upvotes = serializers.SerializerMethodField()
@@ -344,7 +354,7 @@ class DiscussionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Discussion
-        fields = ['id', 'text', 'created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
+        fields = ['id', 'space', 'text', 'created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
         read_only_fields = ['created_at', 'username', 'upvotes', 'downvotes', 'user_reaction']
 
     def get_upvotes(self, obj):
@@ -367,15 +377,41 @@ class ReportSerializer(serializers.ModelSerializer):
     reporter_username = serializers.ReadOnlyField(source='reporter.username')
     entity_report_count = serializers.SerializerMethodField()
     entity_is_reported = serializers.SerializerMethodField()
+    content_object_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Report
         fields = [
             'id', 'content_type', 'content_id', 'reason', 'status',
             'space', 'reporter', 'reporter_username', 'created_at', 'updated_at',
-            'entity_report_count', 'entity_is_reported'
+            'entity_report_count', 'entity_is_reported', 'content_object_label'
         ]
         read_only_fields = ['status', 'space', 'reporter', 'reporter_username', 'created_at', 'updated_at']
+
+    def get_content_object_label(self, obj):
+        """Get the name/title of the reported item"""
+        if obj.content_type == Report.CONTENT_SPACE:
+            try:
+                return Space.objects.get(id=obj.content_id).title
+            except Space.DoesNotExist:
+                return f"Space #{obj.content_id} (deleted)"
+        elif obj.content_type == Report.CONTENT_NODE:
+            try:
+                return Node.objects.get(id=obj.content_id).label
+            except Node.DoesNotExist:
+                return f"Node #{obj.content_id} (deleted)"
+        elif obj.content_type == Report.CONTENT_PROFILE:
+            try:
+                return Profile.objects.get(user__id=obj.content_id).user.username
+            except Profile.DoesNotExist:
+                return f"User #{obj.content_id} (deleted)"
+        elif obj.content_type == Report.CONTENT_DISCUSSION:
+            try:
+                text = Discussion.objects.get(id=obj.content_id).text
+                return (text[:47] + '...') if len(text) > 50 else text
+            except Discussion.DoesNotExist:
+                return f"Discussion #{obj.content_id} (deleted)"
+        return "Unknown"
 
     def validate(self, attrs):
         content_type = attrs.get('content_type')

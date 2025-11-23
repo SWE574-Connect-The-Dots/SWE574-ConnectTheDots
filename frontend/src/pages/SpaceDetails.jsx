@@ -432,7 +432,7 @@ const SpaceDetails = () => {
       setIsLoading(true);
 
       try {
-        const spaceResponse = await api.get(API_ENDPOINTS.SPACES + `/${id}/`, {
+        const spaceResponse = await api.get(API_ENDPOINTS.SPACES + `${id}/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },

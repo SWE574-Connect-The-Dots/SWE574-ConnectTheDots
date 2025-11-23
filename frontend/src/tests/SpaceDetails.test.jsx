@@ -45,7 +45,7 @@ describe("SpaceDetail Component", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES("1")) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + "/1/") {
+      } else if (url === API_ENDPOINTS.SPACES + "1/") {
         return Promise.resolve({ data: mockSpaceData });
       } else if (url === API_ENDPOINTS.DISCUSSIONS("1")) {
         return Promise.resolve({
@@ -99,7 +99,7 @@ describe("SpaceDetail Component", () => {
 
         // Verify that all required API calls were made
         const hasSpaceCall = calls.some(
-          (call) => call[0] === API_ENDPOINTS.SPACES + "/1/"
+          (call) => call[0] === API_ENDPOINTS.SPACES + "1/"
         );
         const hasSnapshotsCall = calls.some(
           (call) => call[0] === API_ENDPOINTS.SNAPSHOTS("1")
@@ -134,7 +134,7 @@ describe("SpaceDetail Component", () => {
         return Promise.resolve({ data: [] });
       } else if (url === API_ENDPOINTS.EDGES("1")) {
         return Promise.resolve({ data: [] });
-      } else if (url === API_ENDPOINTS.SPACES + "/1/") {
+      } else if (url === API_ENDPOINTS.SPACES + "1/") {
         return Promise.resolve({ data: mockSpaceData });
       } else if (url === API_ENDPOINTS.DISCUSSIONS("1")) {
         return Promise.resolve({
@@ -161,7 +161,7 @@ describe("SpaceDetail Component", () => {
 
     // Wait for the API calls to complete and content to be rendered
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith(API_ENDPOINTS.SPACES + "/1/", {
+      expect(api.get).toHaveBeenCalledWith(API_ENDPOINTS.SPACES + "1/", {
         headers: {
           Authorization: "Bearer fake-jwt-token",
         },
@@ -209,7 +209,7 @@ describe("SpaceDetail Component", () => {
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith(
-        API_ENDPOINTS.SPACES + "/1/",
+        API_ENDPOINTS.SPACES + "1/",
         expect.any(Object)
       );
     });
