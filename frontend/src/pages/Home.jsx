@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import "../ConnectTheDots.css";
+import ActivityStream from "../components/ActivityStream";
 
 export default function Home({ currentUser }) {
   const { t } = useTranslation();
@@ -140,8 +141,15 @@ export default function Home({ currentUser }) {
           {t("space.new")}
         </div>
       </div>
-      {/* Space Cards */}
-      <div className="spaces-container">
+      <div style={{ 
+        display: "flex", 
+        gap: "20px", 
+        padding: "20px",
+        maxWidth: "100%",
+        boxSizing: "border-box"
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="spaces-container">
         {spaces.map((space) => (
           <div
             key={space.id}
@@ -217,7 +225,7 @@ export default function Home({ currentUser }) {
             </div>
             <div className="space-content">
               <p>{space.description}</p>
-              <div className="activities">{/* Placeholder for now */}</div>
+              <div className="activities" />
             </div>
             <div className="space-footer">
               <div className="tags">
@@ -229,9 +237,7 @@ export default function Home({ currentUser }) {
               </div>
               <button
                 className={`${
-                  space.collaborators?.includes(
-                    localStorage.getItem("username")
-                  )
+                  space.collaborators?.includes(localStorage.getItem("username"))
                     ? "leave-button"
                     : "join-button"
                 }`}
@@ -260,6 +266,18 @@ export default function Home({ currentUser }) {
             </div>
           </div>
         ))}
+          </div>
+        </div>
+        {/* Activity Stream Sidebar */}
+        <div style={{ 
+          width: "260px", 
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px"
+        }}>
+          <ActivityStream />
+        </div>
       </div>
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

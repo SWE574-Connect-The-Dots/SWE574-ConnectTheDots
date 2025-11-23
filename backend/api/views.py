@@ -213,6 +213,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
     queryset = Space.objects.all()
     serializer_class = SpaceSerializer
     
+    def _format_node_label(self, node):
+        if not node:
+            return "Unknown node"
+        label = getattr(node, 'label', None)
+        if label:
+            return f"'{label}'"
+        node_id = getattr(node, 'id', None)
+        return f"Node #{node_id}" if node_id is not None else "Unknown node"
+
+    def _format_edge_summary(self, username, source_node, relation_label, target_node):
+        relation = relation_label or "connection"
+        source_label = self._format_node_label(source_node)
+        target_label = self._format_node_label(target_node)
+        return f"{username} created edge {source_label} -[{relation}]-> {target_label}"
+
     def get_permissions(self):
         """
         Custom permissions based on action:
@@ -564,12 +579,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     wikidata_property_id=wikidata_property_id
                 )
                 try:
+                    edge_summary = self._format_edge_summary(
+                        request.user.username,
+                        new_node,
+                        edge_label or e.relation_property,
+                        related_node,
+                    )
                     record_activity(
                         actor_user=request.user,
                         type='Add',
                         object=f'Edge:{e.id}',
                         target=f'Space:{space.id}',
-                        summary=f"{request.user.username} created edge {new_node.id}->{related_node.id}",
+                        summary=edge_summary,
                         payload={'edge_id': e.id, 'source_id': new_node.id, 'target_id': related_node.id}
                     )
                 except Exception:
@@ -582,12 +603,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     wikidata_property_id=wikidata_property_id
                 )
                 try:
+                    edge_summary = self._format_edge_summary(
+                        request.user.username,
+                        related_node,
+                        edge_label or e.relation_property,
+                        new_node,
+                    )
                     record_activity(
                         actor_user=request.user,
                         type='Add',
                         object=f'Edge:{e.id}',
                         target=f'Space:{space.id}',
-                        summary=f"{request.user.username} created edge {related_node.id}->{new_node.id}",
+                        summary=edge_summary,
                         payload={'edge_id': e.id, 'source_id': related_node.id, 'target_id': new_node.id}
                     )
                 except Exception:
@@ -767,17 +794,6 @@ class SpaceViewSet(viewsets.ModelViewSet):
         graph = SpaceGraph(pk)
         graph.load_from_db()
         snapshot = graph.create_snapshot(request.user)
-        try:
-            record_activity(
-                actor_user=request.user,
-                type='Create',
-                object=f'Snapshot:{snapshot.id}',
-                target=f'Space:{space.id}',
-                summary=f"{request.user.username} created a snapshot",
-                payload={'snapshot_id': snapshot.id, 'space_id': space.id}
-            )
-        except Exception:
-            pass
         return Response({'snapshot_id': snapshot.id, 'created_at': snapshot.created_at})
     
     @action(detail=True, methods=['post'], url_path='snapshots/revert')
@@ -1231,12 +1247,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 wikidata_property_id=wikidata_property_id
             )
             try:
+                edge_summary = self._format_edge_summary(
+                    request.user.username,
+                    source,
+                    label,
+                    target,
+                )
                 record_activity(
                     actor_user=request.user,
                     type='Add',
                     object=f'Edge:{edge.id}',
                     target=f'Space:{space.id}',
-                    summary=f"{request.user.username} added edge {source.id}->{target.id}",
+                    summary=edge_summary,
                     payload={'edge_id': edge.id, 'source_id': source.id, 'target_id': target.id}
                 )
             except Exception:
@@ -1401,6 +1423,31 @@ class ReportViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
 
+    def _get_report_subject_label(self, report):
+        try:
+            if report.content_type == Report.CONTENT_SPACE:
+                space = report.space or Space.objects.filter(id=report.content_id).first()
+                return space.title if space else f"Space #{report.content_id}"
+            if report.content_type == Report.CONTENT_NODE:
+                node = Node.objects.filter(id=report.content_id).first()
+                if node and hasattr(node, 'label'):
+                    return f"Node: {node.label}"
+                return f"Node #{report.content_id}"
+            if report.content_type == Report.CONTENT_DISCUSSION:
+                discussion = Discussion.objects.filter(id=report.content_id).first()
+                if discussion and discussion.text:
+                    snippet = (discussion.text[:30] + '…') if len(discussion.text) > 30 else discussion.text
+                    return f"Discussion \"{snippet}\""
+                return f"Discussion #{report.content_id}"
+            if report.content_type == Report.CONTENT_PROFILE:
+                profile = Profile.objects.filter(user__id=report.content_id).first()
+                if profile and profile.user:
+                    return profile.user.username
+                return f"Profile #{report.content_id}"
+        except Exception:
+            pass
+        return f"{report.content_type.title()} #{report.content_id}"
+
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -1538,6 +1585,24 @@ class ReportViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         report = serializer.save()
         _recompute_entity_reports(report.content_type, report.content_id)
+        try:
+            space_reference = f"Space:{report.space_id}" if report.space_id else None
+            subject_label = self._get_report_subject_label(report)
+            record_activity(
+                actor_user=self.request.user,
+                type='Report',
+                object=f"{report.content_type}:{report.content_id}",
+                target=space_reference,
+                summary=f"{self.request.user.username} reported {subject_label}",
+                payload={
+                    'report_id': report.id,
+                    'space_id': report.space_id,
+                    'status': report.status,
+                    'reason': report.reason,
+                },
+            )
+        except Exception:
+            pass
 
     def partial_update(self, request, *args, **kwargs):
         # Get report directly from database to check permissions before filtering
