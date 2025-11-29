@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -70,14 +74,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import java.time.ZonedDateTime
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.COMMENTS_PER_PAGE
 import com.yybb.myapplication.data.Constants.DISCUSSION_SECTION_HEIGHT
 import com.yybb.myapplication.data.Constants.MAX_COMMENT_LENGTH
+import com.yybb.myapplication.data.model.Activity
+import com.yybb.myapplication.data.model.ActivityType
 import com.yybb.myapplication.data.model.Discussion
 import com.yybb.myapplication.data.model.VoteType
 import com.yybb.myapplication.presentation.navigation.Screen
+import com.yybb.myapplication.presentation.ui.screens.components.ActivityCard
 import com.yybb.myapplication.presentation.ui.screens.components.CollaboratorDialog
 import com.yybb.myapplication.presentation.ui.screens.components.DiscussionCard
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceDetailsViewModel
@@ -121,6 +131,7 @@ fun SpaceDetailsScreen(
     var showCollaboratorDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showActivityStreamDialog by remember { mutableStateOf(false) }
     var reportDialogTitle by remember { mutableStateOf("") }
     var reportDialogContentType by remember { mutableStateOf("space") }
     var showMenu by remember { mutableStateOf(false) }
@@ -301,6 +312,26 @@ fun SpaceDetailsScreen(
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Flag,
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                }
+                            )
+                            // Activity Stream Menu Item
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = stringResource(R.string.activity_stream_button),
+                                        color = Color.Black
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showActivityStreamDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
                                         contentDescription = null,
                                         tint = Color.Black
                                     )
@@ -722,6 +753,13 @@ fun SpaceDetailsScreen(
             }
         )
     }
+
+    // Activity Stream Dialog
+    if (showActivityStreamDialog) {
+        ActivityStreamDialog(
+            onDismiss = { showActivityStreamDialog = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -925,4 +963,137 @@ private fun generatePaginationNumbers(currentPage: Int, totalPages: Int): List<A
     }
 
     return numbers
+}
+
+@Composable
+private fun ActivityStreamDialog(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val mockActivities = getMockActivitiesForDialog()
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 48.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Activity Stream List
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(500.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(
+                        items = mockActivities,
+                        key = { activity -> activity.id }
+                    ) { activity ->
+                        ActivityCard(
+                            activity = activity,
+                            onCardClick = {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.activity_card_clicked_toast),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onActorClick = { actorName ->
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.actor_clicked_toast, actorName),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            useSmallerFont = true
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Close Button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = stringResource(R.string.close_button),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun getMockActivitiesForDialog(): List<Activity> {
+    val now = ZonedDateTime.now()
+    
+    return listOf(
+        Activity(
+            id = "1",
+            type = ActivityType.SPACE,
+            title = "Space",
+            description = "esranrzm created space 'test space for activity stream'",
+            actorName = "esranrzm",
+            timestamp = now.minusMinutes(45)
+        ),
+        Activity(
+            id = "2",
+            type = ActivityType.DISCUSSION,
+            title = "Discussion",
+            description = "dogaunal commented in 'test space for activity stream'",
+            actorName = "dogaunal",
+            timestamp = now.minusHours(1)
+        ),
+        Activity(
+            id = "3",
+            type = ActivityType.NODE,
+            title = "Node",
+            description = "dogaunal added node 'commentary'",
+            actorName = "dogaunal",
+            timestamp = now.minusHours(3)
+        ),
+        Activity(
+            id = "4",
+            type = ActivityType.REPORT,
+            title = "Report",
+            description = "esranrzm reported test space for activity stream",
+            actorName = "esranrzm",
+            timestamp = now.minusHours(4)
+        ),
+        Activity(
+            id = "5",
+            type = ActivityType.EDGE,
+            title = "Edge",
+            description = "esranrzm created edge 'commentary' - [notable work]-> 'Esra'",
+            actorName = "esranrzm",
+            timestamp = now.minusHours(5)
+        ),
+        Activity(
+            id = "6",
+            type = ActivityType.OTHER,
+            title = "Other",
+            description = "dogaunal commented in 'test space for activity stream'",
+            actorName = "dogaunal",
+            timestamp = now.minusHours(6)
+        )
+    )
 }
