@@ -32,12 +32,19 @@ fun ActivityCard(
     onCardClick: () -> Unit,
     onActorClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    useSmallerFont: Boolean = false
+    useSmallerFont: Boolean = false,
+    isClickable: Boolean = true
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onCardClick() }
+            .then(
+                if (isClickable) {
+                    Modifier.clickable { onCardClick() }
+                } else {
+                    Modifier
+                }
+            )
             .border(
                 width = 1.dp,
                 color = Color.Gray,
@@ -56,21 +63,18 @@ fun ActivityCard(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon on the left, centered vertically
             Image(
-                painter = painterResource(id = getActivityIconRes(activity.type)),
+                painter = painterResource(id = getActivityIconRes(activity.type, activity.objectType)),
                 contentDescription = activity.type.name,
                 modifier = Modifier.size(40.dp)
             )
 
-            // Content column
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Description with normal font (title removed)
                 Text(
                     text = activity.description,
                     style = if (useSmallerFont) {
@@ -81,13 +85,11 @@ fun ActivityCard(
                     color = Color.Black
                 )
 
-                // Actor name and timestamp in the same row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Actor name - light blue, clickable
                     Text(
                         text = activity.actorName,
                         style = if (useSmallerFont) {
@@ -99,7 +101,6 @@ fun ActivityCard(
                         modifier = Modifier.clickable { onActorClick(activity.actorName) }
                     )
 
-                    // Timestamp - light gray, at the end
                     Text(
                         text = formatRelativeTime(activity.timestamp),
                         style = if (useSmallerFont) {
@@ -115,14 +116,19 @@ fun ActivityCard(
     }
 }
 
-private fun getActivityIconRes(type: ActivityType): Int {
+private fun getActivityIconRes(type: ActivityType, objectType: String? = null): Int {
     return when (type) {
+        ActivityType.REPORT -> R.drawable.report
+        ActivityType.NODE -> R.drawable.node
+        ActivityType.EDGE -> R.drawable.edge
         ActivityType.SPACE -> R.drawable.space
         ActivityType.DISCUSSION -> R.drawable.comment
-        ActivityType.NODE -> R.drawable.node
-        ActivityType.REPORT -> R.drawable.report
-        ActivityType.EDGE -> R.drawable.edge
-        ActivityType.OTHER -> R.drawable.other
+        ActivityType.OTHER -> {
+            when (objectType?.lowercase()) {
+                "profile" -> R.drawable.report
+                else -> R.drawable.other
+            }
+        }
     }
 }
 
@@ -138,10 +144,7 @@ private fun formatRelativeTime(timestamp: java.time.ZonedDateTime): String {
         minutes < 1 -> "just now"
         minutes < 60 -> "$minutes minute${if (minutes != 1L) "s" else ""} ago"
         hours < 24 -> "$hours hour${if (hours != 1L) "s" else ""} ago"
-        days < 7 -> "$days day${if (days != 1L) "s" else ""} ago"
-        else -> {
-            val weeks = days / 7
-            "$weeks week${if (weeks != 1L) "s" else ""} ago"
-        }
+        days >= 1 -> "$days day${if (days != 1L) "s" else ""} ago"
+        else -> "just now"
     }
 }

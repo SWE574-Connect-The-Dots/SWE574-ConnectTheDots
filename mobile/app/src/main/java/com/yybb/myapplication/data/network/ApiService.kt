@@ -185,4 +185,10 @@ interface ApiService {
     suspend fun submitReport(
         @Body request: SubmitReportRequest
     ): Response<SubmitReportResponse>
+
+    @GET("api/activity-stream/")
+    suspend fun getActivityStream(
+        @Query("limit") limit: Int = 100,
+        @Query("since") since: String? = null
+    ): Response<com.yybb.myapplication.data.network.dto.ActivityStreamResponse>
 }

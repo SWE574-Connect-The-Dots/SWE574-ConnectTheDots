@@ -186,6 +186,5 @@
     <string name="delete_edge_confirmation">Deleting this edge will remove the connection between these nodes. This action cannot be undone.</string>
     <string name="activity_stream_title">Activity Stream</string>
     <string name="activity_stream_button">Activity Stream</string>
-    <string name="actor_clicked_toast">Clicked on actor: %1$s</string>
-    <string name="activity_card_clicked_toast">Clicked on activity card</string>
+    <string name="refresh_button">Refresh</string>
 </resources>
