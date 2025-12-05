@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
+from .models import Space, Tag, Property, EdgeProperty, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
 from .serializers import (RegisterSerializer, SpaceSerializer, TagSerializer, 
                           UserSerializer, ProfileSerializer, DiscussionSerializer, 
@@ -25,6 +25,7 @@ from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAd
 from .reporting import REASON_CODES, REASONS_VERSION
 from django.core.cache import cache
 from django.http import JsonResponse
+from django.db.models import Count
 
 def _recompute_entity_reports(content_type, content_id):
     """Recalculate report_count and is_reported based on OPEN reports only."""
@@ -62,6 +63,21 @@ def _recompute_entity_reports(content_type, content_id):
             obj.save(update_fields=['report_count', 'is_reported'])
         except Profile.DoesNotExist:
             pass
+
+
+def _normalize_property_value_for_storage(raw_value):
+    """
+    Convert property value payload to text/id for storage and search.
+    """
+    if raw_value is None:
+        return None, None
+    if isinstance(raw_value, dict):
+        value_id = raw_value.get('id') or raw_value.get('value')
+        text = raw_value.get('text') or raw_value.get('label') or value_id
+        if text is None and value_id is None:
+            text = str(raw_value)
+        return text, value_id
+    return str(raw_value), None
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -553,10 +569,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
             pass
         
         for prop in selected_properties:
+            value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
             Property.objects.create(
                 node=new_node, 
-                property_id=prop['property'],
-                statement_id=prop['statement_id']
+                property_id=prop.get('property'),
+                statement_id=prop.get('statement_id'),
+                property_label=prop.get('property_label'),
+                value=prop.get('value'),
+                value_text=value_text,
+                value_id=value_id
             )
         
         # Extract location information from selected properties if they exist
@@ -653,21 +674,185 @@ class SpaceViewSet(viewsets.ModelViewSet):
         edges = Edge.objects.filter(
             source_id__in=space_nodes,
             target_id__in=space_nodes
-        )
+        ).prefetch_related('edge_properties')
         
-        data = [
-            {
+        data = []
+        for edge in edges:
+            props = [
+                {
+                    'statement_id': ep.statement_id,
+                    'property_id': ep.property_id,
+                    'property_label': ep.property_label or ep.property_id,
+                    'value': ep.value,
+                    'value_text': ep.value_text,
+                    'value_id': ep.value_id
+                }
+                for ep in edge.edge_properties.all()
+            ]
+            data.append({
                 'id': edge.id,
                 'source': edge.source.id,
                 'target': edge.target.id,
                 'label': edge.relation_property,
                 'wikidata_property_id': edge.wikidata_property_id,
-                'created_at': edge.created_at
-            } 
-            for edge in edges
-        ]
+                'created_at': edge.created_at,
+                'properties': props
+            })
         
         return Response(data)
+
+    @action(detail=True, methods=['get'], url_path='search/properties')
+    def search_properties(self, request, pk=None):
+        """List available properties (from nodes and edges) within a space with counts."""
+        space = self.get_object()
+        node_props = (
+            Property.objects
+            .filter(node__space=space)
+            .values('property_id', 'property_label')
+            .annotate(count=Count('id'))
+        )
+        edge_props = (
+            EdgeProperty.objects
+            .filter(edge__source__space=space)
+            .values('property_id', 'property_label')
+            .annotate(count=Count('id'))
+        )
+
+        results = []
+        for item in node_props:
+            results.append({
+                'property_id': item['property_id'],
+                'property_label': item['property_label'] or item['property_id'],
+                'count': item['count'],
+                'source': 'node'
+            })
+        for item in edge_props:
+            results.append({
+                'property_id': item['property_id'],
+                'property_label': item['property_label'] or item['property_id'],
+                'count': item['count'],
+                'source': 'edge'
+            })
+        return Response(results)
+
+    @action(detail=True, methods=['get'], url_path='search/properties/(?P<property_id>[^/.]+)/values')
+    def search_property_values(self, request, pk=None, property_id=None):
+        """List available values for a given property within a space."""
+        space = self.get_object()
+        query = request.query_params.get('q', '').strip()
+
+        def _values_qs(model_cls, rel_field):
+            qs = model_cls.objects.filter(**{f"{rel_field}__space": space, "property_id": property_id})
+            if query:
+                qs = qs.filter(Q(value_text__icontains=query) | Q(property_label__icontains=query))
+            return qs
+
+        node_values = (
+            _values_qs(Property, 'node')
+            .values('value_id', 'value_text')
+            .annotate(count=Count('id'))
+        )
+        edge_values = (
+            _values_qs(EdgeProperty, 'edge__source')
+            .values('value_id', 'value_text')
+            .annotate(count=Count('id'))
+        )
+
+        results = []
+        for item in node_values:
+            results.append({
+                'value_id': item['value_id'],
+                'value_text': item['value_text'],
+                'count': item['count'],
+                'source': 'node'
+            })
+        for item in edge_values:
+            results.append({
+                'value_id': item['value_id'],
+                'value_text': item['value_text'],
+                'count': item['count'],
+                'source': 'edge'
+            })
+        return Response(results)
+
+    def _apply_rule_to_queryset(self, qs, rule):
+        property_id = rule.get('property_id') or rule.get('property')
+        value_id = rule.get('value_id')
+        value_text = rule.get('value_text') or rule.get('value')
+
+        q_obj = Q(property_id=property_id)
+        if value_id:
+            q_obj &= (Q(value_id=value_id) | Q(value__id=value_id))
+        if value_text:
+            q_obj &= Q(value_text__icontains=value_text)
+        return qs.filter(q_obj)
+
+    @action(detail=True, methods=['post'], url_path='search/query')
+    def search_query(self, request, pk=None):
+        """
+        Execute boolean search across node and edge properties.
+        Payload: { "rules": [ {property_id, value_id?, value_text?} ], "logic": "AND"|"OR" }
+        """
+        space = self.get_object()
+        rules = request.data.get('rules', [])
+        logic = (request.data.get('logic') or 'AND').upper()
+        if logic not in ['AND', 'OR']:
+            logic = 'AND'
+        if not rules:
+            return Response({'nodes': [], 'edges': []})
+
+        node_sets = []
+        base_node_qs = Property.objects.filter(node__space=space)
+        for rule in rules:
+            qs = self._apply_rule_to_queryset(base_node_qs, rule)
+            ids = set(qs.values_list('node_id', flat=True))
+            if ids:
+                node_sets.append(ids)
+
+        edge_sets = []
+        base_edge_qs = EdgeProperty.objects.filter(edge__source__space=space)
+        for rule in rules:
+            qs = self._apply_rule_to_queryset(base_edge_qs, rule)
+            ids = set(qs.values_list('edge_id', flat=True))
+            if ids:
+                edge_sets.append(ids)
+
+        def combine_sets(sets):
+            if not sets:
+                return set()
+            result = sets[0]
+            for s in sets[1:]:
+                result = result & s if logic == 'AND' else result | s
+            return result
+
+        matching_node_ids = combine_sets(node_sets)
+        matching_edge_ids = combine_sets(edge_sets)
+
+        nodes = Node.objects.filter(id__in=matching_node_ids, space=space)
+        edges = Edge.objects.filter(id__in=matching_edge_ids, source__space=space).prefetch_related('edge_properties')
+
+        node_data = NodeSerializer(nodes, many=True).data
+        edge_data = []
+        for edge in edges:
+            edge_data.append({
+                'id': edge.id,
+                'source': edge.source_id,
+                'target': edge.target_id,
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id,
+                'properties': [
+                    {
+                        'statement_id': ep.statement_id,
+                        'property_id': ep.property_id,
+                        'property_label': ep.property_label or ep.property_id,
+                        'value': ep.value,
+                        'value_text': ep.value_text,
+                        'value_id': ep.value_id
+                    } for ep in edge.edge_properties.all()
+                ]
+            })
+
+        return Response({'nodes': node_data, 'edges': edge_data})
     
     @action(detail=True, methods=['get'], url_path='collaborators')
     def collaborators(self, request, pk=None):
@@ -1013,10 +1198,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
             for prop in selected_properties:
                 if not prop:
                     continue
+                value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
                 Property.objects.create(
                     node=node,
-                    property_id=prop['property'],
-                    statement_id=prop['statement_id']
+                    property_id=prop.get('property'),
+                    statement_id=prop.get('statement_id'),
+                    property_label=prop.get('property_label'),
+                    value=prop.get('value'),
+                    value_text=value_text,
+                    value_id=value_id
                 )
             
             
@@ -1155,6 +1345,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             new_source_id = request.data.get('source_id')
             new_target_id = request.data.get('target_id')
             wikidata_property_id = request.data.get('wikidata_property_id', None)
+            edge_properties = request.data.get('edge_properties', None)
 
             if new_source_id and new_target_id:
                 if (str(edge.source.id) != str(new_source_id)) or (str(edge.target.id) != str(new_target_id)):
@@ -1169,6 +1360,22 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
             edge.wikidata_property_id = wikidata_property_id
             edge.save()
+
+            if edge_properties is not None:
+                EdgeProperty.objects.filter(edge=edge).delete()
+                for prop in edge_properties:
+                    if not prop:
+                        continue
+                    value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
+                    EdgeProperty.objects.create(
+                        edge=edge,
+                        property_id=prop.get('property'),
+                        statement_id=prop.get('statement_id'),
+                        property_label=prop.get('property_label'),
+                        value=prop.get('value'),
+                        value_text=value_text,
+                        value_id=value_id
+                    )
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1233,6 +1440,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         target_id = request.data.get('target_id')
         label = request.data.get('label', '').strip()
         wikidata_property_id = request.data.get('wikidata_property_id', None)
+        edge_properties = request.data.get('edge_properties', [])
         if not source_id or not target_id or not label:
             return Response({'error': 'source_id, target_id, and label are required'}, status=400)
         try:
@@ -1246,6 +1454,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 relation_property=label,
                 wikidata_property_id=wikidata_property_id
             )
+            for prop in edge_properties:
+                value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
+                EdgeProperty.objects.create(
+                    edge=edge,
+                    property_id=prop.get('property'),
+                    statement_id=prop.get('statement_id'),
+                    property_label=prop.get('property_label'),
+                    value=prop.get('value'),
+                    value_text=value_text,
+                    value_id=value_id
+                )
             try:
                 edge_summary = self._format_edge_summary(
                     request.user.username,
