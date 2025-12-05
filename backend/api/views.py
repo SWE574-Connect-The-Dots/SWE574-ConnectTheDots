@@ -701,6 +701,59 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='search/text')
+    def search_text(self, request, pk=None):
+        """Text search on node labels/wikidata ids and edge relation labels within a space."""
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return Response({'nodes': [], 'edges': []})
+
+        nodes = Node.objects.filter(
+            space_id=pk,
+            is_archived=False
+        ).filter(
+            Q(label__icontains=query) | Q(wikidata_id__icontains=query)
+        )
+
+        edges = Edge.objects.filter(
+            source__space_id=pk,
+            relation_property__icontains=query
+        ).prefetch_related('edge_properties')
+
+        node_data = [
+            {
+                'id': n.id,
+                'label': n.label,
+                'wikidata_id': n.wikidata_id,
+                'created_at': n.created_at,
+                'created_by': n.created_by.id if n.created_by else None,
+                'created_by_username': n.created_by.username if n.created_by else None
+            }
+            for n in nodes
+        ]
+
+        edge_data = []
+        for edge in edges:
+            edge_data.append({
+                'id': edge.id,
+                'source': edge.source_id,
+                'target': edge.target_id,
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id,
+                'properties': [
+                    {
+                        'statement_id': ep.statement_id,
+                        'property_id': ep.property_id,
+                        'property_label': ep.property_label or ep.property_id,
+                        'value': ep.value,
+                        'value_text': ep.value_text,
+                        'value_id': ep.value_id
+                    } for ep in edge.edge_properties.all()
+                ]
+            })
+
+        return Response({'nodes': node_data, 'edges': edge_data})
+
     @action(detail=True, methods=['get'], url_path='search/properties')
     def search_properties(self, request, pk=None):
         """List available properties (from nodes and edges) within a space with counts."""
