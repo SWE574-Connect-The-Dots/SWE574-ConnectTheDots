@@ -15,6 +15,265 @@ import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
 
+const advancedSearchStyles = `
+.advanced-search-wrapper {
+  margin-bottom: 30px;
+}
+
+.simple-search-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.simple-search-container {
+  flex: 1;
+  position: relative;
+}
+
+.simple-search-container input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.simple-search-container input:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.simple-search-container input::placeholder {
+  color: #999;
+}
+
+.simple-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757575;
+  font-size: 18px;
+}
+
+.advanced-search-toggle-btn {
+  padding: 12px 24px;
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.advanced-search-toggle-btn:hover {
+  background: #005A8C;
+}
+
+.advanced-search-container {
+  background: #F8F9FA;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 16px;
+  color: #1B1F3B;
+}
+
+.advanced-search-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B1F3B;
+}
+
+.advanced-search-subtitle {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.criteria-container {
+  background: #FFFFFF;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.criteria-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.criteria-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.criteria-field label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+}
+
+.criteria-field input,
+.criteria-field select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.criteria-field input:focus,
+.criteria-field select:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.criteria-field input::placeholder {
+  color: #999;
+}
+
+.operator-field {
+  padding-top: 22px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.delete-criteria-btn {
+  padding: 8px;
+  margin-top: 22px;
+  background: transparent;
+  border: none;
+  color: #BD4902;
+  cursor: pointer;
+  font-size: 18px;
+  transition: color 0.2s;
+}
+
+.delete-criteria-btn:hover {
+  color: #FF6B35;
+}
+
+.logical-operator-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.logical-operator-btn {
+  padding: 6px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #FFFFFF;
+}
+
+.logical-operator-btn.active-and {
+  background: #2D6A4F;
+  color: #FFFFFF;
+  border-color: #2D6A4F;
+}
+
+.logical-operator-btn.inactive {
+  background: #FFFFFF;
+  color: #999;
+  border: 1px solid #ddd;
+}
+
+.logical-operator-btn.inactive:hover {
+  border-color: #999;
+  color: #666;
+}
+
+.logical-operator-btn.active-or {
+  background: #F57C00;
+  color: #FFFFFF;
+  border-color: #F57C00;
+}
+
+.add-criteria-btn {
+  width: 100%;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.add-criteria-btn:hover {
+  border-color: #0076B5;
+  color: #0076B5;
+  background: #F8F9FA;
+}
+
+.search-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.search-action-btn {
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-action-btn.clear {
+  background: #FFFFFF;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.search-action-btn.clear:hover {
+  background: #F8F9FA;
+  border-color: #999;
+  color: #333;
+}
+
+.search-action-btn.search {
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-action-btn.search:hover {
+  background: #005A8C;
+}
+`;
+
 const propertySelectionStyles = `
 .property-selection-container {
   border: 1px solid var(--color-gray-300);
@@ -368,6 +627,13 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+
+  // Advanced Search states
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [searchCriteria, setSearchCriteria] = useState([
+    { id: 1, property: '', operator: 'is', value: '', logicalOp: 'AND' }
+  ]);
+  const [advancedSearchQuery, setAdvancedSearchQuery] = useState("");
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -963,6 +1229,45 @@ const SpaceDetails = () => {
     setShowReportModal(true);
   };
 
+  const handleAddCriteria = () => {
+    const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
+    setSearchCriteria([
+      ...searchCriteria,
+      { id: newId, property: '', operator: 'is', value: '', logicalOp: 'AND' }
+    ]);
+  };
+
+  const handleRemoveCriteria = (id) => {
+    if (searchCriteria.length > 1) {
+      setSearchCriteria(searchCriteria.filter(c => c.id !== id));
+    }
+  };
+
+  const handleCriteriaChange = (id, field, value) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const handleToggleLogicalOp = (id) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, logicalOp: c.logicalOp === 'AND' ? 'OR' : 'AND' } : c
+    ));
+  };
+
+  const handleClearSearch = () => {
+    setSearchCriteria([
+      { id: 1, property: '', operator: 'is', value: '', logicalOp: 'AND' }
+    ]);
+    setAdvancedSearchQuery("");
+  };
+
+  const handleAdvancedSearch = () => {
+    // api
+    console.log('Search criteria:', searchCriteria);
+    console.log('Text query:', advancedSearchQuery);
+  };
+
   const handleCloseModal = () => {
     setSelectedNode(null);
   };
@@ -1223,6 +1528,7 @@ const SpaceDetails = () => {
       }}
     >
       {/* Inject CSS for property selection */}
+      <style>{advancedSearchStyles}</style>
       <style>{propertySelectionStyles}</style>
 
       <div style={{ flex: 1, marginRight: "20px" }}>
@@ -1492,6 +1798,121 @@ const SpaceDetails = () => {
               )}
             </span>
           ))}
+        </div>
+
+        {/* Advanced Search Section */}
+        <div className="advanced-search-wrapper">
+          <div className="simple-search-row">
+            <div className="simple-search-container">
+              <span className="simple-search-icon">🔍</span>
+              <input
+                type="text"
+                value={advancedSearchQuery}
+                onChange={(e) => setAdvancedSearchQuery(e.target.value)}
+                placeholder="Search within this space's properties, values, or content..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAdvancedSearch();
+                  }
+                }}
+              />
+            </div>
+            <button 
+              className="advanced-search-toggle-btn"
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+            >
+              Advanced Search
+            </button>
+          </div>
+
+          {showAdvancedSearch && (
+            <div className="advanced-search-container">
+              <div className="advanced-search-header">
+                <h4>Advanced Search</h4>
+                <p className="advanced-search-subtitle">
+                  Construct structured queries to find exactly what you're looking for.
+                </p>
+              </div>
+
+              <div className="criteria-container">
+                {searchCriteria.map((criteria, index) => (
+                  <div key={criteria.id}>
+                    <div className="criteria-row">
+                      <div className="criteria-field">
+                        <label>Property</label>
+                        <input
+                          type="text"
+                          value={criteria.property}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'property', e.target.value)}
+                          placeholder="e.g., instance of"
+                        />
+                      </div>
+                      
+                      <div className="operator-field">
+                        is
+                      </div>
+                      
+                      <div className="criteria-field">
+                        <label>Value</label>
+                        <input
+                          type="text"
+                          value={criteria.value}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'value', e.target.value)}
+                          placeholder="e.g., Human"
+                        />
+                      </div>
+
+                      {searchCriteria.length > 1 && (
+                        <button
+                          className="delete-criteria-btn"
+                          onClick={() => handleRemoveCriteria(criteria.id)}
+                          title="Remove criteria"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+
+                    {index < searchCriteria.length - 1 && (
+                      <div className="logical-operator-row">
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'AND' ? 'active-and' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          AND
+                        </button>
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'OR' ? 'active-or' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          OR
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <button className="add-criteria-btn" onClick={handleAddCriteria}>
+                  + Add new property search
+                </button>
+              </div>
+
+              <div className="search-actions">
+                <button 
+                  className="search-action-btn clear"
+                  onClick={handleClearSearch}
+                >
+                  Clear All
+                </button>
+                <button 
+                  className="search-action-btn search"
+                  onClick={handleAdvancedSearch}
+                >
+                  🔍 Search
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Graph Visualization */}
