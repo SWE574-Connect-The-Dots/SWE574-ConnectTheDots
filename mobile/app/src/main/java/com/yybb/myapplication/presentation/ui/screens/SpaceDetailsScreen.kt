@@ -1,6 +1,8 @@
 package com.yybb.myapplication.presentation.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,9 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -70,16 +75,22 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.COMMENTS_PER_PAGE
 import com.yybb.myapplication.data.Constants.DISCUSSION_SECTION_HEIGHT
 import com.yybb.myapplication.data.Constants.MAX_COMMENT_LENGTH
+import com.yybb.myapplication.data.model.Activity
 import com.yybb.myapplication.data.model.Discussion
 import com.yybb.myapplication.data.model.VoteType
 import com.yybb.myapplication.presentation.navigation.Screen
+import com.yybb.myapplication.presentation.ui.screens.components.ActivityCard
 import com.yybb.myapplication.presentation.ui.screens.components.CollaboratorDialog
 import com.yybb.myapplication.presentation.ui.screens.components.DiscussionCard
+import com.yybb.myapplication.presentation.ui.utils.navigateFromActivity
+import com.yybb.myapplication.presentation.ui.viewmodel.ActivityStreamViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceDetailsViewModel
 import com.yybb.myapplication.presentation.ui.screens.LoadingDialog
 import kotlinx.coroutines.launch
@@ -97,6 +108,7 @@ fun SpaceDetailsScreen(
     onNavigateToSpaceNodes: (Int) -> Unit = {},
     onNavigateBack: () -> Unit,
     onNavigateToProfile: (String) -> Unit = {},
+    onNavigateFromActivity: (Activity) -> Unit = {},
 ) {
     val spaceDetails by viewModel.spaceDetails.collectAsState()
     val discussions by viewModel.discussions.collectAsState()
@@ -121,6 +133,7 @@ fun SpaceDetailsScreen(
     var showCollaboratorDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showActivityStreamDialog by remember { mutableStateOf(false) }
     var reportDialogTitle by remember { mutableStateOf("") }
     var reportDialogContentType by remember { mutableStateOf("space") }
     var showMenu by remember { mutableStateOf(false) }
@@ -301,6 +314,26 @@ fun SpaceDetailsScreen(
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Flag,
+                                        contentDescription = null,
+                                        tint = Color.Black
+                                    )
+                                }
+                            )
+                            // Activity Stream Menu Item
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = stringResource(R.string.activity_stream_button),
+                                        color = Color.Black
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showActivityStreamDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
                                         contentDescription = null,
                                         tint = Color.Black
                                     )
@@ -722,6 +755,26 @@ fun SpaceDetailsScreen(
             }
         )
     }
+
+    // Activity Stream Dialog
+    if (showActivityStreamDialog) {
+        spaceDetails?.let { currentSpaceDetails ->
+            ActivityStreamDialog(
+                spaceId = currentSpaceDetails.id,
+                onDismiss = { showActivityStreamDialog = false },
+                onNavigateToProfile = { username ->
+                    if (username.isEmpty()) {
+                        // Navigate to current user's profile using bottom nav
+                        onNavigateToProfile("")
+                    } else {
+                        onNavigateToProfile(username)
+                    }
+                },
+                spaceDetailsViewModel = viewModel,
+                onNavigateFromActivity = onNavigateFromActivity
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -925,4 +978,177 @@ private fun generatePaginationNumbers(currentPage: Int, totalPages: Int): List<A
     }
 
     return numbers
+}
+
+@Composable
+private fun ActivityStreamDialog(
+    spaceId: Int,
+    onDismiss: () -> Unit,
+    onNavigateToProfile: (String) -> Unit,
+    spaceDetailsViewModel: SpaceDetailsViewModel,
+    onNavigateFromActivity: (Activity) -> Unit
+) {
+    val viewModel: ActivityStreamViewModel = hiltViewModel()
+    val allActivities by viewModel.activities.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val currentUsername = remember { spaceDetailsViewModel.getCurrentUsername() }
+    
+    // Filter activities for this space
+    val filteredActivities = remember(allActivities, spaceId) {
+        allActivities.filter { activity ->
+            // Check if payload has space_id matching current space id
+            (activity.payloadSpaceId != null && activity.payloadSpaceId == spaceId) ||
+            // OR check if target has space id and type is "Space" (case-insensitive)
+            (activity.targetId != null && activity.targetType?.equals("Space", ignoreCase = true) == true && activity.targetId.toIntOrNull() == spaceId) ||
+            // OR check if object type is "Space" (case-insensitive) and id matches current space id
+            (activity.objectType?.equals("space", ignoreCase = true) == true && activity.objectId?.toIntOrNull() == spaceId)
+        }
+    }
+    
+    // Load activities when dialog opens
+    LaunchedEffect(Unit) {
+        viewModel.loadActivities()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 48.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Title and Refresh button row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.activity_stream_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    // Refresh button
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color.Gray.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clickable { viewModel.loadActivities() }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.refresh_button),
+                            color = Color.Black,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Activity Stream List
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(500.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    error != null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(500.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = error ?: "An error occurred",
+                                color = Color.Red
+                            )
+                        }
+                    }
+                    filteredActivities.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(500.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = "No activities found for this space")
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(500.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(
+                                items = filteredActivities,
+                                key = { activity -> activity.id }
+                            ) { activity ->
+                                ActivityCard(
+                                    activity = activity,
+                                    onCardClick = {
+                                        // No action - cards are not clickable in dialog
+                                    },
+                                    onActorClick = { actorName ->
+                                        if (actorName == currentUsername) {
+                                            // Navigate to current user's profile - close dialog first
+                                            onDismiss()
+                                            onNavigateToProfile("")
+                                        } else {
+                                            // Use the same pattern as collaborator dialog
+                                            spaceDetailsViewModel.getProfileByUsername(actorName)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    useSmallerFont = true,
+                                    isClickable = false
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Close Button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = stringResource(R.string.close_button),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
 }

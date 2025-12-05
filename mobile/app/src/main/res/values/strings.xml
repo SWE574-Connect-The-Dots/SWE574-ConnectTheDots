@@ -184,4 +184,7 @@
     <string name="edge_flight_capacity_label">Has flight capacity:</string>
     <string name="delete_edge_title">Delete Edge</string>
     <string name="delete_edge_confirmation">Deleting this edge will remove the connection between these nodes. This action cannot be undone.</string>
+    <string name="activity_stream_title">Activity Stream</string>
+    <string name="activity_stream_button">Activity Stream</string>
+    <string name="refresh_button">Refresh</string>
 </resources>
