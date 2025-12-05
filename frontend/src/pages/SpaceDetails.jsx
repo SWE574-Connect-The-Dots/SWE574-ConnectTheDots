@@ -2274,7 +2274,7 @@ const SpaceDetails = () => {
                           onClick={() => handleRemoveCriteria(criteria.id)}
                           title="Remove criteria"
                         >
-                          🗑️
+                          ❌
                         </button>
                       )}
                     </div>
@@ -2316,7 +2316,7 @@ const SpaceDetails = () => {
                   onClick={handleAdvancedSearch}
                   disabled={searchingQuery}
                 >
-                  {searchingQuery ? '⏳ Searching...' : '🔍 Search'}
+                  {searchingQuery ? 'Searching...' : 'Search'}
                 </button>
               </div>
             </div>
