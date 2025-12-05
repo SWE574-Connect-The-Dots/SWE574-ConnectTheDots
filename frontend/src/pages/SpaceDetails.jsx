@@ -628,12 +628,22 @@ const SpaceDetails = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
 
-  // Advanced Search states
+  const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
+  const [simpleSearchResults, setSimpleSearchResults] = useState(null);
+  const [searchingSimpleQuery, setSearchingSimpleQuery] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [searchCriteria, setSearchCriteria] = useState([
-    { id: 1, property: '', operator: 'is', value: '', logicalOp: 'AND' }
+    { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
   ]);
   const [advancedSearchQuery, setAdvancedSearchQuery] = useState("");
+  const [availableProperties, setAvailableProperties] = useState([]);
+  const [availableValues, setAvailableValues] = useState({});
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [loadingValues, setLoadingValues] = useState({});
+  const [advancedSearchResults, setAdvancedSearchResults] = useState(null);
+  const [searchingQuery, setSearchingQuery] = useState(false);
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState({});
+  const [showValueDropdown, setShowValueDropdown] = useState({});
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -1233,7 +1243,7 @@ const SpaceDetails = () => {
     const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
     setSearchCriteria([
       ...searchCriteria,
-      { id: newId, property: '', operator: 'is', value: '', logicalOp: 'AND' }
+      { id: newId, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
     ]);
   };
 
@@ -1255,17 +1265,158 @@ const SpaceDetails = () => {
     ));
   };
 
-  const handleClearSearch = () => {
-    setSearchCriteria([
-      { id: 1, property: '', operator: 'is', value: '', logicalOp: 'AND' }
-    ]);
-    setAdvancedSearchQuery("");
+  const handleSimpleSearch = async () => {
+    if (!simpleSearchQuery.trim()) {
+      setSimpleSearchResults(null);
+      return;
+    }
+
+    setSearchingSimpleQuery(true);
+    try {
+      const response = await api.get(
+        `/spaces/${id}/search/text/?q=${encodeURIComponent(simpleSearchQuery)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setSimpleSearchResults(response.data);
+      // Clear advanced search results when doing simple search
+      setAdvancedSearchResults(null);
+      console.log('Simple search results:', response.data);
+    } catch (error) {
+      console.error("Error executing simple search:", error);
+      alert("Failed to execute search. Please try again.");
+    } finally {
+      setSearchingSimpleQuery(false);
+    }
   };
 
-  const handleAdvancedSearch = () => {
-    // api
-    console.log('Search criteria:', searchCriteria);
-    console.log('Text query:', advancedSearchQuery);
+  const handleClearSearch = () => {
+    setSearchCriteria([
+      { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+    setAdvancedSearchQuery("");
+    setAdvancedSearchResults(null);
+  };
+
+  const fetchSpaceProperties = async () => {
+    if (availableProperties.length > 0) return;
+    
+    setLoadingProperties(true);
+    try {
+      const response = await api.get(`/spaces/${id}/search/properties/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableProperties(response.data);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const fetchPropertyValues = async (criteriaId, propertyId, searchText = '') => {
+    setLoadingValues(prev => ({ ...prev, [criteriaId]: true }));
+    try {
+      const params = searchText ? `?q=${encodeURIComponent(searchText)}` : '';
+      const response = await api.get(`/spaces/${id}/search/properties/${propertyId}/values/${params}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: response.data }));
+    } catch (error) {
+      console.error("Error fetching property values:", error);
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    } finally {
+      setLoadingValues(prev => ({ ...prev, [criteriaId]: false }));
+    }
+  };
+
+  const handleAdvancedSearch = async () => {
+    const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
+    
+    if (validCriteria.length === 0) {
+      alert("Please add at least one complete search criterion (property and value).");
+      return;
+    }
+
+    const logic = validCriteria.length > 0 ? validCriteria[0].logicalOp : 'AND';
+
+    const rules = validCriteria.map(c => ({
+      property_id: c.propertyId,
+      value_id: c.valueId || null,
+      value_text: c.value || null
+    }));
+
+    setSearchingQuery(true);
+    try {
+      const response = await api.post(
+        `/spaces/${id}/search/query/`,
+        {
+          rules: rules,
+          logic: logic
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      setAdvancedSearchResults(response.data);
+      // Clear simple search results when doing advanced search
+      setSimpleSearchResults(null);
+      console.log('Search results:', response.data);
+    } catch (error) {
+      console.error("Error executing search:", error);
+      alert("Failed to execute search. Please try again.");
+    } finally {
+      setSearchingQuery(false);
+    }
+  };
+
+  const handlePropertySelect = (criteriaId, property) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, property: property.property_label, propertyId: property.property_id, value: '', valueId: '' } 
+        : c
+    ));
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: false }));
+    setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    
+    if (property.property_id) {
+      fetchPropertyValues(criteriaId, property.property_id);
+    }
+  };
+
+  const handleValueSelect = (criteriaId, valueItem) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, value: valueItem.value_text, valueId: valueItem.value_id } 
+        : c
+    ));
+    setShowValueDropdown(prev => ({ ...prev, [criteriaId]: false }));
+  };
+
+  const handlePropertyInputFocus = (criteriaId) => {
+    fetchSpaceProperties();
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: true }));
+  };
+
+  const handleValueInputFocus = (criteriaId, propertyId) => {
+    if (propertyId) {
+      setShowValueDropdown(prev => ({ ...prev, [criteriaId]: true }));
+      if (!availableValues[criteriaId] || availableValues[criteriaId].length === 0) {
+        fetchPropertyValues(criteriaId, propertyId);
+      }
+    }
   };
 
   const handleCloseModal = () => {
@@ -1803,19 +1954,33 @@ const SpaceDetails = () => {
         {/* Advanced Search Section */}
         <div className="advanced-search-wrapper">
           <div className="simple-search-row">
-            <div className="simple-search-container">
+            <div className="simple-search-container" style={{ position: 'relative' }}>
               <span className="simple-search-icon">🔍</span>
               <input
                 type="text"
-                value={advancedSearchQuery}
-                onChange={(e) => setAdvancedSearchQuery(e.target.value)}
+                value={simpleSearchQuery}
+                onChange={(e) => setSimpleSearchQuery(e.target.value)}
                 placeholder="Search within this space's properties, values, or content..."
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
-                    handleAdvancedSearch();
+                    handleSimpleSearch();
                   }
                 }}
+                disabled={searchingSimpleQuery}
               />
+              {searchingSimpleQuery && (
+                <span style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#0076B5',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  Searching...
+                </span>
+              )}
             </div>
             <button 
               className="advanced-search-toggle-btn"
@@ -1824,6 +1989,145 @@ const SpaceDetails = () => {
               Advanced Search
             </button>
           </div>
+
+          {/* Simple Search Results */}
+          {simpleSearchResults && (
+            <div style={{ 
+              marginTop: '16px',
+              padding: '16px', 
+              backgroundColor: '#fff', 
+              borderRadius: '4px',
+              border: '1px solid #ddd'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#1B1F3B', fontSize: '16px' }}>
+                  Search Results for "{simpleSearchQuery}"
+                </h4>
+                <button 
+                  onClick={() => {
+                    setSimpleSearchResults(null);
+                    setSimpleSearchQuery("");
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: '4px 8px'
+                  }}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Nodes Results */}
+              {simpleSearchResults.nodes && simpleSearchResults.nodes.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <h5 style={{ color: '#0076B5', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Nodes ({simpleSearchResults.nodes.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.nodes.map(node => (
+                      <div 
+                        key={node.id}
+                        style={{
+                          padding: '10px 12px',
+                          backgroundColor: '#f8f9fa',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontSize: '14px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#0076B5';
+                          e.currentTarget.style.backgroundColor = '#f0f7fc';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        }}
+                        onClick={() => {
+                          const nodeObj = nodes.find(n => n.id === node.id.toString());
+                          if (nodeObj) setSelectedNode(nodeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                          {node.label}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {node.wikidata_id}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Edges Results */}
+              {simpleSearchResults.edges && simpleSearchResults.edges.length > 0 && (
+                <div>
+                  <h5 style={{ color: '#2D6A4F', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Edges ({simpleSearchResults.edges.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.edges.map(edge => {
+                      const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                      const targetNode = nodes.find(n => n.id === edge.target.toString());
+                      return (
+                        <div 
+                          key={edge.id}
+                          style={{
+                            padding: '10px 12px',
+                            backgroundColor: '#f8f9fa',
+                            borderRadius: '4px',
+                            border: '1px solid #e0e0e0',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '14px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#2D6A4F';
+                            e.currentTarget.style.backgroundColor = '#f0f7f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                            e.currentTarget.style.backgroundColor = '#f8f9fa';
+                          }}
+                          onClick={() => {
+                            const edgeObj = edges.find(e => e.id === edge.id.toString());
+                            if (edgeObj) setSelectedEdge(edgeObj);
+                          }}
+                        >
+                          <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                            {sourceNode?.data?.label || `Node ${edge.source}`} 
+                            <span style={{ margin: '0 6px', color: '#2D6A4F', fontWeight: '400' }}>→</span>
+                            {targetNode?.data?.label || `Node ${edge.target}`}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                            {edge.label || 'No label'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* No Results */}
+              {(!simpleSearchResults.nodes || simpleSearchResults.nodes.length === 0) && 
+               (!simpleSearchResults.edges || simpleSearchResults.edges.length === 0) && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                  <p style={{ margin: 0 }}>No results found for "{simpleSearchQuery}"</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px' }}>
+                    Try different keywords or use Advanced Search for more options
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {showAdvancedSearch && (
             <div className="advanced-search-container">
@@ -1838,28 +2142,130 @@ const SpaceDetails = () => {
                 {searchCriteria.map((criteria, index) => (
                   <div key={criteria.id}>
                     <div className="criteria-row">
-                      <div className="criteria-field">
+                      <div className="criteria-field" style={{ position: 'relative' }}>
                         <label>Property</label>
                         <input
                           type="text"
                           value={criteria.property}
                           onChange={(e) => handleCriteriaChange(criteria.id, 'property', e.target.value)}
-                          placeholder="e.g., instance of"
+                          onFocus={() => handlePropertyInputFocus(criteria.id)}
+                          onBlur={() => setTimeout(() => setShowPropertyDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder="Click to select property..."
+                          readOnly={loadingProperties}
                         />
+                        {showPropertyDropdown[criteria.id] && availableProperties.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableProperties
+                              .filter(prop => 
+                                !criteria.property || 
+                                prop.property_label.toLowerCase().includes(criteria.property.toLowerCase()) ||
+                                prop.property_id.toLowerCase().includes(criteria.property.toLowerCase())
+                              )
+                              .map(prop => (
+                                <div
+                                  key={prop.property_id}
+                                  onClick={() => handlePropertySelect(criteria.id, prop)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {prop.property_label}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {prop.property_id} • {prop.count} {prop.count === 1 ? 'item' : 'items'} • {prop.source}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingProperties && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading properties...
+                          </div>
+                        )}
                       </div>
                       
                       <div className="operator-field">
                         is
                       </div>
                       
-                      <div className="criteria-field">
+                      <div className="criteria-field" style={{ position: 'relative' }}>
                         <label>Value</label>
                         <input
                           type="text"
                           value={criteria.value}
                           onChange={(e) => handleCriteriaChange(criteria.id, 'value', e.target.value)}
-                          placeholder="e.g., Human"
+                          onFocus={() => handleValueInputFocus(criteria.id, criteria.propertyId)}
+                          onBlur={() => setTimeout(() => setShowValueDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder={criteria.propertyId ? "Click to select value..." : "Select property first"}
+                          disabled={!criteria.propertyId}
+                          readOnly={loadingValues[criteria.id]}
                         />
+                        {showValueDropdown[criteria.id] && availableValues[criteria.id] && availableValues[criteria.id].length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableValues[criteria.id]
+                              .filter(valueItem => 
+                                !criteria.value || 
+                                (valueItem.value_text && valueItem.value_text.toLowerCase().includes(criteria.value.toLowerCase()))
+                              )
+                              .map((valueItem, idx) => (
+                                <div
+                                  key={`${valueItem.value_id}-${idx}`}
+                                  onClick={() => handleValueSelect(criteria.id, valueItem)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {valueItem.value_text || valueItem.value_id || 'Unknown'}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {valueItem.count} {valueItem.count === 1 ? 'occurrence' : 'occurrences'}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingValues[criteria.id] && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading values...
+                          </div>
+                        )}
                       </div>
 
                       {searchCriteria.length > 1 && (
@@ -1901,19 +2307,155 @@ const SpaceDetails = () => {
                 <button 
                   className="search-action-btn clear"
                   onClick={handleClearSearch}
+                  disabled={searchingQuery}
                 >
                   Clear All
                 </button>
                 <button 
                   className="search-action-btn search"
                   onClick={handleAdvancedSearch}
+                  disabled={searchingQuery}
                 >
-                  🔍 Search
+                  {searchingQuery ? '⏳ Searching...' : '🔍 Search'}
                 </button>
               </div>
             </div>
           )}
         </div>
+
+        {/* Search Results Section */}
+        {advancedSearchResults && (
+          <div style={{ 
+            marginTop: '20px', 
+            padding: '20px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '1px solid #ddd'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#1B1F3B' }}>Search Results</h3>
+              <button 
+                onClick={() => setAdvancedSearchResults(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '4px 8px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Nodes Results */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: '#0076B5', marginBottom: '10px' }}>
+                Nodes ({advancedSearchResults.nodes?.length || 0})
+              </h4>
+              {advancedSearchResults.nodes && advancedSearchResults.nodes.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.nodes.map(node => (
+                    <div 
+                      key={node.id}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#fff',
+                        borderRadius: '4px',
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#0076B5';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,118,181,0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onClick={() => {
+                        const nodeObj = nodes.find(n => n.id === node.id.toString());
+                        if (nodeObj) setSelectedNode(nodeObj);
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                        {node.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        Wikidata: {node.wikidata_id}
+                      </div>
+                      {node.country && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          📍 {[node.street, node.district, node.city, node.country].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No nodes found matching your criteria.</p>
+              )}
+            </div>
+
+            {/* Edges Results */}
+            <div>
+              <h4 style={{ color: '#2D6A4F', marginBottom: '10px' }}>
+                Edges ({advancedSearchResults.edges?.length || 0})
+              </h4>
+              {advancedSearchResults.edges && advancedSearchResults.edges.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.edges.map(edge => {
+                    const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                    const targetNode = nodes.find(n => n.id === edge.target.toString());
+                    return (
+                      <div 
+                        key={edge.id}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: '#fff',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#2D6A4F';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(45,106,79,0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        onClick={() => {
+                          const edgeObj = edges.find(e => e.id === edge.id.toString());
+                          if (edgeObj) setSelectedEdge(edgeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                          {sourceNode?.data?.label || `Node ${edge.source}`} 
+                          <span style={{ margin: '0 8px', color: '#2D6A4F' }}>→</span>
+                          {targetNode?.data?.label || `Node ${edge.target}`}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666', fontStyle: 'italic' }}>
+                          Relation: {edge.label || 'No label'}
+                        </div>
+                        {edge.properties && edge.properties.length > 0 && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                            {edge.properties.length} {edge.properties.length === 1 ? 'property' : 'properties'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No edges found matching your criteria.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Graph Visualization */}
         <div style={{ marginBottom: "30px" }}>
