@@ -15,6 +15,265 @@ import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
 
+const advancedSearchStyles = `
+.advanced-search-wrapper {
+  margin-bottom: 30px;
+}
+
+.simple-search-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.simple-search-container {
+  flex: 1;
+  position: relative;
+}
+
+.simple-search-container input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.simple-search-container input:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.simple-search-container input::placeholder {
+  color: #999;
+}
+
+.simple-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757575;
+  font-size: 18px;
+}
+
+.advanced-search-toggle-btn {
+  padding: 12px 24px;
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.advanced-search-toggle-btn:hover {
+  background: #005A8C;
+}
+
+.advanced-search-container {
+  background: #F8F9FA;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 16px;
+  color: #1B1F3B;
+}
+
+.advanced-search-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B1F3B;
+}
+
+.advanced-search-subtitle {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.criteria-container {
+  background: #FFFFFF;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.criteria-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.criteria-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.criteria-field label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+}
+
+.criteria-field input,
+.criteria-field select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.criteria-field input:focus,
+.criteria-field select:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.criteria-field input::placeholder {
+  color: #999;
+}
+
+.operator-field {
+  padding-top: 22px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.delete-criteria-btn {
+  padding: 8px;
+  margin-top: 22px;
+  background: transparent;
+  border: none;
+  color: #BD4902;
+  cursor: pointer;
+  font-size: 18px;
+  transition: color 0.2s;
+}
+
+.delete-criteria-btn:hover {
+  color: #FF6B35;
+}
+
+.logical-operator-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.logical-operator-btn {
+  padding: 6px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #FFFFFF;
+}
+
+.logical-operator-btn.active-and {
+  background: #2D6A4F;
+  color: #FFFFFF;
+  border-color: #2D6A4F;
+}
+
+.logical-operator-btn.inactive {
+  background: #FFFFFF;
+  color: #999;
+  border: 1px solid #ddd;
+}
+
+.logical-operator-btn.inactive:hover {
+  border-color: #999;
+  color: #666;
+}
+
+.logical-operator-btn.active-or {
+  background: #F57C00;
+  color: #FFFFFF;
+  border-color: #F57C00;
+}
+
+.add-criteria-btn {
+  width: 100%;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.add-criteria-btn:hover {
+  border-color: #0076B5;
+  color: #0076B5;
+  background: #F8F9FA;
+}
+
+.search-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.search-action-btn {
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-action-btn.clear {
+  background: #FFFFFF;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.search-action-btn.clear:hover {
+  background: #F8F9FA;
+  border-color: #999;
+  color: #333;
+}
+
+.search-action-btn.search {
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-action-btn.search:hover {
+  background: #005A8C;
+}
+`;
+
 const propertySelectionStyles = `
 .property-selection-container {
   border: 1px solid var(--color-gray-300);
@@ -368,6 +627,23 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+
+  const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
+  const [simpleSearchResults, setSimpleSearchResults] = useState(null);
+  const [searchingSimpleQuery, setSearchingSimpleQuery] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [searchCriteria, setSearchCriteria] = useState([
+    { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+  ]);
+  const [advancedSearchQuery, setAdvancedSearchQuery] = useState("");
+  const [availableProperties, setAvailableProperties] = useState([]);
+  const [availableValues, setAvailableValues] = useState({});
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [loadingValues, setLoadingValues] = useState({});
+  const [advancedSearchResults, setAdvancedSearchResults] = useState(null);
+  const [searchingQuery, setSearchingQuery] = useState(false);
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState({});
+  const [showValueDropdown, setShowValueDropdown] = useState({});
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -963,6 +1239,186 @@ const SpaceDetails = () => {
     setShowReportModal(true);
   };
 
+  const handleAddCriteria = () => {
+    const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
+    setSearchCriteria([
+      ...searchCriteria,
+      { id: newId, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+  };
+
+  const handleRemoveCriteria = (id) => {
+    if (searchCriteria.length > 1) {
+      setSearchCriteria(searchCriteria.filter(c => c.id !== id));
+    }
+  };
+
+  const handleCriteriaChange = (id, field, value) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const handleToggleLogicalOp = (id) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, logicalOp: c.logicalOp === 'AND' ? 'OR' : 'AND' } : c
+    ));
+  };
+
+  const handleSimpleSearch = async () => {
+    if (!simpleSearchQuery.trim()) {
+      setSimpleSearchResults(null);
+      return;
+    }
+
+    setSearchingSimpleQuery(true);
+    try {
+      const response = await api.get(
+        `/spaces/${id}/search/text/?q=${encodeURIComponent(simpleSearchQuery)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setSimpleSearchResults(response.data);
+      // Clear advanced search results when doing simple search
+      setAdvancedSearchResults(null);
+      console.log('Simple search results:', response.data);
+    } catch (error) {
+      console.error("Error executing simple search:", error);
+      alert("Failed to execute search. Please try again.");
+    } finally {
+      setSearchingSimpleQuery(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchCriteria([
+      { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+    setAdvancedSearchQuery("");
+    setAdvancedSearchResults(null);
+  };
+
+  const fetchSpaceProperties = async () => {
+    if (availableProperties.length > 0) return;
+    
+    setLoadingProperties(true);
+    try {
+      const response = await api.get(`/spaces/${id}/search/properties/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableProperties(response.data);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const fetchPropertyValues = async (criteriaId, propertyId, searchText = '') => {
+    setLoadingValues(prev => ({ ...prev, [criteriaId]: true }));
+    try {
+      const params = searchText ? `?q=${encodeURIComponent(searchText)}` : '';
+      const response = await api.get(`/spaces/${id}/search/properties/${propertyId}/values/${params}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: response.data }));
+    } catch (error) {
+      console.error("Error fetching property values:", error);
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    } finally {
+      setLoadingValues(prev => ({ ...prev, [criteriaId]: false }));
+    }
+  };
+
+  const handleAdvancedSearch = async () => {
+    const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
+    
+    if (validCriteria.length === 0) {
+      alert("Please add at least one complete search criterion (property and value).");
+      return;
+    }
+
+    const logic = validCriteria.length > 0 ? validCriteria[0].logicalOp : 'AND';
+
+    const rules = validCriteria.map(c => ({
+      property_id: c.propertyId,
+      value_id: c.valueId || null,
+      value_text: c.value || null
+    }));
+
+    setSearchingQuery(true);
+    try {
+      const response = await api.post(
+        `/spaces/${id}/search/query/`,
+        {
+          rules: rules,
+          logic: logic
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      setAdvancedSearchResults(response.data);
+      // Clear simple search results when doing advanced search
+      setSimpleSearchResults(null);
+      console.log('Search results:', response.data);
+    } catch (error) {
+      console.error("Error executing search:", error);
+      alert("Failed to execute search. Please try again.");
+    } finally {
+      setSearchingQuery(false);
+    }
+  };
+
+  const handlePropertySelect = (criteriaId, property) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, property: property.property_label, propertyId: property.property_id, value: '', valueId: '' } 
+        : c
+    ));
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: false }));
+    setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    
+    if (property.property_id) {
+      fetchPropertyValues(criteriaId, property.property_id);
+    }
+  };
+
+  const handleValueSelect = (criteriaId, valueItem) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, value: valueItem.value_text, valueId: valueItem.value_id } 
+        : c
+    ));
+    setShowValueDropdown(prev => ({ ...prev, [criteriaId]: false }));
+  };
+
+  const handlePropertyInputFocus = (criteriaId) => {
+    fetchSpaceProperties();
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: true }));
+  };
+
+  const handleValueInputFocus = (criteriaId, propertyId) => {
+    if (propertyId) {
+      setShowValueDropdown(prev => ({ ...prev, [criteriaId]: true }));
+      if (!availableValues[criteriaId] || availableValues[criteriaId].length === 0) {
+        fetchPropertyValues(criteriaId, propertyId);
+      }
+    }
+  };
+
   const handleCloseModal = () => {
     setSelectedNode(null);
   };
@@ -1223,6 +1679,7 @@ const SpaceDetails = () => {
       }}
     >
       {/* Inject CSS for property selection */}
+      <style>{advancedSearchStyles}</style>
       <style>{propertySelectionStyles}</style>
 
       <div style={{ flex: 1, marginRight: "20px" }}>
@@ -1493,6 +1950,512 @@ const SpaceDetails = () => {
             </span>
           ))}
         </div>
+
+        {/* Advanced Search Section */}
+        <div className="advanced-search-wrapper">
+          <div className="simple-search-row">
+            <div className="simple-search-container" style={{ position: 'relative' }}>
+              <span className="simple-search-icon">🔍</span>
+              <input
+                type="text"
+                value={simpleSearchQuery}
+                onChange={(e) => setSimpleSearchQuery(e.target.value)}
+                placeholder="Search within this space's properties, values, or content..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSimpleSearch();
+                  }
+                }}
+                disabled={searchingSimpleQuery}
+              />
+              {searchingSimpleQuery && (
+                <span style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#0076B5',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  Searching...
+                </span>
+              )}
+            </div>
+            <button 
+              className="advanced-search-toggle-btn"
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+            >
+              Advanced Search
+            </button>
+          </div>
+
+          {/* Simple Search Results */}
+          {simpleSearchResults && (
+            <div style={{ 
+              marginTop: '16px',
+              padding: '16px', 
+              backgroundColor: '#fff', 
+              borderRadius: '4px',
+              border: '1px solid #ddd'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#1B1F3B', fontSize: '16px' }}>
+                  Search Results for "{simpleSearchQuery}"
+                </h4>
+                <button 
+                  onClick={() => {
+                    setSimpleSearchResults(null);
+                    setSimpleSearchQuery("");
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: '4px 8px'
+                  }}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Nodes Results */}
+              {simpleSearchResults.nodes && simpleSearchResults.nodes.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <h5 style={{ color: '#0076B5', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Nodes ({simpleSearchResults.nodes.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.nodes.map(node => (
+                      <div 
+                        key={node.id}
+                        style={{
+                          padding: '10px 12px',
+                          backgroundColor: '#f8f9fa',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontSize: '14px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#0076B5';
+                          e.currentTarget.style.backgroundColor = '#f0f7fc';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        }}
+                        onClick={() => {
+                          const nodeObj = nodes.find(n => n.id === node.id.toString());
+                          if (nodeObj) setSelectedNode(nodeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                          {node.label}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {node.wikidata_id}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Edges Results */}
+              {simpleSearchResults.edges && simpleSearchResults.edges.length > 0 && (
+                <div>
+                  <h5 style={{ color: '#2D6A4F', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Edges ({simpleSearchResults.edges.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.edges.map(edge => {
+                      const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                      const targetNode = nodes.find(n => n.id === edge.target.toString());
+                      return (
+                        <div 
+                          key={edge.id}
+                          style={{
+                            padding: '10px 12px',
+                            backgroundColor: '#f8f9fa',
+                            borderRadius: '4px',
+                            border: '1px solid #e0e0e0',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '14px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#2D6A4F';
+                            e.currentTarget.style.backgroundColor = '#f0f7f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                            e.currentTarget.style.backgroundColor = '#f8f9fa';
+                          }}
+                          onClick={() => {
+                            const edgeObj = edges.find(e => e.id === edge.id.toString());
+                            if (edgeObj) setSelectedEdge(edgeObj);
+                          }}
+                        >
+                          <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                            {sourceNode?.data?.label || `Node ${edge.source}`} 
+                            <span style={{ margin: '0 6px', color: '#2D6A4F', fontWeight: '400' }}>→</span>
+                            {targetNode?.data?.label || `Node ${edge.target}`}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                            {edge.label || 'No label'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* No Results */}
+              {(!simpleSearchResults.nodes || simpleSearchResults.nodes.length === 0) && 
+               (!simpleSearchResults.edges || simpleSearchResults.edges.length === 0) && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                  <p style={{ margin: 0 }}>No results found for "{simpleSearchQuery}"</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px' }}>
+                    Try different keywords or use Advanced Search for more options
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showAdvancedSearch && (
+            <div className="advanced-search-container">
+              <div className="advanced-search-header">
+                <h4>Advanced Search</h4>
+                <p className="advanced-search-subtitle">
+                  Construct structured queries to find exactly what you're looking for.
+                </p>
+              </div>
+
+              <div className="criteria-container">
+                {searchCriteria.map((criteria, index) => (
+                  <div key={criteria.id}>
+                    <div className="criteria-row">
+                      <div className="criteria-field" style={{ position: 'relative' }}>
+                        <label>Property</label>
+                        <input
+                          type="text"
+                          value={criteria.property}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'property', e.target.value)}
+                          onFocus={() => handlePropertyInputFocus(criteria.id)}
+                          onBlur={() => setTimeout(() => setShowPropertyDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder="Click to select property..."
+                          readOnly={loadingProperties}
+                        />
+                        {showPropertyDropdown[criteria.id] && availableProperties.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableProperties
+                              .filter(prop => 
+                                !criteria.property || 
+                                prop.property_label.toLowerCase().includes(criteria.property.toLowerCase()) ||
+                                prop.property_id.toLowerCase().includes(criteria.property.toLowerCase())
+                              )
+                              .map(prop => (
+                                <div
+                                  key={prop.property_id}
+                                  onClick={() => handlePropertySelect(criteria.id, prop)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {prop.property_label}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {prop.property_id} • {prop.count} {prop.count === 1 ? 'item' : 'items'} • {prop.source}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingProperties && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading properties...
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="operator-field">
+                        is
+                      </div>
+                      
+                      <div className="criteria-field" style={{ position: 'relative' }}>
+                        <label>Value</label>
+                        <input
+                          type="text"
+                          value={criteria.value}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'value', e.target.value)}
+                          onFocus={() => handleValueInputFocus(criteria.id, criteria.propertyId)}
+                          onBlur={() => setTimeout(() => setShowValueDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder={criteria.propertyId ? "Click to select value..." : "Select property first"}
+                          disabled={!criteria.propertyId}
+                          readOnly={loadingValues[criteria.id]}
+                        />
+                        {showValueDropdown[criteria.id] && availableValues[criteria.id] && availableValues[criteria.id].length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableValues[criteria.id]
+                              .filter(valueItem => 
+                                !criteria.value || 
+                                (valueItem.value_text && valueItem.value_text.toLowerCase().includes(criteria.value.toLowerCase()))
+                              )
+                              .map((valueItem, idx) => (
+                                <div
+                                  key={`${valueItem.value_id}-${idx}`}
+                                  onClick={() => handleValueSelect(criteria.id, valueItem)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {valueItem.value_text || valueItem.value_id || 'Unknown'}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {valueItem.count} {valueItem.count === 1 ? 'occurrence' : 'occurrences'}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingValues[criteria.id] && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading values...
+                          </div>
+                        )}
+                      </div>
+
+                      {searchCriteria.length > 1 && (
+                        <button
+                          className="delete-criteria-btn"
+                          onClick={() => handleRemoveCriteria(criteria.id)}
+                          title="Remove criteria"
+                        >
+                          ❌
+                        </button>
+                      )}
+                    </div>
+
+                    {index < searchCriteria.length - 1 && (
+                      <div className="logical-operator-row">
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'AND' ? 'active-and' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          AND
+                        </button>
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'OR' ? 'active-or' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          OR
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <button className="add-criteria-btn" onClick={handleAddCriteria}>
+                  + Add new property search
+                </button>
+              </div>
+
+              <div className="search-actions">
+                <button 
+                  className="search-action-btn clear"
+                  onClick={handleClearSearch}
+                  disabled={searchingQuery}
+                >
+                  Clear All
+                </button>
+                <button 
+                  className="search-action-btn search"
+                  onClick={handleAdvancedSearch}
+                  disabled={searchingQuery}
+                >
+                  {searchingQuery ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Search Results Section */}
+        {advancedSearchResults && (
+          <div style={{ 
+            marginTop: '20px', 
+            padding: '20px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '1px solid #ddd'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#1B1F3B' }}>Search Results</h3>
+              <button 
+                onClick={() => setAdvancedSearchResults(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '4px 8px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Nodes Results */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: '#0076B5', marginBottom: '10px' }}>
+                Nodes ({advancedSearchResults.nodes?.length || 0})
+              </h4>
+              {advancedSearchResults.nodes && advancedSearchResults.nodes.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.nodes.map(node => (
+                    <div 
+                      key={node.id}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#fff',
+                        borderRadius: '4px',
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#0076B5';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,118,181,0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onClick={() => {
+                        const nodeObj = nodes.find(n => n.id === node.id.toString());
+                        if (nodeObj) setSelectedNode(nodeObj);
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                        {node.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        Wikidata: {node.wikidata_id}
+                      </div>
+                      {node.country && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          📍 {[node.street, node.district, node.city, node.country].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No nodes found matching your criteria.</p>
+              )}
+            </div>
+
+            {/* Edges Results */}
+            <div>
+              <h4 style={{ color: '#2D6A4F', marginBottom: '10px' }}>
+                Edges ({advancedSearchResults.edges?.length || 0})
+              </h4>
+              {advancedSearchResults.edges && advancedSearchResults.edges.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.edges.map(edge => {
+                    const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                    const targetNode = nodes.find(n => n.id === edge.target.toString());
+                    return (
+                      <div 
+                        key={edge.id}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: '#fff',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#2D6A4F';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(45,106,79,0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        onClick={() => {
+                          const edgeObj = edges.find(e => e.id === edge.id.toString());
+                          if (edgeObj) setSelectedEdge(edgeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                          {sourceNode?.data?.label || `Node ${edge.source}`} 
+                          <span style={{ margin: '0 8px', color: '#2D6A4F' }}>→</span>
+                          {targetNode?.data?.label || `Node ${edge.target}`}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666', fontStyle: 'italic' }}>
+                          Relation: {edge.label || 'No label'}
+                        </div>
+                        {edge.properties && edge.properties.length > 0 && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                            {edge.properties.length} {edge.properties.length === 1 ? 'property' : 'properties'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No edges found matching your criteria.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Graph Visualization */}
         <div style={{ marginBottom: "30px" }}>
