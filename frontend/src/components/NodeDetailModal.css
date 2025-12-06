@@ -234,3 +234,92 @@
 .entity-link:visited:hover {
   color: var(--color-purple);
 }
+
+.property-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.property-group-item {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.property-group-header {
+  background-color: var(--color-bg);
+  padding: 8px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-2);
+  color: var(--color-text);
+}
+
+.property-values-list {
+  list-style: none;
+  padding: 6px 20px;
+  margin: 0;
+}
+
+.property-value-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 20px;
+  margin: 6px 20px;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.property-value-item:last-child {
+  border-bottom: none;
+}
+
+.property-value-content {
+  flex: 1;
+  word-break: break-word;
+}
+
+.delete-property-button.small {
+  width: 20px;
+  height: 20px;
+  line-height: 18px;
+  font-size: 14px;
+  margin-left: 10px;
+}
+
+.property-group-item.selection-group {
+  border: none;
+  border-bottom: 1px solid var(--color-border-2);
+  border-radius: 0;
+}
+
+.property-group-item.selection-group:last-child {
+  border-bottom: none;
+}
+
+.property-group-header.selection-header {
+  background-color: var(--color-item-bg);
+  padding: 6px 12px;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  border-bottom: none;
+}
+
+.property-selection-list .property-group-item .property-values-list {
+  padding: 0;
+  margin: 0;
+}
+
+.property-selection-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 6px 20px;
+  margin: 6px 20px;
+  border-bottom: 1px solid var(--color-gray-200);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.property-selection-item:last-child {
+  border-bottom: none;
+}
