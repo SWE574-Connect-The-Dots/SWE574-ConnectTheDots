@@ -15,6 +15,7 @@ data class SpaceDetails(
     val creatorUsername: String,
     val tags: List<SpaceTag>,
     val collaborators: List<String>,
+    val isArchived: Boolean = false,
     val discussions: List<Discussion> = emptyList()
 )
 
@@ -58,7 +59,8 @@ fun SpaceDetailsResponse.toSpaceDetails(): SpaceDetails {
         createdAt = createdAt,
         creatorUsername = creatorUsername,
         tags = tags.map { it.toSpaceTag() },
-        collaborators = collaborators
+        collaborators = collaborators,
+        isArchived = isArchived
     )
 }
 

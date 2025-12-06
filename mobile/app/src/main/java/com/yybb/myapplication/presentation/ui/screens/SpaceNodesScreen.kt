@@ -1,5 +1,6 @@
 package com.yybb.myapplication.presentation.ui.screens
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,18 +43,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.model.SpaceNode
+import com.yybb.myapplication.presentation.ui.viewmodel.NodeSortOrder
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,7 +74,16 @@ fun SpaceNodesScreen(
     val filteredNodes by viewModel.filteredNodes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
     val layoutDirection = LocalLayoutDirection.current
+
+    var showSortMenu by remember { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
+
+    // Reset scroll position when sort order changes
+    LaunchedEffect(sortOrder) {
+        lazyListState.animateScrollToItem(0)
+    }
 
     // Refresh data when screen becomes visible again (e.g., after navigating back)
     // This handles the case when navigating back from node details after deleting a node
@@ -149,9 +167,62 @@ fun SpaceNodesScreen(
                         onQueryChange = viewModel::onSearchQueryChange,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = 8.dp),
                         enabled = !isLoading
                     )
+                    
+                    // Sort button and dropdown - positioned below search, aligned to right
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.filter_icon),
+                                    contentDescription = "Sort options",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            
+                            // Sort dropdown menu
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Date (Oldest First)") },
+                                    onClick = {
+                                        viewModel.setSortOrder(NodeSortOrder.DATE_ASC)
+                                        showSortMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Date (Newest First)") },
+                                    onClick = {
+                                        viewModel.setSortOrder(NodeSortOrder.DATE_DESC)
+                                        showSortMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Connections (Lowest First)") },
+                                    onClick = {
+                                        viewModel.setSortOrder(NodeSortOrder.CONNECTION_ASC)
+                                        showSortMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Connections (Highest First)") },
+                                    onClick = {
+                                        viewModel.setSortOrder(NodeSortOrder.CONNECTION_DESC)
+                                        showSortMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
 
                     if (filteredNodes.isEmpty()) {
                         Box(
@@ -168,6 +239,7 @@ fun SpaceNodesScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = lazyListState,
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -188,15 +260,98 @@ fun SpaceNodesScreen(
     }
 }
 
+private data class NodeCardVisualProperties(
+    val elevation: Float,
+    val borderWidth: Float,
+    val borderColor: Color,
+    val backgroundColor: Color,
+    val titleFontWeight: FontWeight,
+    val titleAlpha: Float
+)
+
+private fun darkenColor(color: Color, factor: Float): Color {
+    val clampedFactor = factor.coerceIn(0f, 1.5f) // Allow up to 1.5 for more darkness range
+    return Color(
+        red = color.red * (1f - clampedFactor * 0.25f), // Darken by max 37.5% when factor is 1.5
+        green = color.green * (1f - clampedFactor * 0.25f),
+        blue = color.blue * (1f - clampedFactor * 0.25f),
+        alpha = color.alpha
+    )
+}
+
+private fun blendColors(start: Color, end: Color, fraction: Float): Color {
+    val clampedFraction = fraction.coerceIn(0f, 1f)
+    return Color(
+        red = start.red + (end.red - start.red) * clampedFraction,
+        green = start.green + (end.green - start.green) * clampedFraction,
+        blue = start.blue + (end.blue - start.blue) * clampedFraction,
+        alpha = start.alpha + (end.alpha - start.alpha) * clampedFraction
+    )
+}
+
+@Composable
+private fun calculateCardVisualProperties(connectionCount: Int): NodeCardVisualProperties {
+    val threshold = 25
+    val clampedCount = connectionCount.coerceAtMost(threshold)
+    
+    val normalized = if (threshold > 0) clampedCount.toFloat() / threshold else 0f
+    
+    val elevation = 2f + (normalized * 18f)
+    
+    val borderWidth = normalized * 8f
+    
+    val borderOpacity = 0.2f + (normalized * 0.8f)
+    val borderColor = Color.Black.copy(alpha = borderOpacity)
+
+    val baseSurfaceColor = MaterialTheme.colorScheme.surface
+    val maxDarkBackground = darkenColor(baseSurfaceColor, 1.4f)
+    val backgroundColor = blendColors(baseSurfaceColor, maxDarkBackground, normalized)
+
+    val fontWeightValue = (400 + normalized * 300).toInt()
+    val fontWeight = when {
+        fontWeightValue < 500 -> FontWeight.Medium
+        fontWeightValue < 600 -> FontWeight.SemiBold
+        else -> FontWeight.Bold
+    }
+    
+    val titleAlpha = 0.87f + (normalized * 0.13f)
+    
+    return NodeCardVisualProperties(
+        elevation = elevation,
+        borderWidth = borderWidth,
+        borderColor = borderColor,
+        backgroundColor = backgroundColor,
+        titleFontWeight = fontWeight,
+        titleAlpha = titleAlpha
+    )
+}
+
 @Composable
 private fun SpaceNodeCard(
     node: SpaceNode,
     onSeeDetails: () -> Unit
 ) {
+    val visualProperties = calculateCardVisualProperties(node.connectionCount)
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (visualProperties.borderWidth > 0) {
+                    Modifier.border(
+                        width = visualProperties.borderWidth.dp,
+                        color = visualProperties.borderColor,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = visualProperties.elevation.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = visualProperties.backgroundColor
+        )
     ) {
         Column(
             modifier = Modifier
@@ -217,8 +372,8 @@ private fun SpaceNodeCard(
                     Text(
                         text = node.label,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontWeight = visualProperties.titleFontWeight,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = visualProperties.titleAlpha)
                     )
                     Text(
                         text = "${node.connectionCount} connection${if (node.connectionCount != 1) "s" else ""}",

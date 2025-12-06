@@ -385,6 +385,61 @@ class SpaceNodesViewModelTest {
         // This test verifies the guard condition
     }
 
+
+    @Test
+    fun `sortOrder DATE_ASC should sort by date ascending`() = runTest {
+        // Given
+        val mockNodes = listOf(
+            SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null, 1, "2024-01-03"),
+            SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null, 1, "2024-01-01"),
+            SpaceNode(3, "Node 3", null, null, null, null, null, null, null, null, 1, "2024-01-02")
+        )
+        whenever(mockRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(mockNodes))
+        whenever(mockRepository.getSpaceEdges(spaceId))
+            .thenReturn(Result.success(emptyList()))
+
+        viewModel = SpaceNodesViewModel(mockRepository, savedStateHandle)
+        advanceUntilIdle()
+
+        // When
+        viewModel.setSortOrder(NodeSortOrder.DATE_ASC)
+        advanceUntilIdle()
+
+        // Then
+        val sorted = viewModel.filteredNodes.value
+        assertEquals(2, sorted[0].id) // Oldest first
+        assertEquals(3, sorted[1].id)
+        assertEquals(1, sorted[2].id)
+    }
+
+    @Test
+    fun `sortOrder DATE_DESC should sort by date descending`() = runTest {
+        // Given
+        val mockNodes = listOf(
+            SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null, 1, "2024-01-01"),
+            SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null, 1, "2024-01-03"),
+            SpaceNode(3, "Node 3", null, null, null, null, null, null, null, null, 1, "2024-01-02")
+        )
+        whenever(mockRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(mockNodes))
+        whenever(mockRepository.getSpaceEdges(spaceId))
+            .thenReturn(Result.success(emptyList()))
+
+        viewModel = SpaceNodesViewModel(mockRepository, savedStateHandle)
+        advanceUntilIdle()
+
+        // When
+        viewModel.setSortOrder(NodeSortOrder.DATE_DESC)
+        advanceUntilIdle()
+
+        // Then
+        val sorted = viewModel.filteredNodes.value
+        assertEquals(2, sorted[0].id) // Newest first
+        assertEquals(3, sorted[1].id)
+        assertEquals(1, sorted[2].id)
+    }
+
     // Helper functions
     private suspend fun setupViewModelWithMocks() {
         whenever(mockRepository.getSpaceNodes(spaceId))

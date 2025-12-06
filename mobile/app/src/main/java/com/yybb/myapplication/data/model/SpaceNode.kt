@@ -13,7 +13,8 @@ data class SpaceNode(
     val latitude: String?,
     val longitude: String?,
     val locationName: String?,
-    val connectionCount: Int = 0
+    val connectionCount: Int = 0,
+    val createdAt: String? = null
 )
 
 fun SpaceNodeResponse.toSpaceNode(connectionCount: Int = 0): SpaceNode {
@@ -28,7 +29,8 @@ fun SpaceNodeResponse.toSpaceNode(connectionCount: Int = 0): SpaceNode {
         latitude = latitude,
         longitude = longitude,
         locationName = locationName,
-        connectionCount = connectionCount
+        connectionCount = connectionCount,
+        createdAt = createdAt
     )
 }
 

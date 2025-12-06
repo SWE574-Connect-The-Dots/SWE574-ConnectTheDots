@@ -80,7 +80,8 @@ class SpaceDetailsViewModelTest {
     private fun createTestSpaceDetails(
         id: Int = 1,
         creatorUsername: String = currentUsername,
-        collaborators: List<String> = listOf(currentUsername)
+        collaborators: List<String> = listOf(currentUsername),
+        isArchived: Boolean = false
     ): SpaceDetails {
         return SpaceDetails(
             id = id,
@@ -91,7 +92,8 @@ class SpaceDetailsViewModelTest {
             tags = listOf(
                 SpaceTag(1, "tag1", "Q1", "Tag 1")
             ),
-            collaborators = collaborators
+            collaborators = collaborators,
+            isArchived = isArchived
         )
     }
 

@@ -54,7 +54,8 @@ class SpacesViewModelTest {
         description: String = "Test Description",
         creatorUsername: String = "creator",
         collaborators: List<String> = emptyList(),
-        tags: List<SpaceTagDto> = listOf(SpaceTagDto(1, "tag1", "Q1", "Tag 1"))
+        tags: List<SpaceTagDto> = listOf(SpaceTagDto(1, "tag1", "Q1", "Tag 1")),
+        isArchived: Boolean = false
     ): SpaceDetailsResponse {
         return SpaceDetailsResponse(
             id = id,
@@ -63,7 +64,8 @@ class SpacesViewModelTest {
             createdAt = "2023-01-01T00:00:00.000000Z",
             creatorUsername = creatorUsername,
             tags = tags,
-            collaborators = collaborators
+            collaborators = collaborators,
+            isArchived = isArchived
         )
     }
 
@@ -545,7 +547,8 @@ class SpacesViewModelTest {
             tags = listOf(
                 SpaceTagDto(1, "Tag1", "Q1", "Tag 1"),
                 SpaceTagDto(2, "Tag2", "Q2", "Tag 2")
-            )
+            ),
+            isArchived = false
         )
         whenever(mockRepository.getTrendingSpaces()).thenReturn(Result.success(listOf(spaceResponse)))
 
@@ -561,6 +564,28 @@ class SpacesViewModelTest {
         assertEquals(2, spaceItem.tags.size)
         assertEquals("Tag1", spaceItem.tags[0].name)
         assertEquals("Tag2", spaceItem.tags[1].name)
+        assertFalse(spaceItem.isArchived)
+    }
+
+    @Test
+    fun `toSpaceListItem should map isArchived field correctly`() = runTest {
+        val archivedSpaceResponse = createTestSpaceDetailsResponse(
+            id = 1,
+            isArchived = true
+        )
+        val nonArchivedSpaceResponse = createTestSpaceDetailsResponse(
+            id = 2,
+            isArchived = false
+        )
+        whenever(mockRepository.getTrendingSpaces()).thenReturn(Result.success(listOf(archivedSpaceResponse, nonArchivedSpaceResponse)))
+
+        viewModel = SpacesViewModel(mockRepository, mockUserPreferencesRepository)
+        advanceUntilIdle()
+
+        val spaceItems = viewModel.allSpaces.value
+        assertEquals(2, spaceItems.size)
+        assertTrue(spaceItems.find { it.id == 1 }?.isArchived == true)
+        assertFalse(spaceItems.find { it.id == 2 }?.isArchived == true)
     }
 
     @Test
