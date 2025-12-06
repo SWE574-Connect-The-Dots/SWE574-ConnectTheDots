@@ -506,6 +506,25 @@ const PropertySelectionList = ({
 }) => {
   const scrollContainerRef = useRef(null);
 
+  const groupedProperties = useMemo(() => {
+    const groups = {};
+    properties.forEach((prop) => {
+      if (!prop || !prop.statement_id) return;
+      const propId = prop.property || prop.property_id;
+      const key = propId || getPropertyLabelWithId(prop) || "unknown";
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label: getPropertyLabelWithId(prop).split(':')[0].trim(),
+          values: [],
+        };
+      }
+      groups[key].values.push(prop);
+    });
+    return Object.values(groups);
+  }, [properties]);
+
   const handleItemClick = (statementId) => {
     let scrollPos = 0;
     if (scrollContainerRef.current) {
@@ -558,35 +577,42 @@ const PropertySelectionList = ({
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties
-          .filter((prop) => prop && prop.statement_id)
-          .map((prop) => (
-            <div
-              key={prop.statement_id}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.statement_id) ? "selected" : ""
-              }`}
-              onClick={() => handleItemClick(prop.statement_id)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.statement_id}`}
-                checked={selectedProperties.includes(prop.statement_id)}
-                onChange={() => handleItemClick(prop.statement_id)}
-                className="property-checkbox"
-              />
-              <label
-                htmlFor={`prop-${prop.statement_id}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="property-label">
-                  {getPropertyLabelWithId(prop)}:
-                </span>{" "}
-                {renderPropertyValue(prop)}
-              </label>
+        {groupedProperties.map((group) => (
+          <div key={group.key} className="property-group-item selection-group">
+            <div className="property-group-header selection-header">
+              <span className="property-group-label">{group.label}</span>
             </div>
-          ))}
+            <ul className="property-values-list">
+              {group.values.map((prop) => (
+                <div
+                  key={prop.statement_id}
+                  className={`property-selection-item ${
+                    selectedProperties.includes(prop.statement_id)
+                      ? "selected"
+                      : ""
+                  }`}
+                  onClick={() => handleItemClick(prop.statement_id)}
+                >
+                  <input
+                    type="checkbox"
+                    id={`prop-${prop.statement_id}`}
+                    checked={selectedProperties.includes(prop.statement_id)}
+                    onChange={() => handleItemClick(prop.statement_id)}
+                    className="property-checkbox"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <label
+                    htmlFor={`prop-${prop.statement_id}`}
+                    className="property-selection-label"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {renderPropertyValue(prop)}
+                  </label>
+                </div>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );

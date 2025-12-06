@@ -98,6 +98,25 @@ const PropertySelectionList = ({
 }) => {
   const scrollContainerRef = useRef(null);
 
+  const groupedProperties = useMemo(() => {
+    const groups = {};
+    properties.forEach((prop) => {
+      if (!prop || !prop.statement_id) return;
+      const propId = prop.property || prop.property_id;
+      const key = propId || getPropertyLabelWithId(prop) || "unknown";
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label: getPropertyLabelWithId(prop).split(':')[0].trim(),
+          values: [],
+        };
+      }
+      groups[key].values.push(prop);
+    });
+    return Object.values(groups);
+  }, [properties]);
+
   const handleItemClick = (statementId) => {
     let scrollPos = 0;
     if (scrollContainerRef.current) {
@@ -150,36 +169,42 @@ const PropertySelectionList = ({
   return (
     <div className="property-selection-container">
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties
-          .filter((prop) => prop && prop.statement_id)
-          .map((prop) => (
-            <div
-              key={prop.statement_id}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.statement_id) ? "selected" : ""
-              }`}
-              onClick={() => handleItemClick(prop.statement_id)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.statement_id}`}
-                checked={selectedProperties.includes(prop.statement_id)}
-                onChange={() => handleItemClick(prop.statement_id)}
-                className="property-checkbox"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <label
-                htmlFor={`prop-${prop.statement_id}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="property-label">
-                  {getPropertyLabelWithId(prop)}:
-                </span>{" "}
-                {renderSelectionPropertyValue(prop)}
-              </label>
+        {groupedProperties.map((group) => (
+          <div key={group.key} className="property-group-item selection-group">
+            <div className="property-group-header selection-header">
+              <span className="property-group-label">{group.label}</span>
             </div>
-          ))}
+            <ul className="property-values-list">
+              {group.values.map((prop) => (
+                <div
+                  key={prop.statement_id}
+                  className={`property-selection-item ${
+                    selectedProperties.includes(prop.statement_id)
+                      ? "selected"
+                      : ""
+                  }`}
+                  onClick={() => handleItemClick(prop.statement_id)}
+                >
+                  <input
+                    type="checkbox"
+                    id={`prop-${prop.statement_id}`}
+                    checked={selectedProperties.includes(prop.statement_id)}
+                    onChange={() => handleItemClick(prop.statement_id)}
+                    className="property-checkbox"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <label
+                    htmlFor={`prop-${prop.statement_id}`}
+                    className="property-selection-label"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {renderSelectionPropertyValue(prop)}
+                  </label>
+                </div>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -326,6 +351,26 @@ const NodeDetailModal = ({
         return numA - numB;
       });
   }, [availableProperties, propertySearch]);
+
+  const groupedProperties = useMemo(() => {
+    const groups = {};
+    nodeProperties.forEach((prop) => {
+      const propId = prop.property_id || prop.property;
+      const key = propId || prop.property_label || "unknown";
+      
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label: getPropertyLabelWithId(prop).split(':')[0].trim(), // Get base label
+          fullLabel: getPropertyLabelWithId(prop), // Keep full label logic if needed, or recalculate
+          property_id: propId,
+          values: []
+        };
+      }
+      groups[key].values.push(prop);
+    });
+    return Object.values(groups);
+  }, [nodeProperties]);
 
   useEffect(() => {
     const fetchNodeProperties = async () => {
@@ -1395,29 +1440,35 @@ const NodeDetailModal = ({
 
             <div className="properties-section">
               <h4>{t("graph.nodeProperties")}</h4>
-              {nodeProperties.length > 0 ? (
+              {groupedProperties.length > 0 ? (
                 <div className="current-properties">
-                  <ul>
-                    {nodeProperties.map((prop) => (
-                      <li key={prop.statement_id} className="property-item">
-                        <span className="property-content">
-                          <span className="property-label">
-                            {getPropertyLabelWithId(prop)}:
-                          </span>{" "}
-                          {renderPropertyValue(prop)}
-                        </span>
-                        <button
-                          className="delete-property-button"
-                          onClick={() =>
-                            handleDeleteProperty(prop.statement_id)
-                          }
-                          title={t("graph.deleteProperty")}
-                        >
-                          ×
-                        </button>
-                      </li>
+                  <div className="property-group-list">
+                    {groupedProperties.map((group) => (
+                      <div key={group.key} className="property-group-item">
+                        <div className="property-group-header">
+                          <span className="property-group-label">
+                             {group.values[0] ? getPropertyLabelWithId(group.values[0]).split(':')[0] : group.label}
+                          </span>
+                        </div>
+                        <ul className="property-values-list">
+                          {group.values.map((prop) => (
+                            <li key={prop.statement_id} className="property-value-item">
+                              <span className="property-value-content">
+                                {renderPropertyValue(prop)}
+                              </span>
+                              <button
+                                className="delete-property-button small"
+                                onClick={() => handleDeleteProperty(prop.statement_id)}
+                                title={t("graph.deleteProperty")}
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               ) : (
                 <p>{t("graph.noPropertiesFound")}</p>
