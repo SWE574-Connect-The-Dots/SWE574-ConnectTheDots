@@ -63,7 +63,9 @@ data class SpaceDetailsResponse(
     @SerializedName("creator_username")
     val creatorUsername: String,
     val tags: List<SpaceTagDto>,
-    val collaborators: List<String>
+    val collaborators: List<String>,
+    @SerializedName("is_archived")
+    val isArchived: Boolean
 )
 
 data class SpaceTagDto(
