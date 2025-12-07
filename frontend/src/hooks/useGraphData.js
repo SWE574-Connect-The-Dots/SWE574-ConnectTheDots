@@ -34,8 +34,9 @@ const useGraphData = (spaceId) => {
           x: dagreNode.x - nodeWidth / 2,
           y: dagreNode.y - nodeHeight / 2,
         },
-        sourcePosition: direction === "LR" ? "right" : "bottom",
-        targetPosition: direction === "LR" ? "left" : "top",
+        // Force left-to-right connections
+        sourcePosition: "right",
+        targetPosition: "left",
       };
     });
   }
@@ -108,33 +109,42 @@ const useGraphData = (spaceId) => {
           source: edge.source.toString(),
           target: edge.target.toString(),
           label: displayLabel,
+          type: 'straight',
           data: {
             wikidata_property_id: edge.wikidata_property_id,
             original_label: edge.label,
           },
           animated: false,
           style: {
-            stroke: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
-            strokeWidth: isWikidata ? 3 : 2,
-            strokeDasharray: isWikidata ? '0' : '5,5',
+            stroke: isWikidata ? '#0072B2' : '#4A90E2',
+            strokeWidth: isWikidata ? 4 : 3,
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round',
           },
           markerEnd: {
             type: "arrowclosed",
-            color: isWikidata ? 'var(--color-wikidata)' : 'var(--color-border-1)',
+            color: isWikidata ? '#0072B2' : '#4A90E2',
+            width: 40,
+            height: 40,
+            markerUnits: 'userSpaceOnUse',
+            orient: 'auto',
           },
           labelStyle: {
-            background: isWikidata ? 'var(--color-wikidata-bg)' : 'var(--color-white)',
-            color: 'var(--color-text)',
-            padding: isWikidata ? '6px 10px' : '4px 8px',
+            background: isWikidata ? '#E8F4FD' : '#F0F8FF',
+            color: '#1B1F3B',
+            padding: '6px 12px',
             fontWeight: 600,
             fontSize: 12,
-            borderRadius: 6,
+            borderRadius: 8,
             border: isWikidata 
-              ? '2px solid var(--color-wikidata-border)' 
-              : '1px solid var(--color-border-2)',
+              ? '2px solid #0072B2' 
+              : '1.5px solid #4A90E2',
             zIndex: 10,
-            boxShadow: isWikidata ? '0 2px 4px rgba(0,114,178,0.2)' : 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           },
+          // Add sourceHandle and targetHandle to use specific connection points
+          sourceHandle: null,
+          targetHandle: null,
         };
       });
 

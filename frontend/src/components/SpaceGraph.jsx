@@ -6,6 +6,22 @@ import CircularNode from "./CircularNode";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import api from "../axiosConfig";
 
+// Custom CSS for better arrow visibility
+const customStyles = `
+  .react-flow__edge-path {
+    stroke-linecap: round !important;
+  }
+  
+  .react-flow__arrowclosed {
+    fill: currentColor !important;
+    stroke: currentColor !important;
+  }
+  
+  .react-flow__marker {
+    overflow: visible !important;
+  }
+`;
+
 const nodeTypes = {
   circular: CircularNode,
 };
@@ -320,6 +336,7 @@ const SpaceGraph = ({
 
   return (
     <>
+      <style>{customStyles}</style>
       {/* Regular Graph View */}
       <div className="graph-container" style={{ width: "100%", height: "100%", position: "relative" }}>
         {showFullscreenButton && (
@@ -355,6 +372,26 @@ const SpaceGraph = ({
           nodesConnectable={false}
           elementsSelectable={true}
           fitView
+          connectionLineStyle={{
+            strokeWidth: 3,
+            stroke: '#4A90E2',
+          }}
+          defaultEdgeOptions={{
+            style: {
+              strokeWidth: 3,
+              stroke: '#4A90E2',
+              strokeLinecap: 'round',
+            },
+            type: 'straight',
+            markerEnd: {
+              type: 'arrowclosed',
+              color: '#4A90E2',
+              width: 40,
+              height: 40,
+              markerUnits: 'userSpaceOnUse',
+              orient: 'auto',
+            },
+          }}
         >
           <Background />
           <Controls />
@@ -871,6 +908,26 @@ const SpaceGraph = ({
               nodesConnectable={false}
               elementsSelectable={true}
               fitView
+              connectionLineStyle={{
+                strokeWidth: 3,
+                stroke: '#4A90E2',
+              }}
+              defaultEdgeOptions={{
+                style: {
+                  strokeWidth: 3,
+                  stroke: '#4A90E2',
+                  strokeLinecap: 'round',
+                },
+                type: 'straight',
+                markerEnd: {
+                  type: 'arrowclosed',
+                  color: '#4A90E2',
+                  width: 40,
+                  height: 40,
+                  markerUnits: 'userSpaceOnUse',
+                  orient: 'auto',
+                },
+              }}
             >
               <Background />
               <Controls />
