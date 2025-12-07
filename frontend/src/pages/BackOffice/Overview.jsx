@@ -206,7 +206,9 @@ export default function BackOffice() {
                   display: "flex",
                   flexDirection: "column",
                   gap: "15px",
+                  width: "280px",
                   minWidth: "280px",
+                  maxWidth: "280px",
                   flexShrink: 0,
                   position: "relative"
                 }}
@@ -245,7 +247,10 @@ export default function BackOffice() {
                   color: "#1B1F3B", // Primary Text - Almost Black
                   fontSize: "18px",
                   fontWeight: "600",
-                  paddingRight: "45px" // Make room for badge
+                  paddingRight: "45px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
                 }}>
                   {space.title}
                 </h4>
@@ -256,7 +261,11 @@ export default function BackOffice() {
                   color: "#646E7A", // Placeholder Text - Gray
                   lineHeight: "1.4",
                   height: "40px",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical"
                 }}>
                   {space.description || "No description available"}
                 </p>
