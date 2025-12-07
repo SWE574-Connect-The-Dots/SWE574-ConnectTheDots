@@ -308,6 +308,66 @@
   "property": {
     "searchPlaceholder": "Bir özellik arayın veya özel bir etiket girin...",
     "searching": "Aranıyor..."
+  },
+  "infoModal": {
+    "title": "Bu Alan Nasıl Çalışır",
+    "spaceGraph": {
+      "title": "Alan Grafiği",
+      "intro": "Alan Grafiği, birbirine bağlı bilginin görsel bir temsilidir. Her alan, anlamsal bir ağ oluşturan düğümler ve bağlantılar içerir.",
+      "nodes": {
+        "title": "Düğümler",
+        "wikidataEntities": "Wikidata Varlıkları: Düğümler Wikidata'dan oluşturularak alanınıza yapılandırılmış bilgi getirir",
+        "properties": "Özellikler: Her düğüm değerlere sahip birden fazla özelliğe sahip olabilir (örn. \"doğum tarihi\", \"konum\", \"meslek\")",
+        "locationData": "Konum Verisi: Düğümler coğrafi bilgilere sahip olabilir (ülke, şehir, ilçe, sokak, koordinatlar)"
+      },
+      "edges": {
+        "title": "Bağlantılar",
+        "relationships": "İlişkiler: Bağlantılar düğümleri bağlar ve anlamsal ilişkileri temsil eder",
+        "directionality": "Yönlülük: Bağlantıların bir kaynağı ve hedefi vardır (örn. \"Kişi A\" → \"çalışıyor\" → \"Şirket B\")",
+        "properties": "Özellikler: Bağlantılar da daha fazla bağlam eklemek için kendi özelliklerine sahip olabilir"
+      },
+      "tipClickNode": "İpucu: Detayları görüntülemek, özellikleri düzenlemek veya ilişkileri görmek için grafikteki herhangi bir düğüme veya bağlantıya tıklayın.",
+      "tipNodeExpansion": "İpucu: Ek bağlantılar eklendiğinde bir düğüm boyut olarak genişler, bu da artan alaka düzeyini ve etkinliği gösterir."
+    },
+    "search": {
+      "title": "Arama İşlevselliği",
+      "simpleSearch": {
+        "title": "Basit Metin Arama",
+        "description": "Düğümleri ve bağlantıları etiketlerine, açıklamalarına veya özellik değerlerine göre hızlıca bulmak için arama çubuğunu kullanın. Sonuçlar, sorgunuzla eşleşen hem düğümleri hem de bağlantıları gösterir."
+      },
+      "advancedSearch": {
+        "title": "Gelişmiş Özellik Arama",
+        "description": "Karmaşık sorgular oluşturmak için Gelişmiş Arama'ya tıklayın:",
+        "propertyBased": "Özellik Tabanlı: Belirli özelliklere göre arama yapın (örn. \"örneği\")",
+        "multipleCriteria": "Çoklu Kriter: VE/VEYA mantığı ile birden fazla arama koşulunu birleştirin"
+      }
+    },
+    "collaborators": {
+      "title": "İşbirlikçiler ve İzinler",
+      "intro": "Alanlar, birden fazla kullanıcının bilgi grafikleri oluşturmaya katkıda bulunabileceği işbirlikçi ortamlardır.",
+      "joinCollaborator": "İşbirlikçi Olarak Katıl: Bir işbirlikçi olmak ve düzenlemeye başlamak için \"Alana Katıl\"a tıklayın",
+      "addNodesEdges": "Düğüm ve Bağlantı Ekle: İşbirlikçiler Wikidata'dan yeni düğümler ekleyebilir ve ilişkiler oluşturabilir",
+      "editDelete": "Düzenle ve Sil: Düğüm özelliklerini değiştirin, açıklamaları güncelleyin veya öğeleri kaldırın"
+    },
+    "discussions": {
+      "title": "Tartışma Paneli",
+      "intro": "Tartışma paneli, alan üyeleri arasında iletişim ve işbirliğini sağlar.",
+      "startDiscussions": "Tartışma Başlat: İşbirlikçiler alan hakkında yeni tartışma konuları oluşturabilir",
+      "replyReact": "Yanıtla ve Tepki Ver: Tepkiler yoluyla tartışmalara katılın.",
+      "reportContent": "İçerik Bildir: Uygunsuz yorumları bildirin."
+    },
+    "activity": {
+      "title": "Etkinlik Akışı",
+      "intro": "Etkinlik akışı, alandaki son eylemleri göstererek değişikliklerden haberdar olmanıza yardımcı olur.",
+      "realtimeUpdates": "Gerçek Zamanlı Güncellemeler: Kimin düğüm eklediğini, bağlantı oluşturduğunu veya özellikleri güncellediğini görün"
+    },
+    "location": {
+      "title": "Konum ve Haritalar",
+      "intro": "Alanlar ve düğümler coğrafi bağlama sahip olabilir:",
+      "spaceLocation": "Alan Konumu: Tüm alanınız için bir konum belirleyin (sayfanın üst kısmında görünür)",
+      "nodeLocations": "Düğüm Konumları: Koordinatlarla birlikte ayrı düğümlere belirli konumlar ekleyin",
+      "mapVisualization": "Harita Görselleştirme: Konumlu tüm düğümleri etkileşimli bir haritada görmek için \"Alan Haritasını Göster\"e tıklayın"
+    }
   }
 }
 

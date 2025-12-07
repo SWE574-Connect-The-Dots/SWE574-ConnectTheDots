@@ -1894,7 +1894,7 @@ const SpaceDetails = () => {
         <div className="info-modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="info-modal-header">
             <h2>
-              How This Space Works
+              {t("infoModal.title")}
             </h2>
             <button 
               className="info-modal-close-btn"
@@ -1909,35 +1909,34 @@ const SpaceDetails = () => {
             {/* Space Graph Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Space Graph</h3>
+                <h3>{t("infoModal.spaceGraph.title")}</h3>
               </div>
               <div className="info-section-content">
                 <p>
-                  The Space Graph is a visual representation of interconnected knowledge. Each space contains nodes
-                  and edges that form a semantic network.
+                  {t("infoModal.spaceGraph.intro")}
                 </p>
                 <div className="info-subsection">
-                  <h4>Nodes</h4>
+                  <h4>{t("infoModal.spaceGraph.nodes.title")}</h4>
                   <ul>
-                    <li><strong>Wikidata Entities:</strong> Nodes are created from Wikidata, bringing structured knowledge into your space</li>
-                    <li><strong>Properties:</strong> Each node can have multiple properties with values (e.g., "birth date", "location", "occupation")</li>
-                    <li><strong>Location Data:</strong> Nodes can have geographical information (country, city, district, street, coordinates)</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.wikidataEntities").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.wikidataEntities").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.properties").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.locationData").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.locationData").split(':').slice(1).join(':').trim()}</li>
                   </ul>
                 </div>
                 <div className="info-subsection">
-                  <h4>Edges</h4>
+                  <h4>{t("infoModal.spaceGraph.edges.title")}</h4>
                   <ul>
-                    <li><strong>Relationships:</strong> Edges connect nodes and represent semantic relationships</li>
-                    <li><strong>Directionality:</strong> Edges have a source and target (e.g., "Person A" → "works for" → "Company B")</li>
-                    <li><strong>Properties:</strong> Edges can also have their own properties to add more context</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.relationships").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.relationships").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.directionality").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.directionality").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.properties").split(':').slice(1).join(':').trim()}</li>
                   </ul>
                 </div>
                 <div className="info-highlight">
-                  <strong>Tip:</strong> Click on any node or edge in the graph to view details, edit properties or see relationships.
+                  {t("infoModal.spaceGraph.tipClickNode")}
                 </div>
 
                 <div className="info-highlight">
-                  <strong>Tip:</strong> A node expands in size when additional connections are added, indicating increased relevance and activity.
+                  {t("infoModal.spaceGraph.tipNodeExpansion")}
                 </div>
               </div>
             </div>
@@ -1945,24 +1944,23 @@ const SpaceDetails = () => {
             {/* Search Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Search Functionality</h3>
+                <h3>{t("infoModal.search.title")}</h3>
               </div>
               <div className="info-section-content">
                 <div className="info-subsection">
-                  <h4>Simple Text Search</h4>
+                  <h4>{t("infoModal.search.simpleSearch.title")}</h4>
                   <p>
-                    Use the search bar to quickly find nodes and edges by their labels, descriptions or property values. 
-                    Results show both nodes and edges that match your query.
+                    {t("infoModal.search.simpleSearch.description")}
                   </p>
                 </div>
                 <div className="info-subsection">
-                  <h4>Advanced Property Search</h4>
+                  <h4>{t("infoModal.search.advancedSearch.title")}</h4>
                   <p>
-                    Click <span className="info-badge">Advanced Search</span> to build complex queries:
+                    {t("infoModal.search.advancedSearch.description")}
                   </p>
                   <ul>
-                    <li><strong>Property-based:</strong> Search by specific properties (e.g., "instance of")</li>
-                    <li><strong>Multiple Criteria:</strong> Combine multiple search conditions with AND/OR logic</li>
+                    <li><strong>{t("infoModal.search.advancedSearch.propertyBased").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.propertyBased").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.search.advancedSearch.multipleCriteria").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.multipleCriteria").split(':').slice(1).join(':').trim()}</li>
                   </ul>
                 </div>
               </div>
@@ -1971,16 +1969,16 @@ const SpaceDetails = () => {
             {/* Collaborators Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Collaborators & Permissions</h3>
+                <h3>{t("infoModal.collaborators.title")}</h3>
               </div>
               <div className="info-section-content">
                 <p>
-                  Spaces are collaborative environments where multiple users can contribute to building knowledge graphs.
+                  {t("infoModal.collaborators.intro")}
                 </p>
                 <ul>
-                  <li><strong>Join as Collaborator:</strong> Click "Join Space" to become a collaborator and start editing</li>
-                  <li><strong>Add Nodes & Edges:</strong> Collaborators can add new nodes from Wikidata and create relationships</li>
-                  <li><strong>Edit & Delete:</strong> Modify node properties, update descriptions or remove elements</li>
+                  <li><strong>{t("infoModal.collaborators.joinCollaborator").split(':')[0]}:</strong> {t("infoModal.collaborators.joinCollaborator").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.addNodesEdges").split(':')[0]}:</strong> {t("infoModal.collaborators.addNodesEdges").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.editDelete").split(':')[0]}:</strong> {t("infoModal.collaborators.editDelete").split(':').slice(1).join(':').trim()}</li>
                 </ul>
               </div>
             </div>
@@ -1988,16 +1986,16 @@ const SpaceDetails = () => {
             {/* Discussions Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Discussion Panel</h3>
+                <h3>{t("infoModal.discussions.title")}</h3>
               </div>
               <div className="info-section-content">
                 <p>
-                  The discussion panel enables communication and collaboration among space members.
+                  {t("infoModal.discussions.intro")}
                 </p>
                 <ul>
-                  <li><strong>Start Discussions:</strong> Collaborators can create new discussion threads about the space</li>
-                  <li><strong>Reply & React:</strong> Engage with discussions through reactions.</li>
-                  <li><strong>Report Content:</strong> Report inappropriate comments.</li>
+                  <li><strong>{t("infoModal.discussions.startDiscussions").split(':')[0]}:</strong> {t("infoModal.discussions.startDiscussions").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.replyReact").split(':')[0]}:</strong> {t("infoModal.discussions.replyReact").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.reportContent").split(':')[0]}:</strong> {t("infoModal.discussions.reportContent").split(':').slice(1).join(':').trim()}</li>
                 </ul>
               </div>
             </div>
@@ -2005,13 +2003,13 @@ const SpaceDetails = () => {
             {/* Activity Stream Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Activity Stream</h3>
+                <h3>{t("infoModal.activity.title")}</h3>
               </div>
               <div className="info-section-content">
                 <p>
-                  The activity stream shows recent actions in the space, helping you stay updated on changes.
+                  {t("infoModal.activity.intro")}
                 </p>
-                <strong>Real-time Updates:</strong> See who added nodes, created edges or updated properties
+                <strong>{t("infoModal.activity.realtimeUpdates").split(':')[0]}:</strong> {t("infoModal.activity.realtimeUpdates").split(':').slice(1).join(':').trim()}
               
               </div>
             </div>
@@ -2019,16 +2017,16 @@ const SpaceDetails = () => {
             {/* Location Features Section */}
             <div className="info-section">
               <div className="info-section-header">
-                <h3>Location & Maps</h3>
+                <h3>{t("infoModal.location.title")}</h3>
               </div>
               <div className="info-section-content">
                 <p>
-                  Spaces and nodes can have geographical context:
+                  {t("infoModal.location.intro")}
                 </p>
                 <ul>
-                  <li><strong>Space Location:</strong> Set a location for your entire space (visible at the top of the page)</li>
-                  <li><strong>Node Locations:</strong> Add specific locations to individual nodes with coordinates</li>
-                  <li><strong>Map Visualization:</strong> Click "Show Space Map" to see all nodes with locations on an interactive map</li>
+                  <li><strong>{t("infoModal.location.spaceLocation").split(':')[0]}:</strong> {t("infoModal.location.spaceLocation").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.nodeLocations").split(':')[0]}:</strong> {t("infoModal.location.nodeLocations").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.mapVisualization").split(':')[0]}:</strong> {t("infoModal.location.mapVisualization").split(':').slice(1).join(':').trim()}</li>
                 </ul>
               </div>
             </div>
