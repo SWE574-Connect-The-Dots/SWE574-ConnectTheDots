@@ -1503,10 +1503,9 @@ const SpaceDetails = () => {
       
       setSimpleSearchResults(response.data);
       setAdvancedSearchResults(null);
-      console.log('Simple search results:', response.data);
     } catch (error) {
       console.error("Error executing simple search:", error);
-      alert("Failed to execute search. Please try again.");
+      alert("search.failedToExecuteSearch");
     } finally {
       setSearchingSimpleQuery(false);
     }
@@ -1560,7 +1559,7 @@ const SpaceDetails = () => {
     const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
     
     if (validCriteria.length === 0) {
-      alert("Please add at least one complete search criteria (property and value).");
+      alert("space.addSearchCriteria");
       return;
     }
 
@@ -1590,10 +1589,8 @@ const SpaceDetails = () => {
       
       setAdvancedSearchResults(response.data);
       setSimpleSearchResults(null);
-      console.log('Search results:', response.data);
     } catch (error) {
       console.error("Error executing search:", error);
-      alert("Failed to execute search.");
     } finally {
       setSearchingQuery(false);
     }

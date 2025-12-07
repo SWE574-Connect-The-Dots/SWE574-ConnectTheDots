@@ -102,7 +102,9 @@
     "nodeAndEdgeAddedSuccessfully": "Düğüm ve bağlantı başarıyla eklendi!",
     "failedToAddNode": "Düğüm eklenemedi.",
     "addNodeWithEdge": "Bağlantı ile Düğüm Ekle",
-    "archived": "Arşivlendi"
+    "archived": "Arşivlendi",
+    "failedToExecuteSearch": "Arama gerçekleştirilemedi. Lütfen tekrar deneyin.",
+    "addSearchCriteria": "Lütfen en az bir eksiksiz arama kriteri (özellik ve değer) ekleyin."
   },
   "spaceAnalytics": {
     "dashboard": "Alan Analitik Paneli",

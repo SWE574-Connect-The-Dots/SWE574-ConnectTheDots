@@ -102,7 +102,9 @@
     "nodeAndEdgeAddedSuccessfully": "Node and edge added successfully!",
     "failedToAddNode": "Failed to add node.",
     "addNodeWithEdge": "Add Node with Edge",
-    "archived": "ARCHIVED"
+    "archived": "ARCHIVED",
+    "failedToExecuteSearch": "Failed to execute search. Please try again.",
+    "addSearchCriteria": "Please add at least one complete search criteria (property and value)."
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
