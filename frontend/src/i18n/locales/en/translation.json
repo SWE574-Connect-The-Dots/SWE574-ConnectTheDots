@@ -102,7 +102,9 @@
     "nodeAndEdgeAddedSuccessfully": "Node and edge added successfully!",
     "failedToAddNode": "Failed to add node.",
     "addNodeWithEdge": "Add Node with Edge",
-    "archived": "ARCHIVED"
+    "archived": "ARCHIVED",
+    "failedToExecuteSearch": "Failed to execute search. Please try again.",
+    "addSearchCriteria": "Please add at least one complete search criteria (property and value)."
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
@@ -307,6 +309,66 @@
   "property": {
     "searchPlaceholder": "Search for a property or enter a custom label...",
     "searching": "Searching..."
+  },
+  "infoModal": {
+    "title": "How This Space Works",
+    "spaceGraph": {
+      "title": "Space Graph",
+      "intro": "The Space Graph is a visual representation of interconnected knowledge. Each space contains nodes and edges that form a semantic network.",
+      "nodes": {
+        "title": "Nodes",
+        "wikidataEntities": "Wikidata Entities: Nodes are created from Wikidata, bringing structured knowledge into your space",
+        "properties": "Properties: Each node can have multiple properties with values (e.g., \"birth date\", \"location\", \"occupation\")",
+        "locationData": "Location Data: Nodes can have geographical information (country, city, district, street, coordinates)"
+      },
+      "edges": {
+        "title": "Edges",
+        "relationships": "Relationships: Edges connect nodes and represent semantic relationships",
+        "directionality": "Directionality: Edges have a source and target (e.g., \"Person A\" → \"works for\" → \"Company B\")",
+        "properties": "Properties: Edges can also have their own properties to add more context"
+      },
+      "tipClickNode": "Tip: Click on any node or edge in the graph to view details, edit properties or see relationships.",
+      "tipNodeExpansion": "Tip: A node expands in size when additional connections are added, indicating increased relevance and activity."
+    },
+    "search": {
+      "title": "Search Functionality",
+      "simpleSearch": {
+        "title": "Simple Text Search",
+        "description": "Use the search bar to quickly find nodes and edges by their labels, descriptions or property values. Results show both nodes and edges that match your query."
+      },
+      "advancedSearch": {
+        "title": "Advanced Property Search",
+        "description": "Click Advanced Search to build complex queries:",
+        "propertyBased": "Property-based: Search by specific properties (e.g., \"instance of\")",
+        "multipleCriteria": "Multiple Criteria: Combine multiple search conditions with AND/OR logic"
+      }
+    },
+    "collaborators": {
+      "title": "Collaborators & Permissions",
+      "intro": "Spaces are collaborative environments where multiple users can contribute to building knowledge graphs.",
+      "joinCollaborator": "Join as Collaborator: Click \"Join Space\" to become a collaborator and start editing",
+      "addNodesEdges": "Add Nodes & Edges: Collaborators can add new nodes from Wikidata and create relationships",
+      "editDelete": "Edit & Delete: Modify node properties, update descriptions or remove elements"
+    },
+    "discussions": {
+      "title": "Discussion Panel",
+      "intro": "The discussion panel enables communication and collaboration among space members.",
+      "startDiscussions": "Start Discussions: Collaborators can create new discussion threads about the space",
+      "replyReact": "Reply & React: Engage with discussions through reactions.",
+      "reportContent": "Report Content: Report inappropriate comments."
+    },
+    "activity": {
+      "title": "Activity Stream",
+      "intro": "The activity stream shows recent actions in the space, helping you stay updated on changes.",
+      "realtimeUpdates": "Real-time Updates: See who added nodes, created edges or updated properties"
+    },
+    "location": {
+      "title": "Location & Maps",
+      "intro": "Spaces and nodes can have geographical context:",
+      "spaceLocation": "Space Location: Set a location for your entire space (visible at the top of the page)",
+      "nodeLocations": "Node Locations: Add specific locations to individual nodes with coordinates",
+      "mapVisualization": "Map Visualization: Click \"Show Space Map\" to see all nodes with locations on an interactive map"
+    }
   }
 }
 

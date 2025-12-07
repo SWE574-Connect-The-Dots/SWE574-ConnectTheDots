@@ -15,6 +15,174 @@ import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
 
+const infoModalStyles = `
+.info-icon-btn {
+  background: none;
+  color: var(--color-gray-400);
+  border: 1px solid var(--color-gray-400);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.info-icon-btn:hover {
+  background: var(--color-gray-400);
+  color: var(--color-white);
+  border: 2px solid var(--color-gray-400);
+}
+
+.info-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.info-modal-content {
+  background: var(--color-white);
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.info-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--color-gray-200);
+  background: var(--color-accent);
+  color: var(--color-white);
+  border-radius: 12px 12px 0 0;
+}
+
+.info-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-white);
+  font-size: 28px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-modal-body {
+  padding: 24px;
+}
+
+.info-section {
+  margin-bottom: 32px;
+}
+
+.info-section:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-gray-200);
+}
+
+.info-section-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.info-section h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-section-content {
+  line-height: 1.7;
+}
+
+.info-section-content p {
+  margin: 0 0 12px 0;
+}
+
+.info-section-content p:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-content ul {
+  margin: 12px 0;
+  padding-left: 20px;
+  list-style-type: none;
+  border-left: 3px solid var(--color-gray-200);
+}
+
+.info-highlight {
+  background: var(--color-item-own-bg);
+  border-left: 4px solid var(--color-accent);
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.info-subsection ul{
+  margin-top: 16px;
+  padding-left: 16px;
+  border-left: 3px solid var(--color-gray-200);
+  list-style-type: none;
+}
+
+.info-subsection h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: var(--color-white);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 4px;
+}
+`;
+
 const advancedSearchStyles = `
 .advanced-search-wrapper {
   margin-bottom: 30px;
@@ -386,6 +554,7 @@ const propertySelectionStyles = `
   box-shadow: 0 4px 6px rgba(55, 65, 81, 0.15);
   z-index: 1000;
   min-width: 200px;
+  color: var(--color-text);
   margin-top: 4px;
 }
 
@@ -394,8 +563,6 @@ const propertySelectionStyles = `
   align-items: center;
   padding: 12px 16px;
   border: none;
-  background: none;
-  color: #1B1F3B;
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -420,59 +587,15 @@ const propertySelectionStyles = `
   border-bottom-right-radius: 4px;
   border-bottom: none;
 }
-
-.dropdown-item.map-action {
-  background: #2D6A4F;
-  color: #FFFFFF;
-}
-
-.dropdown-item.map-action:hover {
-  background: rgba(45, 106, 79, 0.8);
-}
-
-.dropdown-item.join-action {
-  background: #008296;
-  color: #FFFFFF;
-}
-
-.dropdown-item.join-action:hover {
-  background: rgba(0, 130, 150, 0.8);
+.dropdown-item.delete-action {
+  color: var(--color-danger);
 }
 
 .dropdown-item.leave-action {
-  background: #8F6701;
-  color: #FFFFFF;
+  color: var(--color-warning);
 }
-
-.dropdown-item.leave-action:hover {
-  background: rgba(143, 103, 1, 0.8);
-}
-
-.dropdown-item.delete-action {
-  background: #BD4902;
-  color: #FFFFFF;
-}
-
-.dropdown-item.delete-action:hover {
-  background: rgba(189, 73, 2, 0.8);
-}
-
-.dropdown-item.report-action {
-  background: #4A5568;
-  color: #FFFFFF;
-}
-
-.dropdown-item.report-action:hover {
-  background: rgba(74, 85, 104, 0.8);
-}
-
-.dropdown-item.analytics-action {
-  background: #215D69;
-  color: #FFFFFF;
-}
-
-.dropdown-item.analytics-action:hover {
-  background: rgba(33, 93, 105, 0.8);
+.dropdown-item.join-action {
+  color: var(--color-success);
 }
 
 .dropdown-item:disabled {
@@ -722,6 +845,7 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [simpleSearchResults, setSimpleSearchResults] = useState(null);
@@ -1378,12 +1502,10 @@ const SpaceDetails = () => {
       );
       
       setSimpleSearchResults(response.data);
-      // Clear advanced search results when doing simple search
       setAdvancedSearchResults(null);
-      console.log('Simple search results:', response.data);
     } catch (error) {
       console.error("Error executing simple search:", error);
-      alert("Failed to execute search. Please try again.");
+      alert("search.failedToExecuteSearch");
     } finally {
       setSearchingSimpleQuery(false);
     }
@@ -1437,7 +1559,7 @@ const SpaceDetails = () => {
     const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
     
     if (validCriteria.length === 0) {
-      alert("Please add at least one complete search criterion (property and value).");
+      alert("space.addSearchCriteria");
       return;
     }
 
@@ -1466,12 +1588,9 @@ const SpaceDetails = () => {
       );
       
       setAdvancedSearchResults(response.data);
-      // Clear simple search results when doing advanced search
       setSimpleSearchResults(null);
-      console.log('Search results:', response.data);
     } catch (error) {
       console.error("Error executing search:", error);
-      alert("Failed to execute search. Please try again.");
     } finally {
       setSearchingQuery(false);
     }
@@ -1763,6 +1882,158 @@ const SpaceDetails = () => {
     );
   };
 
+  // Info Modal
+  const InfoModal = () => {
+    if (!showInfoModal) return null;
+
+    return (
+      <div className="info-modal-backdrop" onClick={() => setShowInfoModal(false)}>
+        <div className="info-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="info-modal-header">
+            <h2>
+              {t("infoModal.title")}
+            </h2>
+            <button 
+              className="info-modal-close-btn"
+              onClick={() => setShowInfoModal(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="info-modal-body">
+            {/* Space Graph Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.spaceGraph.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.spaceGraph.intro")}
+                </p>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.spaceGraph.nodes.title")}</h4>
+                  <ul>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.wikidataEntities").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.wikidataEntities").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.properties").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.locationData").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.locationData").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.spaceGraph.edges.title")}</h4>
+                  <ul>
+                    <li><strong>{t("infoModal.spaceGraph.edges.relationships").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.relationships").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.directionality").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.directionality").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.properties").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+                <div className="info-highlight">
+                  {t("infoModal.spaceGraph.tipClickNode")}
+                </div>
+
+                <div className="info-highlight">
+                  {t("infoModal.spaceGraph.tipNodeExpansion")}
+                </div>
+              </div>
+            </div>
+
+            {/* Search Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.search.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <div className="info-subsection">
+                  <h4>{t("infoModal.search.simpleSearch.title")}</h4>
+                  <p>
+                    {t("infoModal.search.simpleSearch.description")}
+                  </p>
+                </div>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.search.advancedSearch.title")}</h4>
+                  <p>
+                    {t("infoModal.search.advancedSearch.description")}
+                  </p>
+                  <ul>
+                    <li><strong>{t("infoModal.search.advancedSearch.propertyBased").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.propertyBased").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.search.advancedSearch.multipleCriteria").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.multipleCriteria").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Collaborators Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.collaborators.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.collaborators.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.collaborators.joinCollaborator").split(':')[0]}:</strong> {t("infoModal.collaborators.joinCollaborator").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.addNodesEdges").split(':')[0]}:</strong> {t("infoModal.collaborators.addNodesEdges").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.editDelete").split(':')[0]}:</strong> {t("infoModal.collaborators.editDelete").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Discussions Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.discussions.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.discussions.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.discussions.startDiscussions").split(':')[0]}:</strong> {t("infoModal.discussions.startDiscussions").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.replyReact").split(':')[0]}:</strong> {t("infoModal.discussions.replyReact").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.reportContent").split(':')[0]}:</strong> {t("infoModal.discussions.reportContent").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Activity Stream Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.activity.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.activity.intro")}
+                </p>
+                <strong>{t("infoModal.activity.realtimeUpdates").split(':')[0]}:</strong> {t("infoModal.activity.realtimeUpdates").split(':').slice(1).join(':').trim()}
+              
+              </div>
+            </div>
+
+            {/* Location Features Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.location.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.location.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.location.spaceLocation").split(':')[0]}:</strong> {t("infoModal.location.spaceLocation").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.nodeLocations").split(':')[0]}:</strong> {t("infoModal.location.nodeLocations").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.mapVisualization").split(':')[0]}:</strong> {t("infoModal.location.mapVisualization").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -1776,6 +2047,7 @@ const SpaceDetails = () => {
       }}
     >
       {/* Inject CSS for property selection */}
+      <style>{infoModalStyles}</style>
       <style>{advancedSearchStyles}</style>
       <style>{propertySelectionStyles}</style>
 
@@ -1805,7 +2077,17 @@ const SpaceDetails = () => {
               </span>
             )}
           </h2>
-          <SpaceActionsDropdown />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              className="info-icon-btn"
+              onClick={() => setShowInfoModal(true)}
+              title="Information"
+              aria-label="Information"
+            >
+              ℹ︎
+            </button>
+            <SpaceActionsDropdown />
+          </div>
         </div>
         <p>{space.description}</p>
         
@@ -2057,8 +2339,8 @@ const SpaceDetails = () => {
                 type="text"
                 value={simpleSearchQuery}
                 onChange={(e) => setSimpleSearchQuery(e.target.value)}
-                placeholder="Search within this space's properties, values, or content..."
-                onKeyPress={(e) => {
+                placeholder="Search within this space's properties, values or content..."
+                onKeyUp={(e) => {
                   if (e.key === 'Enter') {
                     handleSimpleSearch();
                   }
@@ -3204,6 +3486,9 @@ const SpaceDetails = () => {
           onClose={() => setShowReportModal(false)}
         />
       )}
+
+      {/* Info Modal */}
+      <InfoModal />
     </div>
   );
 };
