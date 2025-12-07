@@ -22,7 +22,8 @@
     "no": "Hayır",
     "processing": "İşleniyor...",
     "searching": "Aranıyor...",
-    "report": "Raporla"
+    "report": "Raporla",
+    "edge": "Bağlantı"
   },
   "auth": {
     "login": "Giriş Yap",
