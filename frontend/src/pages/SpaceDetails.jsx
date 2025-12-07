@@ -2574,6 +2574,8 @@ const SpaceDetails = () => {
               error={graphError}
               onNodeClick={handleNodeClick}
               onEdgeClick={handleEdgeClick}
+              spaceId={id}
+              showFullscreenButton={true}
             />
           </div>
         </div>
