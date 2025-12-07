@@ -15,7 +15,6 @@
   background-color: var(--color-white);
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  width: 90%;
   max-width: 800px;
   max-height: 80vh;
   overflow-y: auto;
@@ -211,7 +210,8 @@
   color: var(--color-white);
 }
 
-.loading, .error {
+.loading,
+.error {
   padding: 20px;
   text-align: center;
 }
