@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
   ARCHIVE: "/archive/",
   ARCHIVE_CREATE: "/archive/create/",
   ARCHIVE_RESTORE: (archiveId) => `/archive/${archiveId}/restore/`,
+  USERS: "/auth/users/",
 };
 
 export const GRAPH_CONFIG = {
