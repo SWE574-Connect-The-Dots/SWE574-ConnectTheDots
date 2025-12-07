@@ -22,7 +22,8 @@
     "no": "No",
     "processing": "Processing...",
     "searching": "Searching...",
-    "report": "Report"
+    "report": "Report",
+    "edge": "Edge"
   },
   "auth": {
     "login": "Login",

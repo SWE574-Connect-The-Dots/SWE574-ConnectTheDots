@@ -107,7 +107,7 @@ const EdgeDetailModal = ({
     <div className="modal-backdrop">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>{t("graph.edgeDetails")}</h2>
+          <h2>{t("common.edge")}: {originalLabel}</h2>
           <button onClick={onClose} className="close-button">
             ×
           </button>
@@ -150,7 +150,7 @@ const EdgeDetailModal = ({
           </div>
           <div className="properties-section">
             <h4>{t("graph.editEdgeLabelDirection")}</h4>
-            <PropertySearch 
+            <PropertySearch
               onSelect={setEdgeProperty}
               initialLabel={edgeProperty.label}
             />
@@ -162,9 +162,9 @@ const EdgeDetailModal = ({
                 style={{
                   marginLeft: 10,
                   padding: "5px 10px",
-                  backgroundColor: isSourceToTarget ? "var(--color-success)" : "var(--color-danger-light)",
-                  color: "var(--color-white)",
-                  border: "none",
+                  backgroundColor: "var(--color-button-bg)",
+                  border: "2px solid var(--color-text)",
+                  color: "var(--color-text)",
                   borderRadius: "4px",
                   cursor: duplicateExists ? "not-allowed" : "pointer",
                 }}
