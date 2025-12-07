@@ -14,6 +14,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class NodeSortOrder {
+    DATE_ASC,           // Order by created at date ascending (oldest first)
+    DATE_DESC,          // Order by created at date descending (newest first)
+    CONNECTION_ASC,     // Order by connection size ascending (lowest first)
+    CONNECTION_DESC     // Order by connection size descending (highest first)
+}
+
 @HiltViewModel
 class SpaceNodesViewModel @Inject constructor(
     private val spaceNodesRepository: SpaceNodesRepository,
@@ -24,6 +31,9 @@ class SpaceNodesViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _sortOrder = MutableStateFlow(NodeSortOrder.CONNECTION_DESC)
+    val sortOrder: StateFlow<NodeSortOrder> = _sortOrder.asStateFlow()
 
     private val _nodes = MutableStateFlow<List<SpaceNode>>(emptyList())
     val nodes: StateFlow<List<SpaceNode>> = _nodes.asStateFlow()
@@ -60,6 +70,10 @@ class SpaceNodesViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
+    fun setSortOrder(order: NodeSortOrder) {
+        _sortOrder.value = order
+    }
+
     fun retry() {
         fetchSpaceNodes()
     }
@@ -84,10 +98,8 @@ class SpaceNodesViewModel @Inject constructor(
                     // Calculate connection counts for each node
                     val nodesWithCounts = calculateConnectionCounts(nodes, edges)
                     
-                    // Sort nodes by connection count (descending)
-                    val sortedNodes = nodesWithCounts.sortedByDescending { it.connectionCount }
-                    
-                    _nodes.value = sortedNodes
+                    // Store unsorted nodes - sorting will be applied in observeFilters based on current sort order
+                    _nodes.value = nodesWithCounts
                 }
                 nodesResult.isFailure -> {
                     _nodes.value = emptyList()
@@ -96,7 +108,8 @@ class SpaceNodesViewModel @Inject constructor(
                 edgesResult.isFailure -> {
                     // If edges fail, still show nodes but without connection counts
                     val nodes = nodesResult.getOrNull() ?: emptyList()
-                    _nodes.value = nodes.sortedByDescending { it.connectionCount }
+                    // Store unsorted nodes - sorting will be applied in observeFilters based on current sort order
+                    _nodes.value = nodes
                     // Don't set error message for edges failure, just log it
                 }
             }
@@ -131,16 +144,17 @@ class SpaceNodesViewModel @Inject constructor(
 
     private fun observeFilters() {
         viewModelScope.launch {
-            combine(_searchQuery, _nodes) { query, nodes ->
-                filterNodes(nodes, query)
-            }.collect { filtered ->
-                _filteredNodes.value = filtered
+            combine(_searchQuery, _nodes, _sortOrder) { query, nodes, sortOrder ->
+                val filtered = filterNodes(nodes, query)
+                sortNodes(filtered, sortOrder)
+            }.collect { sorted ->
+                _filteredNodes.value = sorted
             }
         }
     }
 
     private fun filterNodes(nodes: List<SpaceNode>, query: String): List<SpaceNode> {
-        val filtered = if (query.isBlank()) {
+        return if (query.isBlank()) {
             nodes
         } else {
             val normalizedQuery = query.trim()
@@ -153,8 +167,27 @@ class SpaceNodesViewModel @Inject constructor(
                     node.street?.contains(normalizedQuery, ignoreCase = true) == true
             }
         }
-        // Maintain sort order by connection count after filtering
-        return filtered.sortedByDescending { it.connectionCount }
+    }
+
+    private fun sortNodes(nodes: List<SpaceNode>, sortOrder: NodeSortOrder): List<SpaceNode> {
+        return when (sortOrder) {
+            NodeSortOrder.DATE_ASC -> {
+                // Sort by created_at ascending (oldest first)
+                nodes.sortedBy { it.createdAt ?: "" }
+            }
+            NodeSortOrder.DATE_DESC -> {
+                // Sort by created_at descending (newest first)
+                nodes.sortedByDescending { it.createdAt ?: "" }
+            }
+            NodeSortOrder.CONNECTION_ASC -> {
+                // Sort by connection count ascending (lowest first)
+                nodes.sortedBy { it.connectionCount }
+            }
+            NodeSortOrder.CONNECTION_DESC -> {
+                // Sort by connection count descending (highest first)
+                nodes.sortedByDescending { it.connectionCount }
+            }
+        }
     }
 }
 

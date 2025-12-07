@@ -163,7 +163,7 @@ class SpaceNodeDetailsRepositoryTest {
     fun `getSpaceNodes should return nodes on success`() = runTest {
         // Given
         val mockResponse = listOf(
-            SpaceNodeResponse(1, "Node 1", null, null, null, null, null, null, null, null)
+            SpaceNodeResponse(1, "Node 1", null, null, null, null, null, null, null, null, null)
         )
         val response = Response.success(mockResponse)
         whenever(mockApiService.getSpaceNodes(spaceId)).thenReturn(response)

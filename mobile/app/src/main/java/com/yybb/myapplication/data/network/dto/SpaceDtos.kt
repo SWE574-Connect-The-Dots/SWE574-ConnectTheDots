@@ -63,7 +63,9 @@ data class SpaceDetailsResponse(
     @SerializedName("creator_username")
     val creatorUsername: String,
     val tags: List<SpaceTagDto>,
-    val collaborators: List<String>
+    val collaborators: List<String>,
+    @SerializedName("is_archived")
+    val isArchived: Boolean
 )
 
 data class SpaceTagDto(
@@ -111,7 +113,9 @@ data class SpaceNodeResponse(
     val latitude: String?,
     val longitude: String?,
     @SerializedName("location_name")
-    val locationName: String?
+    val locationName: String?,
+    @SerializedName("created_at")
+    val createdAt: String?
 )
 
 data class SpaceEdgeResponse(
