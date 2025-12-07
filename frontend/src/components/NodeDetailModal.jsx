@@ -136,6 +136,32 @@ const PropertySelectionList = ({
     }
   };
 
+  const handleGlobalSelectAll = () => {
+    const allStatementIds = properties.map((p) => p.statement_id);
+    const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+    
+    if (areAllSelected) {
+      onChange([]);
+    } else {
+      onChange(allStatementIds);
+    }
+  };
+
+  const handleGroupSelectAll = (group) => {
+    const groupStatementIds = group.values.map((p) => p.statement_id);
+    const areAllGroupSelected = groupStatementIds.every((id) => selectedProperties.includes(id));
+
+    let newSelection = [...selectedProperties];
+
+    if (areAllGroupSelected) {
+      newSelection = newSelection.filter((id) => !groupStatementIds.includes(id));
+    } else {
+      const missingIds = groupStatementIds.filter((id) => !selectedProperties.includes(id));
+      newSelection = [...newSelection, ...missingIds];
+    }
+    onChange(newSelection);
+  };
+
   const renderSelectionPropertyValue = (prop) => {
     if (
       prop && // Ensure prop exists
@@ -166,45 +192,88 @@ const PropertySelectionList = ({
     return prop?.value ? String(prop.value) : "No value available";
   };
 
+  const allStatementIds = properties.map((p) => p.statement_id);
+  const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+
   return (
     <div className="property-selection-container">
+      <div 
+        className="property-selection-header" 
+        style={{ 
+          padding: '8px 12px', 
+          borderBottom: '1px solid var(--color-gray-300)', 
+          backgroundColor: 'var(--color-bg-secondary)', 
+          display: 'flex', 
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+        onClick={handleGlobalSelectAll}
+      >
+        <input
+          type="checkbox"
+          checked={areAllSelected}
+          onChange={handleGlobalSelectAll}
+          className="property-checkbox"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--color-text)' }}>Select All Properties</span>
+      </div>
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {groupedProperties.map((group) => (
-          <div key={group.key} className="property-group-item selection-group">
-            <div className="property-group-header selection-header">
-              <span className="property-group-label">{group.label}</span>
-            </div>
-            <ul className="property-values-list">
-              {group.values.map((prop) => (
-                <div
-                  key={prop.statement_id}
-                  className={`property-selection-item ${
-                    selectedProperties.includes(prop.statement_id)
-                      ? "selected"
-                      : ""
-                  }`}
-                  onClick={() => handleItemClick(prop.statement_id)}
-                >
-                  <input
-                    type="checkbox"
-                    id={`prop-${prop.statement_id}`}
-                    checked={selectedProperties.includes(prop.statement_id)}
-                    onChange={() => handleItemClick(prop.statement_id)}
-                    className="property-checkbox"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <label
-                    htmlFor={`prop-${prop.statement_id}`}
-                    className="property-selection-label"
-                    onClick={(e) => e.stopPropagation()}
+        {groupedProperties.map((group) => {
+          const groupStatementIds = group.values.map(p => p.statement_id);
+          const isGroupSelected = groupStatementIds.every(id => selectedProperties.includes(id));
+          
+          return (
+            <div key={group.key} className="property-group-item selection-group">
+              <div 
+                className="property-group-header selection-header"
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => handleGroupSelectAll(group)}
+              >
+                <input
+                  type="checkbox"
+                  checked={isGroupSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleGroupSelectAll(group);
+                  }}
+                  className="property-checkbox"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="property-group-label">{group.label}</span>
+              </div>
+              <ul className="property-values-list">
+                {group.values.map((prop) => (
+                  <div
+                    key={prop.statement_id}
+                    className={`property-selection-item ${
+                      selectedProperties.includes(prop.statement_id)
+                        ? "selected"
+                        : ""
+                    }`}
+                    onClick={() => handleItemClick(prop.statement_id)}
                   >
-                    {renderSelectionPropertyValue(prop)}
-                  </label>
-                </div>
-              ))}
-            </ul>
-          </div>
-        ))}
+                    <input
+                      type="checkbox"
+                      id={`prop-${prop.statement_id}`}
+                      checked={selectedProperties.includes(prop.statement_id)}
+                      onChange={() => handleItemClick(prop.statement_id)}
+                      className="property-checkbox"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label
+                      htmlFor={`prop-${prop.statement_id}`}
+                      className="property-selection-label"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {renderSelectionPropertyValue(prop)}
+                    </label>
+                  </div>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -239,6 +308,7 @@ const NodeDetailModal = ({
   const [propertySearch, setPropertySearch] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [isEditPropertiesExpanded, setIsEditPropertiesExpanded] = useState(false);
+  const [isNodePropertiesExpanded, setIsNodePropertiesExpanded] = useState(true);
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -1062,13 +1132,18 @@ const NodeDetailModal = ({
         ) : (
           <div className="modal-body">
             {/* Location Section */}
-            <div className="location-section" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
+            <div className="location-section" style={{ 
+              marginBottom: "20px", 
+              padding: "15px", 
+              backgroundColor: "var(--color-bg-secondary)", 
+              borderRadius: "8px" 
+            }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                <h4 style={{ margin: 0 }}>Location:</h4>
+                <h4 style={{ margin: 0, color: "var(--color-text)" }}>Location:</h4>
                 {hasLocationChanged() && (
                   <span style={{
-                    backgroundColor: '#dc3545',
-                    color: 'white',
+                    backgroundColor: "var(--color-danger)",
+                    color: "var(--color-white)",
                     fontSize: '11px',
                     padding: '2px 6px',
                     borderRadius: '10px',
@@ -1081,8 +1156,8 @@ const NodeDetailModal = ({
                   <button
                     onClick={() => setIsEditingLocation(true)}
                     style={{
-                      background: '#007bff',
-                      color: 'white',
+                      background: "var(--color-accent)",
+                      color: "var(--color-white)",
                       border: 'none',
                       borderRadius: '4px',
                       padding: '4px 8px',
@@ -1090,14 +1165,14 @@ const NodeDetailModal = ({
                       cursor: 'pointer',
                       transition: 'background 0.2s',
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#0056b3'}
-                    onMouseOut={(e) => e.currentTarget.style.background = '#007bff'}
+                    onMouseOver={(e) => e.currentTarget.style.background = "var(--color-accent-hover)"}
+                    onMouseOut={(e) => e.currentTarget.style.background = "var(--color-accent)"}
                   >
                     Edit Location
                   </button>
                 )}
                 {!isEditingLocation && !canEditNodeLocation() && (
-                  <small style={{ color: '#666', fontSize: '11px', fontStyle: 'italic' }}>
+                  <small style={{ color: "var(--color-text-secondary)", fontSize: '11px', fontStyle: 'italic' }}>
                     Only space members can edit location
                   </small>
                 )}
@@ -1107,11 +1182,11 @@ const NodeDetailModal = ({
                 // Display current location
                 <div style={{ 
                   padding: "10px", 
-                  backgroundColor: "#ffffff", 
+                  backgroundColor: "var(--color-white)", 
                   borderRadius: "4px",
-                  border: "1px solid #dee2e6",
+                  border: "1px solid var(--color-border-2)",
                   fontSize: "14px",
-                  color: "#666"
+                  color: "var(--color-text-secondary)"
                 }}>
                   {nodeLocation.country || nodeLocation.city || nodeLocation.district || nodeLocation.street || nodeLocation.location_name || (nodeLocation.latitude && nodeLocation.longitude) ? (
                     <div>
@@ -1128,7 +1203,7 @@ const NodeDetailModal = ({
                         )
                       )}
                       {nodeLocation.latitude && nodeLocation.longitude && [nodeLocation.street, nodeLocation.district, nodeLocation.city, nodeLocation.country, nodeLocation.location_name].filter(Boolean).length > 0 && (
-                        <div style={{ marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                        <div style={{ marginTop: "5px", fontSize: "12px", color: "var(--color-text-secondary)" }}>
                           Coordinates: {nodeLocation.latitude}, {nodeLocation.longitude}
                         </div>
                       )}
@@ -1141,13 +1216,13 @@ const NodeDetailModal = ({
                 // Edit location form
                 <div style={{ 
                   padding: "15px", 
-                  backgroundColor: "#ffffff", 
+                  backgroundColor: "var(--color-white)", 
                   borderRadius: "4px",
-                  border: "1px solid #dee2e6"
+                  border: "1px solid var(--color-border-2)"
                 }}>
                   {/* Country */}
                   <div style={{ marginBottom: "10px" }}>
-                    <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                    <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                       Country:
                     </label>
                     <select 
@@ -1156,9 +1231,11 @@ const NodeDetailModal = ({
                       style={{
                         width: "100%",
                         padding: "6px",
-                        border: "1px solid #ccc",
+                        border: "1px solid var(--color-border-1)",
                         borderRadius: "4px",
-                        fontSize: "13px"
+                        fontSize: "13px",
+                        backgroundColor: "var(--color-white)",
+                        color: "var(--color-text)"
                       }}
                     >
                       <option value="">-- Select Country --</option>
@@ -1173,7 +1250,7 @@ const NodeDetailModal = ({
                   {/* City */}
                   {nodeLocation.country && (
                     <div style={{ marginBottom: "10px" }}>
-                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                         City:
                       </label>
                       <select 
@@ -1183,9 +1260,11 @@ const NodeDetailModal = ({
                         style={{
                           width: "100%",
                           padding: "6px",
-                          border: "1px solid #ccc",
+                          border: "1px solid var(--color-border-1)",
                           borderRadius: "4px",
-                          fontSize: "13px"
+                          fontSize: "13px",
+                          backgroundColor: "var(--color-white)",
+                          color: "var(--color-text)"
                         }}
                       >
                         <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
@@ -1196,7 +1275,7 @@ const NodeDetailModal = ({
                         ))}
                       </select>
                       {loadingCities && (
-                        <small style={{ color: "#666", fontSize: "11px" }}>
+                        <small style={{ color: "var(--color-text-secondary)", fontSize: "11px" }}>
                           Fetching cities for {nodeLocation.country}...
                         </small>
                       )}
@@ -1206,7 +1285,7 @@ const NodeDetailModal = ({
                   {/* District */}
                   {nodeLocation.city && (
                     <div style={{ marginBottom: "10px" }}>
-                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                         District (optional):
                       </label>
                       <select 
@@ -1216,9 +1295,11 @@ const NodeDetailModal = ({
                         style={{
                           width: "100%",
                           padding: "6px",
-                          border: "1px solid #ccc",
+                          border: "1px solid var(--color-border-1)",
                           borderRadius: "4px",
-                          fontSize: "13px"
+                          fontSize: "13px",
+                          backgroundColor: "var(--color-white)",
+                          color: "var(--color-text)"
                         }}
                       >
                         <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
@@ -1229,7 +1310,7 @@ const NodeDetailModal = ({
                         ))}
                       </select>
                       {loadingDistricts && (
-                        <small style={{ color: "#666", fontSize: "11px" }}>
+                        <small style={{ color: "var(--color-text-secondary)", fontSize: "11px" }}>
                           Fetching districts for {nodeLocation.city}...
                         </small>
                       )}
@@ -1239,7 +1320,7 @@ const NodeDetailModal = ({
                   {/* Street */}
                   {nodeLocation.district && (
                     <div style={{ marginBottom: "15px" }}>
-                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                         Street (optional):
                       </label>
                       <select 
@@ -1249,9 +1330,11 @@ const NodeDetailModal = ({
                         style={{
                           width: "100%",
                           padding: "6px",
-                          border: "1px solid #ccc",
+                          border: "1px solid var(--color-border-1)",
                           borderRadius: "4px",
-                          fontSize: "13px"
+                          fontSize: "13px",
+                          backgroundColor: "var(--color-white)",
+                          color: "var(--color-text)"
                         }}
                       >
                         <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
@@ -1262,7 +1345,7 @@ const NodeDetailModal = ({
                         ))}
                       </select>
                       {loadingStreets && (
-                        <small style={{ color: "#666", fontSize: "11px" }}>
+                        <small style={{ color: "var(--color-text-secondary)", fontSize: "11px" }}>
                           Fetching streets for {nodeLocation.district}...
                         </small>
                       )}
@@ -1276,8 +1359,8 @@ const NodeDetailModal = ({
                         onClick={forwardGeocode}
                         disabled={forwardGeocodingLoading}
                         style={{
-                          backgroundColor: "#28a745",
-                          color: "white",
+                          backgroundColor: "var(--color-success)",
+                          color: "var(--color-white)",
                           border: "none",
                           padding: "8px 16px",
                           borderRadius: "4px",
@@ -1289,7 +1372,7 @@ const NodeDetailModal = ({
                         {forwardGeocodingLoading ? "Getting Coordinates..." : "Get Coordinates from Address"}
                       </button>
                       {forwardGeocodingLoading && (
-                        <small style={{ color: "#666", fontSize: "11px", marginLeft: "10px" }}>
+                        <small style={{ color: "var(--color-text-secondary)", fontSize: "11px", marginLeft: "10px" }}>
                           Looking up coordinates for the address...
                         </small>
                       )}
@@ -1298,7 +1381,7 @@ const NodeDetailModal = ({
 
                   {/* Manual Location Name */}
                   <div style={{ marginBottom: "15px" }}>
-                    <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                    <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                       Location Name (optional):
                     </label>
                     <input 
@@ -1309,9 +1392,11 @@ const NodeDetailModal = ({
                       style={{
                         width: "100%",
                         padding: "6px",
-                        border: "1px solid #ccc",
+                        border: "1px solid var(--color-border-1)",
                         borderRadius: "4px",
-                        fontSize: "13px"
+                        fontSize: "13px",
+                        backgroundColor: "var(--color-white)",
+                        color: "var(--color-text)"
                       }}
                     />
                   </div>
@@ -1319,7 +1404,7 @@ const NodeDetailModal = ({
                   {/* Manual Coordinates */}
                   <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                         Latitude:
                       </label>
                       <input 
@@ -1331,14 +1416,16 @@ const NodeDetailModal = ({
                         style={{
                           width: "100%",
                           padding: "6px",
-                          border: "1px solid #ccc",
+                          border: "1px solid var(--color-border-1)",
                           borderRadius: "4px",
-                          fontSize: "13px"
+                          fontSize: "13px",
+                          backgroundColor: "var(--color-white)",
+                          color: "var(--color-text)"
                         }}
                       />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
+                      <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
                         Longitude:
                       </label>
                       <input 
@@ -1350,9 +1437,11 @@ const NodeDetailModal = ({
                         style={{
                           width: "100%",
                           padding: "6px",
-                          border: "1px solid #ccc",
+                          border: "1px solid var(--color-border-1)",
                           borderRadius: "4px",
-                          fontSize: "13px"
+                          fontSize: "13px",
+                          backgroundColor: "var(--color-white)",
+                          color: "var(--color-text)"
                         }}
                       />
                     </div>
@@ -1379,8 +1468,8 @@ const NodeDetailModal = ({
                           }
                         }}
                         style={{
-                          background: '#17a2b8',
-                          color: 'white',
+                          background: 'var(--color-accent)',
+                          color: 'var(--color-white)',
                           border: 'none',
                           borderRadius: '4px',
                           padding: '6px 12px',
@@ -1388,8 +1477,8 @@ const NodeDetailModal = ({
                           cursor: 'pointer',
                           width: '100%'
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.background = '#138496'}
-                        onMouseOut={(e) => e.currentTarget.style.background = '#17a2b8'}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-accent-hover)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'var(--color-accent)'}
                       >
                         🌍 Get Address from Coordinates
                       </button>
@@ -1402,9 +1491,9 @@ const NodeDetailModal = ({
                       onClick={handleUpdateLocation}
                       disabled={updatingLocation}
                       style={{
-                        background: updatingLocation ? '#ccc' : (hasLocationChanged() ? '#dc3545' : '#28a745'),
-                        color: 'white',
-                        border: hasLocationChanged() ? '2px solid #dc3545' : 'none',
+                        background: updatingLocation ? 'var(--color-gray-300)' : (hasLocationChanged() ? 'var(--color-danger)' : 'var(--color-success)'),
+                        color: 'var(--color-white)',
+                        border: hasLocationChanged() ? '2px solid var(--color-danger)' : 'none',
                         borderRadius: '4px',
                         padding: '6px 12px',
                         fontSize: '13px',
@@ -1436,8 +1525,8 @@ const NodeDetailModal = ({
                       }}
                       disabled={updatingLocation}
                       style={{
-                        background: '#6c757d',
-                        color: 'white',
+                        background: 'var(--color-text-secondary)',
+                        color: 'var(--color-white)',
                         border: 'none',
                         borderRadius: '4px',
                         padding: '6px 12px',
@@ -1453,39 +1542,52 @@ const NodeDetailModal = ({
             </div>
 
             <div className="properties-section">
-              <h4>{t("graph.nodeProperties")}</h4>
-              {groupedProperties.length > 0 ? (
-                <div className="current-properties">
-                  <div className="property-group-list">
-                    {groupedProperties.map((group) => (
-                      <div key={group.key} className="property-group-item">
-                        <div className="property-group-header">
-                          <span className="property-group-label">
-                             {group.values[0] ? getPropertyLabelWithId(group.values[0]).split(':')[0] : group.label}
-                          </span>
-                        </div>
-                        <ul className="property-values-list">
-                          {group.values.map((prop) => (
-                            <li key={prop.statement_id} className="property-value-item">
-                              <span className="property-value-content">
-                                {renderPropertyValue(prop)}
+              <div 
+                className="collapsible-header" 
+                onClick={() => setIsNodePropertiesExpanded(!isNodePropertiesExpanded)}
+              >
+                <h4>{t("graph.nodeProperties")}</h4>
+                <span className={`expand-icon ${isNodePropertiesExpanded ? 'expanded' : ''}`}>
+                  ▼
+                </span>
+              </div>
+              
+              {isNodePropertiesExpanded && (
+                <div className="collapsible-content">
+                  {groupedProperties.length > 0 ? (
+                    <div className="current-properties">
+                      <div className="property-group-list">
+                        {groupedProperties.map((group) => (
+                          <div key={group.key} className="property-group-item">
+                            <div className="property-group-header">
+                              <span className="property-group-label">
+                                 {group.values[0] ? getPropertyLabelWithId(group.values[0]).split(':')[0] : group.label}
                               </span>
-                              <button
-                                className="delete-property-button small"
-                                onClick={() => handleDeleteProperty(prop.statement_id)}
-                                title={t("graph.deleteProperty")}
-                              >
-                                ×
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
+                            </div>
+                            <ul className="property-values-list">
+                              {group.values.map((prop) => (
+                                <li key={prop.statement_id} className="property-value-item">
+                                  <span className="property-value-content">
+                                    {renderPropertyValue(prop)}
+                                  </span>
+                                  <button
+                                    className="delete-property-button small"
+                                    onClick={() => handleDeleteProperty(prop.statement_id)}
+                                    title={t("graph.deleteProperty")}
+                                  >
+                                    ×
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <p>{t("graph.noPropertiesFound")}</p>
+                  )}
                 </div>
-              ) : (
-                <p>{t("graph.noPropertiesFound")}</p>
               )}
             </div>
 
