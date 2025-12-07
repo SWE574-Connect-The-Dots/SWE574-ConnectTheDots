@@ -309,6 +309,10 @@ const NodeDetailModal = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [isEditPropertiesExpanded, setIsEditPropertiesExpanded] = useState(false);
   const [isNodePropertiesExpanded, setIsNodePropertiesExpanded] = useState(true);
+  const [nodeImages, setNodeImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [loadingImage, setLoadingImage] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -487,6 +491,64 @@ const NodeDetailModal = ({
 
     fetchNodeProperties();
   }, [node.id, spaceId, fetchProperties]);
+
+  useEffect(() => {
+    const fetchNodeImage = async () => {
+      const wikidataId = node.data?.wikidata_id || node.wikidata_id;
+      if (!wikidataId) {
+        setNodeImages([]);
+        return;
+      }
+
+      try {
+        setLoadingImage(true);
+        const response = await fetch(
+          `https://www.wikidata.org/w/api.php?action=wbgetclaims&property=P18&entity=${wikidataId}&format=json&origin=*`
+        );
+        const data = await response.json();
+        
+        if (data.claims && data.claims.P18 && data.claims.P18.length > 0) {
+          const images = data.claims.P18.map(claim => {
+            const imageName = claim.mainsnak.datavalue.value;
+            return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(imageName)}?width=600`;
+          });
+          setNodeImages(images);
+          setCurrentImageIndex(0);
+          setIsImageLoading(true);
+        } else {
+          setNodeImages([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch node image:", err);
+        setNodeImages([]);
+      } finally {
+        setLoadingImage(false);
+      }
+    };
+
+    fetchNodeImage();
+  }, [node]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (nodeImages.length <= 1) return;
+
+      if (e.key === "ArrowLeft") {
+        setCurrentImageIndex((prev) =>
+          prev === 0 ? nodeImages.length - 1 : prev - 1
+        );
+        setIsImageLoading(true);
+      } else if (e.key === "ArrowRight") {
+        setCurrentImageIndex((prev) =>
+          prev === nodeImages.length - 1 ? 0 : prev + 1
+        );
+        setIsImageLoading(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nodeImages]);
 
   useEffect(() => {
     const fetchNodesAndEdges = async () => {
@@ -1131,6 +1193,134 @@ const NodeDetailModal = ({
           <div className="error">{error}</div>
         ) : (
           <div className="modal-body">
+            {(loadingImage || (nodeImages.length > 0 && isImageLoading)) && (
+              <div className="image-loading" style={{ display: "flex", justifyContent: "center", padding: "20px" }}>
+                <div className="loading-spinner" style={{ 
+                  width: "30px", 
+                  height: "30px", 
+                  border: "3px solid var(--color-gray-200)", 
+                  borderTop: "3px solid var(--color-accent)", 
+                  borderRadius: "50%", 
+                  animation: "spin 1s linear infinite" 
+                }}></div>
+                <style>{`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}</style>
+              </div>
+            )}
+            {!loadingImage && nodeImages.length > 0 && (
+              <div className="node-image-section" style={{ 
+                marginBottom: "20px", 
+                display: isImageLoading ? "none" : "flex", 
+                flexDirection: "column", 
+                alignItems: "center" 
+              }}>
+                <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                  {nodeImages.length > 1 && (
+                    <button 
+                      onClick={() => {
+                        setCurrentImageIndex(prev => prev === 0 ? nodeImages.length - 1 : prev - 1);
+                        setIsImageLoading(true);
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: "10px",
+                        background: "rgba(0,0,0,0.5)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "36px",
+                        height: "36px",
+                        cursor: "pointer",
+                        zIndex: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "24px",
+                        padding: "0 0 4px 0",
+                        lineHeight: 1
+                      }}
+                      title="Previous image"
+                    >
+                      ‹
+                    </button>
+                  )}
+                  
+                  <img 
+                    src={nodeImages[currentImageIndex]} 
+                    alt={node.data?.label || node.label} 
+                    onLoad={() => setIsImageLoading(false)}
+                    onError={() => setIsImageLoading(false)}
+                    style={{ 
+                      maxWidth: "100%", 
+                      maxHeight: "300px", 
+                      objectFit: "contain", 
+                      borderRadius: "8px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }} 
+                  />
+
+                  {nodeImages.length > 1 && (
+                    <button 
+                      onClick={() => {
+                        setCurrentImageIndex(prev => prev === nodeImages.length - 1 ? 0 : prev + 1);
+                        setIsImageLoading(true);
+                      }}
+                      style={{
+                        position: "absolute",
+                        right: "10px",
+                        background: "rgba(0,0,0,0.5)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "36px",
+                        height: "36px",
+                        cursor: "pointer",
+                        zIndex: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "24px",
+                        padding: "0 0 4px 0",
+                        lineHeight: 1
+                      }}
+                      title="Next image"
+                    >
+                      ›
+                    </button>
+                  )}
+                </div>
+                
+                {nodeImages.length > 1 && (
+                  <div style={{ marginTop: "10px", display: "flex", gap: "6px" }}>
+                    {nodeImages.map((_, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => {
+                          if (currentImageIndex !== idx) {
+                            setCurrentImageIndex(idx);
+                            setIsImageLoading(true);
+                          }
+                        }}
+                        style={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          backgroundColor: idx === currentImageIndex ? "var(--color-accent)" : "var(--color-gray-300)",
+                          cursor: "pointer",
+                          transition: "background-color 0.2s"
+                        }}
+                        title={`Image ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Location Section */}
             <div className="location-section" style={{ 
               marginBottom: "20px", 
