@@ -16,7 +16,7 @@
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   width: 90%;
-  max-width: 600px;
+  max-width: 800px;
   max-height: 80vh;
   overflow-y: auto;
   display: flex;
@@ -91,6 +91,56 @@
   padding-bottom: 5px;
   border-bottom: 1px solid var(--color-border-2);
   color: var(--color-text);
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px;
+  background-color: var(--color-bg-secondary);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border: 1px solid var(--color-border-2);
+  transition: background-color 0.2s;
+}
+
+.collapsible-header:hover {
+  background-color: var(--color-item-bg);
+}
+
+.collapsible-header h4 {
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.expand-icon {
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+  color: var(--color-text-secondary);
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  padding: 10px;
+  border: 1px solid var(--color-border-2);
+  border-top: none;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  margin-top: -10px;
+}
+
+
+.property-selection-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
 }
 
 .current-properties ul {
@@ -217,22 +267,6 @@
 
 .entity-link {
   color: var(--color-accent);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.entity-link:hover {
-  text-decoration: underline;
-  color: var(--color-accent-hover);
-}
-
-.entity-link:visited {
-  color: var(--color-purple-selected);
-}
-
-.entity-link:visited:hover {
-  color: var(--color-purple);
 }
 
 .property-group-list {
@@ -305,11 +339,6 @@
   border-bottom: none;
 }
 
-.property-selection-list .property-group-item .property-values-list {
-  padding: 0;
-  margin: 0;
-}
-
 .property-selection-item {
   display: flex;
   align-items: flex-start;
@@ -322,4 +351,9 @@
 
 .property-selection-item:last-child {
   border-bottom: none;
+}
+
+.property-selection-list .property-group-item .property-values-list {
+  padding: 0;
+  margin: 0;
 }

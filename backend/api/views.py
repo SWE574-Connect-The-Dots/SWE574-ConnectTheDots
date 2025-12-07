@@ -553,6 +553,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         new_node = Node.objects.create(
             label=wikidata_entity['label'],
             wikidata_id=wikidata_entity['id'],
+            description=wikidata_entity.get('description', ''),
             created_by=request.user,
             space = space
         )
@@ -646,25 +647,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk, is_archived=False)
-        data = []
-        for node in nodes:
-            node_data = {
-                'id': node.id, 
-                'label': node.label, 
-                'wikidata_id': node.wikidata_id,
-                'country': node.country,
-                'city': node.city,
-                'district': node.district,
-                'street': node.street,
-                'latitude': node.latitude,
-                'longitude': node.longitude,
-                'location_name': node.location_name,
-                'created_at': node.created_at,
-                'created_by': node.created_by.id if node.created_by else None,
-                'created_by_username': node.created_by.username if node.created_by else None
-            }
-            data.append(node_data)
-        return Response(data)
+        serializer = NodeSerializer(nodes, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'], url_path='edges')
     def edges(self, request, pk=None):

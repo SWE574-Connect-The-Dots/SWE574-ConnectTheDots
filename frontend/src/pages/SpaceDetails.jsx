@@ -1511,6 +1511,7 @@ const SpaceDetails = () => {
               latitude: updatedNodeData.latitude || null,
               longitude: updatedNodeData.longitude || null,
               location_name: updatedNodeData.location_name || null,
+              description: updatedNodeData.description || null,
             },
             // Also at top level for backward compatibility
             country: updatedNodeData.country || null,
@@ -1520,6 +1521,7 @@ const SpaceDetails = () => {
             latitude: updatedNodeData.latitude || null,
             longitude: updatedNodeData.longitude || null,
             location_name: updatedNodeData.location_name || null,
+            description: updatedNodeData.description || null,
           };
           setSelectedNode(updatedNode);
         }

@@ -238,6 +238,7 @@ const NodeDetailModal = ({
   const [isCurrentNodeSource, setIsCurrentNodeSource] = useState(true);
   const [propertySearch, setPropertySearch] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isEditPropertiesExpanded, setIsEditPropertiesExpanded] = useState(false);
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -1002,7 +1003,38 @@ const NodeDetailModal = ({
         <style>{propertySelectionStyles}</style>
 
         <div className="modal-header">
-          <h2>{t("graph.nodeDetails")}</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+              <h2 style={{ fontSize: "2rem", margin: 0 }}>
+                {node.data?.label || node.label}
+              </h2>
+              {(node.data?.wikidata_id || node.wikidata_id) && (
+                <a
+                  href={`https://www.wikidata.org/wiki/${
+                    node.data?.wikidata_id || node.wikidata_id
+                  }`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="wikidata-id-link"
+                  style={{
+                    fontSize: "1rem",
+                    color: "var(--color-accent)",
+                    textDecoration: "none",
+                    fontWeight: "normal"
+                  }}
+                  onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
+                  onMouseOut={(e) => (e.target.style.textDecoration = "none")}
+                >
+                  ({node.data?.wikidata_id || node.wikidata_id})
+                </a>
+              )}
+            </div>
+            {(node.data?.description || node.description) && (
+              <span style={{ fontSize: "1rem", color: "var(--color-text-secondary)" }}>
+                {node.data?.description || node.description}
+              </span>
+            )}
+          </div>
           <div style={{ display: "flex", gap: "10px" }}>
             <button
               onClick={() => setShowReportModal(true)}
@@ -1029,24 +1061,6 @@ const NodeDetailModal = ({
           <div className="error">{error}</div>
         ) : (
           <div className="modal-body">
-            <div className="node-info-section">
-              <h3>{node.data?.label || node.label}</h3>
-              {(node.data?.wikidata_id || node.wikidata_id) && (
-                <p className="wikidata-id">
-                  {t("graph.wikidataId")}:{" "}
-                  <a
-                    href={`https://www.wikidata.org/wiki/${
-                      node.data?.wikidata_id || node.wikidata_id
-                    }`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {node.data?.wikidata_id || node.wikidata_id}
-                  </a>
-                </p>
-              )}
-            </div>
-
             {/* Location Section */}
             <div className="location-section" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
@@ -1478,35 +1492,48 @@ const NodeDetailModal = ({
             {/* Property selection UI for editing node properties */}
             {availableProperties.length > 0 && (
               <div className="edit-properties-section">
-                <h4>{t("graph.editNodeProperties")}</h4>
-                <p className="selection-help-text">
-                  {t("graph.clickToSelectDeselect")}
-                </p>
-                <input
-                  type="text"
-                  placeholder={t("graph.searchProperties")}
-                  value={propertySearch}
-                  onChange={(e) => setPropertySearch(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    marginBottom: "10px",
-                    boxSizing: "border-box",
-                  }}
-                />
-                <PropertySelectionList
-                  properties={filteredAndSortedProperties}
-                  selectedProperties={selectedProperties}
-                  onChange={handlePropertySelection}
-                />
-                <button
-                  className="save-button"
-                  style={{ marginTop: 10 }}
-                  onClick={handleSaveChanges}
-                  disabled={loading}
+                <div 
+                  className="collapsible-header" 
+                  onClick={() => setIsEditPropertiesExpanded(!isEditPropertiesExpanded)}
                 >
-                  {t("graph.saveProperties")}
-                </button>
+                  <h4>{t("graph.editNodeProperties")}</h4>
+                  <span className={`expand-icon ${isEditPropertiesExpanded ? 'expanded' : ''}`}>
+                    ▼
+                  </span>
+                </div>
+                
+                {isEditPropertiesExpanded && (
+                  <div className="collapsible-content">
+                    <p className="selection-help-text">
+                      {t("graph.clickToSelectDeselect")}
+                    </p>
+                    <input
+                      type="text"
+                      placeholder={t("graph.searchProperties")}
+                      value={propertySearch}
+                      onChange={(e) => setPropertySearch(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px",
+                        marginBottom: "10px",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <PropertySelectionList
+                      properties={filteredAndSortedProperties}
+                      selectedProperties={selectedProperties}
+                      onChange={handlePropertySelection}
+                    />
+                    <button
+                      className="save-button"
+                      style={{ marginTop: 10 }}
+                      onClick={handleSaveChanges}
+                      disabled={loading}
+                    >
+                      {t("graph.saveProperties")}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
