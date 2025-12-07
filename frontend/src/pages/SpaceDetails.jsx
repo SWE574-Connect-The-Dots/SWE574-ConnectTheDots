@@ -15,6 +15,174 @@ import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
 
+const infoModalStyles = `
+.info-icon-btn {
+  background: none;
+  color: var(--color-gray-400);
+  border: 2px solid var(--color-gray-400);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.info-icon-btn:hover {
+  background: var(--color-gray-400);
+  color: var(--color-white);
+  border: 2px solid var(--color-gray-400);
+}
+
+.info-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.info-modal-content {
+  background: #FFFFFF;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.info-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid #E0E0E0;
+  background: linear-gradient(135deg, #0076B5 0%, #005A8C 100%);
+  color: #FFFFFF;
+  border-radius: 12px 12px 0 0;
+}
+
+.info-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-white);
+  font-size: 28px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-modal-body {
+  padding: 24px;
+}
+
+.info-section {
+  margin-bottom: 32px;
+}
+
+.info-section:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #E0E0E0;
+}
+
+.info-section-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.info-section h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1B1F3B;
+}
+
+.info-section-content {
+  line-height: 1.7;
+}
+
+.info-section-content p {
+  margin: 0 0 12px 0;
+}
+
+.info-section-content p:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-content ul {
+  margin: 12px 0;
+  padding-left: 20px;
+  list-style-type: none;
+  border-left: 3px solid #E0E0E0;
+}
+
+.info-highlight {
+  background: #E3F2FD;
+  border-left: 4px solid #0076B5;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin: 12px 0;
+  font-size: 14px;
+  color: #1B1F3B;
+}
+
+.info-subsection ul{
+  margin-top: 16px;
+  padding-left: 16px;
+  border-left: 3px solid #E0E0E0;
+  list-style-type: none;
+}
+
+.info-subsection h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: var(--color-white);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 4px;
+}
+`;
+
 const advancedSearchStyles = `
 .advanced-search-wrapper {
   margin-bottom: 30px;
@@ -722,6 +890,7 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [simpleSearchResults, setSimpleSearchResults] = useState(null);
@@ -1378,7 +1547,6 @@ const SpaceDetails = () => {
       );
       
       setSimpleSearchResults(response.data);
-      // Clear advanced search results when doing simple search
       setAdvancedSearchResults(null);
       console.log('Simple search results:', response.data);
     } catch (error) {
@@ -1437,7 +1605,7 @@ const SpaceDetails = () => {
     const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
     
     if (validCriteria.length === 0) {
-      alert("Please add at least one complete search criterion (property and value).");
+      alert("Please add at least one complete search criteria (property and value).");
       return;
     }
 
@@ -1466,12 +1634,11 @@ const SpaceDetails = () => {
       );
       
       setAdvancedSearchResults(response.data);
-      // Clear simple search results when doing advanced search
       setSimpleSearchResults(null);
       console.log('Search results:', response.data);
     } catch (error) {
       console.error("Error executing search:", error);
-      alert("Failed to execute search. Please try again.");
+      alert("Failed to execute search.");
     } finally {
       setSearchingQuery(false);
     }
@@ -1763,6 +1930,160 @@ const SpaceDetails = () => {
     );
   };
 
+  // Info Modal
+  const InfoModal = () => {
+    if (!showInfoModal) return null;
+
+    return (
+      <div className="info-modal-backdrop" onClick={() => setShowInfoModal(false)}>
+        <div className="info-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="info-modal-header">
+            <h2>
+              How This Space Works
+            </h2>
+            <button 
+              className="info-modal-close-btn"
+              onClick={() => setShowInfoModal(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="info-modal-body">
+            {/* Space Graph Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Space Graph</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  The Space Graph is a visual representation of interconnected knowledge. Each space contains nodes
+                  and edges that form a semantic network.
+                </p>
+                <div className="info-subsection">
+                  <h4>Nodes</h4>
+                  <ul>
+                    <li><strong>Wikidata Entities:</strong> Nodes are created from Wikidata, bringing structured knowledge into your space</li>
+                    <li><strong>Properties:</strong> Each node can have multiple properties with values (e.g., "birth date", "location", "occupation")</li>
+                    <li><strong>Location Data:</strong> Nodes can have geographical information (country, city, district, street, coordinates)</li>
+                  </ul>
+                </div>
+                <div className="info-subsection">
+                  <h4>Edges</h4>
+                  <ul>
+                    <li><strong>Relationships:</strong> Edges connect nodes and represent semantic relationships</li>
+                    <li><strong>Directionality:</strong> Edges have a source and target (e.g., "Person A" → "works for" → "Company B")</li>
+                    <li><strong>Properties:</strong> Edges can also have their own properties to add more context</li>
+                  </ul>
+                </div>
+                <div className="info-highlight">
+                  <strong>Tip:</strong> Click on any node or edge in the graph to view details, edit properties or see relationships.
+                </div>
+
+                <div className="info-highlight">
+                  <strong>Tip:</strong> A node expands in size when additional connections are added, indicating increased relevance and activity.
+                </div>
+              </div>
+            </div>
+
+            {/* Search Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Search Functionality</h3>
+              </div>
+              <div className="info-section-content">
+                <div className="info-subsection">
+                  <h4>Simple Text Search</h4>
+                  <p>
+                    Use the search bar to quickly find nodes and edges by their labels, descriptions or property values. 
+                    Results show both nodes and edges that match your query.
+                  </p>
+                </div>
+                <div className="info-subsection">
+                  <h4>Advanced Property Search</h4>
+                  <p>
+                    Click <span className="info-badge">Advanced Search</span> to build complex queries:
+                  </p>
+                  <ul>
+                    <li><strong>Property-based:</strong> Search by specific properties (e.g., "instance of")</li>
+                    <li><strong>Multiple Criteria:</strong> Combine multiple search conditions with AND/OR logic</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Collaborators Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Collaborators & Permissions</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  Spaces are collaborative environments where multiple users can contribute to building knowledge graphs.
+                </p>
+                <ul>
+                  <li><strong>Join as Collaborator:</strong> Click "Join Space" to become a collaborator and start editing</li>
+                  <li><strong>Add Nodes & Edges:</strong> Collaborators can add new nodes from Wikidata and create relationships</li>
+                  <li><strong>Edit & Delete:</strong> Modify node properties, update descriptions or remove elements</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Discussions Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Discussion Panel</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  The discussion panel enables communication and collaboration among space members.
+                </p>
+                <ul>
+                  <li><strong>Start Discussions:</strong> Collaborators can create new discussion threads about the space</li>
+                  <li><strong>Reply & React:</strong> Engage with discussions through reactions.</li>
+                  <li><strong>Report Content:</strong> Report inappropriate comments.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Activity Stream Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Activity Stream</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  The activity stream shows recent actions in the space, helping you stay updated on changes.
+                </p>
+                <strong>Real-time Updates:</strong> See who added nodes, created edges or updated properties
+              
+              </div>
+            </div>
+
+            {/* Location Features Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>Location & Maps</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  Spaces and nodes can have geographical context:
+                </p>
+                <ul>
+                  <li><strong>Space Location:</strong> Set a location for your entire space (visible at the top of the page)</li>
+                  <li><strong>Node Locations:</strong> Add specific locations to individual nodes with coordinates</li>
+                  <li><strong>Map Visualization:</strong> Click "Show Space Map" to see all nodes with locations on an interactive map</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -1776,6 +2097,7 @@ const SpaceDetails = () => {
       }}
     >
       {/* Inject CSS for property selection */}
+      <style>{infoModalStyles}</style>
       <style>{advancedSearchStyles}</style>
       <style>{propertySelectionStyles}</style>
 
@@ -1805,7 +2127,17 @@ const SpaceDetails = () => {
               </span>
             )}
           </h2>
-          <SpaceActionsDropdown />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              className="info-icon-btn"
+              onClick={() => setShowInfoModal(true)}
+              title="Information"
+              aria-label="Information"
+            >
+              ℹ︎
+            </button>
+            <SpaceActionsDropdown />
+          </div>
         </div>
         <p>{space.description}</p>
         
@@ -2057,8 +2389,8 @@ const SpaceDetails = () => {
                 type="text"
                 value={simpleSearchQuery}
                 onChange={(e) => setSimpleSearchQuery(e.target.value)}
-                placeholder="Search within this space's properties, values, or content..."
-                onKeyPress={(e) => {
+                placeholder="Search within this space's properties, values or content..."
+                onKeyUp={(e) => {
                   if (e.key === 'Enter') {
                     handleSimpleSearch();
                   }
@@ -3204,6 +3536,9 @@ const SpaceDetails = () => {
           onClose={() => setShowReportModal(false)}
         />
       )}
+
+      {/* Info Modal */}
+      <InfoModal />
     </div>
   );
 };
