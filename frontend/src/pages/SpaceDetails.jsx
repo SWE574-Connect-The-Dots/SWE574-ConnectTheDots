@@ -1441,12 +1441,11 @@ const SpaceDetails = () => {
       return;
     }
 
-    const logic = validCriteria.length > 0 ? validCriteria[0].logicalOp : 'AND';
-
-    const rules = validCriteria.map(c => ({
+    const rules = validCriteria.map((c, index) => ({
       property_id: c.propertyId,
       value_id: c.valueId || null,
-      value_text: c.value || null
+      value_text: c.value || null,
+      ...(index < validCriteria.length - 1 && { operator: c.logicalOp })
     }));
 
     setSearchingQuery(true);
@@ -1454,8 +1453,7 @@ const SpaceDetails = () => {
       const response = await api.post(
         `/spaces/${id}/search/query/`,
         {
-          rules: rules,
-          logic: logic
+          rules: rules
         },
         {
           headers: {

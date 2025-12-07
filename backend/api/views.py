@@ -826,44 +826,64 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='search/query')
     def search_query(self, request, pk=None):
-        """
-        Execute boolean search across node and edge properties.
-        Payload: { "rules": [ {property_id, value_id?, value_text?} ], "logic": "AND"|"OR" }
-        """
         space = self.get_object()
         rules = request.data.get('rules', [])
-        logic = (request.data.get('logic') or 'AND').upper()
-        if logic not in ['AND', 'OR']:
-            logic = 'AND'
+        legacy_logic = request.data.get('logic')
+        
         if not rules:
             return Response({'nodes': [], 'edges': []})
 
-        node_sets = []
+        node_results = []
         base_node_qs = Property.objects.filter(node__space=space)
-        for rule in rules:
+        for i, rule in enumerate(rules):
             qs = self._apply_rule_to_queryset(base_node_qs, rule)
             ids = set(qs.values_list('node_id', flat=True))
             if ids:
-                node_sets.append(ids)
+                node_results.append((ids, i))
 
-        edge_sets = []
+        edge_results = []
         base_edge_qs = EdgeProperty.objects.filter(edge__source__space=space)
-        for rule in rules:
+        for i, rule in enumerate(rules):
             qs = self._apply_rule_to_queryset(base_edge_qs, rule)
             ids = set(qs.values_list('edge_id', flat=True))
             if ids:
-                edge_sets.append(ids)
+                edge_results.append((ids, i))
 
-        def combine_sets(sets):
-            if not sets:
+        def combine_results_sequential(results, rules, legacy_logic):
+            if not results:
                 return set()
-            result = sets[0]
-            for s in sets[1:]:
-                result = result & s if logic == 'AND' else result | s
-            return result
+            if len(results) == 1:
+                return results[0][0]
+            
+            use_sequential = any('operator' in rule for rule in rules)
+            
+            if use_sequential:
+                result = results[0][0]
+                for i in range(1, len(results)):
+                    current_set, current_rule_idx = results[i]
+                    prev_rule_idx = results[i-1][1]
+                    
+                    operator = (rules[prev_rule_idx].get('operator') or 'AND').upper()
+                    if operator not in ['AND', 'OR']:
+                        operator = 'AND'
+                    
+                    if operator == 'AND':
+                        result = result & current_set
+                    else:
+                        result = result | current_set
+                return result
+            else:
+                logic = (legacy_logic or 'AND').upper()
+                if logic not in ['AND', 'OR']:
+                    logic = 'AND'
+                
+                result = results[0][0]
+                for s, _ in results[1:]:
+                    result = result & s if logic == 'AND' else result | s
+                return result
 
-        matching_node_ids = combine_sets(node_sets)
-        matching_edge_ids = combine_sets(edge_sets)
+        matching_node_ids = combine_results_sequential(node_results, rules, legacy_logic)
+        matching_edge_ids = combine_results_sequential(edge_results, rules, legacy_logic)
 
         nodes = Node.objects.filter(id__in=matching_node_ids, space=space)
         edges = Edge.objects.filter(id__in=matching_edge_ids, source__space=space).prefetch_related('edge_properties')
