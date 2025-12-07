@@ -506,6 +506,25 @@ const PropertySelectionList = ({
 }) => {
   const scrollContainerRef = useRef(null);
 
+  const groupedProperties = useMemo(() => {
+    const groups = {};
+    properties.forEach((prop) => {
+      if (!prop || !prop.statement_id) return;
+      const propId = prop.property || prop.property_id;
+      const key = propId || getPropertyLabelWithId(prop) || "unknown";
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label: getPropertyLabelWithId(prop).split(':')[0].trim(),
+          values: [],
+        };
+      }
+      groups[key].values.push(prop);
+    });
+    return Object.values(groups);
+  }, [properties]);
+
   const handleItemClick = (statementId) => {
     let scrollPos = 0;
     if (scrollContainerRef.current) {
@@ -523,6 +542,32 @@ const PropertySelectionList = ({
         scrollContainerRef.current.scrollTop = scrollPos;
       }, 0);
     }
+  };
+
+  const handleGlobalSelectAll = () => {
+    const allStatementIds = properties.map((p) => p.statement_id);
+    const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+    
+    if (areAllSelected) {
+      onChange([]);
+    } else {
+      onChange(allStatementIds);
+    }
+  };
+
+  const handleGroupSelectAll = (group) => {
+    const groupStatementIds = group.values.map((p) => p.statement_id);
+    const areAllGroupSelected = groupStatementIds.every((id) => selectedProperties.includes(id));
+
+    let newSelection = [...selectedProperties];
+
+    if (areAllGroupSelected) {
+      newSelection = newSelection.filter((id) => !groupStatementIds.includes(id));
+    } else {
+      const missingIds = groupStatementIds.filter((id) => !selectedProperties.includes(id));
+      newSelection = [...newSelection, ...missingIds];
+    }
+    onChange(newSelection);
   };
 
   const renderPropertyValue = (prop) => {
@@ -555,38 +600,88 @@ const PropertySelectionList = ({
     return prop?.value ? String(prop.value) : "No value available";
   };
 
+  const allStatementIds = properties.map((p) => p.statement_id);
+  const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+
   return (
     <div className="property-selection-container">
+      <div 
+        className="property-selection-header" 
+        style={{ 
+          padding: '8px 12px', 
+          borderBottom: '1px solid var(--color-gray-300)', 
+          backgroundColor: 'var(--color-bg-secondary)', 
+          display: 'flex', 
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+        onClick={handleGlobalSelectAll}
+      >
+        <input
+          type="checkbox"
+          checked={areAllSelected}
+          onChange={handleGlobalSelectAll}
+          className="property-checkbox"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--color-text)' }}>Select All Properties</span>
+      </div>
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties
-          .filter((prop) => prop && prop.statement_id)
-          .map((prop) => (
-            <div
-              key={prop.statement_id}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.statement_id) ? "selected" : ""
-              }`}
-              onClick={() => handleItemClick(prop.statement_id)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.statement_id}`}
-                checked={selectedProperties.includes(prop.statement_id)}
-                onChange={() => handleItemClick(prop.statement_id)}
-                className="property-checkbox"
-              />
-              <label
-                htmlFor={`prop-${prop.statement_id}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
+        {groupedProperties.map((group) => {
+          const groupStatementIds = group.values.map(p => p.statement_id);
+          const isGroupSelected = groupStatementIds.every(id => selectedProperties.includes(id));
+          
+          return (
+            <div key={group.key} className="property-group-item selection-group">
+              <div 
+                className="property-group-header selection-header"
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => handleGroupSelectAll(group)}
               >
-                <span className="property-label">
-                  {getPropertyLabelWithId(prop)}:
-                </span>{" "}
-                {renderPropertyValue(prop)}
-              </label>
+                <input
+                  type="checkbox"
+                  checked={isGroupSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleGroupSelectAll(group);
+                  }}
+                  className="property-checkbox"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="property-group-label">{group.label}</span>
+              </div>
+              <ul className="property-values-list">
+                {group.values.map((prop) => (
+                  <div
+                    key={prop.statement_id}
+                    className={`property-selection-item ${
+                      selectedProperties.includes(prop.statement_id)
+                        ? "selected"
+                        : ""
+                    }`}
+                    onClick={() => handleItemClick(prop.statement_id)}
+                  >
+                    <input
+                      type="checkbox"
+                      id={`prop-${prop.statement_id}`}
+                      checked={selectedProperties.includes(prop.statement_id)}
+                      onChange={() => handleItemClick(prop.statement_id)}
+                      className="property-checkbox"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label
+                      htmlFor={`prop-${prop.statement_id}`}
+                      className="property-selection-label"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {renderPropertyValue(prop)}
+                    </label>
+                  </div>
+                ))}
+              </ul>
             </div>
-          ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1485,6 +1580,7 @@ const SpaceDetails = () => {
               latitude: updatedNodeData.latitude || null,
               longitude: updatedNodeData.longitude || null,
               location_name: updatedNodeData.location_name || null,
+              description: updatedNodeData.description || null,
             },
             // Also at top level for backward compatibility
             country: updatedNodeData.country || null,
@@ -1494,6 +1590,7 @@ const SpaceDetails = () => {
             latitude: updatedNodeData.latitude || null,
             longitude: updatedNodeData.longitude || null,
             location_name: updatedNodeData.location_name || null,
+            description: updatedNodeData.description || null,
           };
           setSelectedNode(updatedNode);
         }

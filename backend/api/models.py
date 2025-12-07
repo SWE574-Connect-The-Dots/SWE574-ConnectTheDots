@@ -155,6 +155,7 @@ class Node(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     location_name = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)

@@ -341,9 +341,9 @@ class NodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Node
         fields = [
-            'id', 'label', 'wikidata_id', 'created_at', 'created_by_username', 
+            'id', 'label', 'wikidata_id', 'created_at', 'created_by', 'created_by_username', 
             'space', 'country', 'city', 'district', 'street', 
-            'latitude', 'longitude', 'location_name', 'is_archived'
+            'latitude', 'longitude', 'location_name', 'description', 'is_archived'
         ]
 
 class DiscussionSerializer(serializers.ModelSerializer):

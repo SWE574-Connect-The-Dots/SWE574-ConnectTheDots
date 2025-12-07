@@ -79,6 +79,7 @@ const useGraphData = (spaceId) => {
           latitude: node.latitude || null,
           longitude: node.longitude || null,
           location_name: node.location_name || null,
+          description: node.description || null,
         },
         // Also include location data at top level for backward compatibility
         country: node.country || null,
@@ -88,6 +89,7 @@ const useGraphData = (spaceId) => {
         latitude: node.latitude || null,
         longitude: node.longitude || null,
         location_name: node.location_name || null,
+        description: node.description || null,
       }));
 
       const edgesDataArray = Array.isArray(edgesData) ? edgesData : [];
