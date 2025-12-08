@@ -3,8 +3,10 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yybb.myapplication.data.network.dto.CountryPosition
 import com.yybb.myapplication.data.network.dto.RegisterRequest
 import com.yybb.myapplication.data.repository.AuthRepository
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -21,7 +23,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val countriesRepository: CountriesRepository
 ) : ViewModel() {
 
     private val _eventChannel = Channel<AuthEvent>()
@@ -29,6 +32,51 @@ class RegisterViewModel @Inject constructor(
 
     private val _viewState = MutableStateFlow<ViewState<Unit>>(ViewState.Success(Unit))
     val viewState: StateFlow<ViewState<Unit>> = _viewState
+
+    private val _countries = MutableStateFlow<List<CountryPosition>>(emptyList())
+    val countries: StateFlow<List<CountryPosition>> = _countries
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities
+
+    private val _isLoadingCountries = MutableStateFlow(false)
+    val isLoadingCountries: StateFlow<Boolean> = _isLoadingCountries
+
+    private val _isLoadingCities = MutableStateFlow(false)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities
+
+    init {
+        loadCountries()
+    }
+
+    fun loadCountries() {
+        viewModelScope.launch {
+            _isLoadingCountries.value = true
+            countriesRepository.getCountries()
+                .onSuccess { countriesList ->
+                    _countries.value = countriesList.sortedBy { it.name }
+                    _isLoadingCountries.value = false
+                }
+                .onFailure {
+                    _isLoadingCountries.value = false
+                }
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _isLoadingCities.value = true
+            _cities.value = emptyList()
+            countriesRepository.getCities(country)
+                .onSuccess { citiesList ->
+                    _cities.value = citiesList.sorted()
+                    _isLoadingCities.value = false
+                }
+                .onFailure {
+                    _isLoadingCities.value = false
+                }
+        }
+    }
 
     fun onBackToLoginClicked() {
         viewModelScope.launch {
@@ -42,7 +90,8 @@ class RegisterViewModel @Inject constructor(
         password: String,
         profession: String,
         dateOfBirth: String,
-        agreeToShareLocation: Boolean
+        country: String?,
+        city: String?
     ) {
         viewModelScope.launch {
             _viewState.value = ViewState.Loading
@@ -61,16 +110,41 @@ class RegisterViewModel @Inject constructor(
                 calculateAge(dateOfBirth)?.let { it < 18 } ?: true ->
                     _viewState.value = ViewState.Error(context.getString(R.string.age_error))
 
-                !agreeToShareLocation ->
-                    _viewState.value = ViewState.Error(context.getString(R.string.consent_error))
+                country.isNullOrBlank() ->
+                    _viewState.value = ViewState.Error("Please select a country")
+
+                city.isNullOrBlank() ->
+                    _viewState.value = ViewState.Error("Please select a city")
 
                 else -> {
+                    val locationName = "$city, $country"
+                    val selectedCountry = _countries.value.find { it.name == country }
+                    val latitude = selectedCountry?.lat?.let {
+                        when (it) {
+                            is Number -> it.toDouble()
+                            is String -> it.toDoubleOrNull()
+                            else -> null
+                        }
+                    }
+                    val longitude = selectedCountry?.long?.let {
+                        when (it) {
+                            is Number -> it.toDouble()
+                            is String -> it.toDoubleOrNull()
+                            else -> null
+                        }
+                    }
+
                     val registerRequest = RegisterRequest(
                         email = email,
                         username = username,
                         password = password,
                         profession = profession,
-                        dateOfBirth = dateOfBirth
+                        dateOfBirth = dateOfBirth,
+                        city = city,
+                        country = country,
+                        locationName = locationName,
+                        latitude = latitude,
+                        longitude = longitude
                     )
                     authRepository.register(registerRequest)
                         .onSuccess {

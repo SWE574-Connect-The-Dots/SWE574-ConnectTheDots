@@ -18,7 +18,13 @@ data class RegisterRequest(
     val password: String,
     val profession: String,
     @SerializedName("dob")
-    val dateOfBirth: String
+    val dateOfBirth: String,
+    val city: String? = null,
+    val country: String? = null,
+    @SerializedName("location_name")
+    val locationName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 data class UserDto(
@@ -38,10 +44,20 @@ data class ProfileResponse(
     @SerializedName("owned_spaces")
     val ownedSpaces: List<SpaceDto>,
     @SerializedName("joined_spaces")
-    val joinedSpaces: List<SpaceDto>
+    val joinedSpaces: List<SpaceDto>,
+    val country: String? = null,
+    val city: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerializedName("location_name")
+    val locationName: String? = null
 )
 
 data class UpdateProfileRequest(
     val bio: String?,
-    val profession: String
+    val profession: String,
+    val city: String? = null,
+    val country: String? = null,
+    @SerializedName("location_name")
+    val locationName: String? = null
 )
