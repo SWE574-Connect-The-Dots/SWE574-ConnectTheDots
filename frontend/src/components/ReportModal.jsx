@@ -80,7 +80,7 @@ const ReportModal = ({ contentId, contentType, contentTitle, onClose }) => {
       <div
         className="modal-content"
         ref={modalRef}
-        style={{ maxWidth: "500px" }}
+        style={{ maxWidth: "500px", width: "100%" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
