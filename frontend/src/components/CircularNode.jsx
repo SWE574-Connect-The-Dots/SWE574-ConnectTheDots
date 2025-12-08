@@ -27,16 +27,18 @@ const CircularNode = ({ data, selected }) => {
         boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
       }}
     >
-      {/* Invisible handles at edges for proper arrow display */}
+      {/* Invisible handles for edge connections - centered to allow edges to radiate from center */}
       <Handle 
         type="target" 
         position={Position.Left}
-        style={{ opacity: 0 }} 
+        style={{ opacity: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} 
+        id="target"
       />
       <Handle 
         type="source" 
         position={Position.Right}
-        style={{ opacity: 0 }} 
+        style={{ opacity: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} 
+        id="source"
       />
       
       <div>{data.label}</div>

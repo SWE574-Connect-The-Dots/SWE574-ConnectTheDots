@@ -1,15 +1,16 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
-import ReactFlow, { Controls, Background, applyNodeChanges } from "reactflow";
+import ReactFlow, { Controls, Background, applyNodeChanges, getBezierPath } from "reactflow";
 import "reactflow/dist/style.css";
 import CircularNode from "./CircularNode";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import api from "../axiosConfig";
 
-// Custom CSS for better arrow visibility
+
 const customStyles = `
   .react-flow__edge-path {
     stroke-linecap: round !important;
+    stroke-linejoin: round !important;
   }
   
   .react-flow__arrowclosed {
@@ -20,10 +21,232 @@ const customStyles = `
   .react-flow__marker {
     overflow: visible !important;
   }
+  
+  .react-flow__edge {
+    pointer-events: all;
+  }
+  
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke-width: 6px !important;
+  }
+  
+  .react-flow__edge-text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px !important;
+    font-weight: 500;
+    user-select: none;
+    pointer-events: none;
+  }
+  
+  .react-flow__edge-textbg {
+    fill: rgba(255, 255, 255, 0.9) !important;
+    stroke: #ddd !important;
+    stroke-width: 1px !important;
+  }
+  
+  .react-flow__edge:hover .react-flow__edge-text {
+    font-weight: 600;
+  }
+  
+  .react-flow__edge:hover .react-flow__edge-textbg {
+    fill: rgba(255, 255, 255, 1) !important;
+    stroke: #3A0CA3 !important;
+  }
 `;
+
+// Helper function to calculate edge distribution around nodes
+const calculateEdgeDistribution = (nodes, edges) => {
+  if (!nodes || !edges || edges.length === 0) return edges;
+
+  // Create node lookup for sizes
+  const nodeMap = new Map();
+  nodes.forEach(node => {
+    nodeMap.set(String(node.id), {
+      size: node.data?.size || 60
+    });
+  });
+
+  // Process each edge with distributed connection points
+  const processedEdges = edges.map((edge, index) => {
+    const sourceId = String(edge.source);
+    const targetId = String(edge.target);
+    
+    const sourceNode = nodeMap.get(sourceId);
+    const targetNode = nodeMap.get(targetId);
+    
+    if (!sourceNode || !targetNode) {
+      return {
+        ...edge,
+        type: 'straight',
+        markerEnd: {
+          type: 'arrowclosed',
+          color: '#3A0CA3',
+          width: 20,
+          height: 20,
+          markerUnits: 'userSpaceOnUse',
+          orient: 'auto',
+        },
+      };
+    }
+    
+    return {
+      ...edge,
+      type: 'distributed',
+      data: {
+        ...edge.data,
+        sourceOffset: 0,
+        targetOffset: 0,
+        sourceRadius: sourceNode.size / 2,
+        targetRadius: targetNode.size / 2,
+      },
+      label: edge.label || edge.data?.label,
+      labelStyle: edge.labelStyle || { fontSize: 12, fill: '#333' },
+      labelShowBg: true,
+      labelBgStyle: { fill: 'rgba(255, 255, 255, 0.8)', stroke: '#ddd' },
+      markerEnd: {
+        type: 'arrowclosed',
+        color: '#3A0CA3',
+        width: 20,
+        height: 20,
+        markerUnits: 'userSpaceOnUse',
+        orient: 'auto',
+      },
+    };
+  });
+
+  return processedEdges;
+};
+
+
+
+const CustomDistributedEdge = ({ 
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  markerEnd,
+  style,
+  label,
+  labelStyle,
+  labelShowBg,
+  labelBgStyle,
+  labelBgPadding,
+  labelBgBorderRadius
+}) => {
+  const { sourceOffset = 0, targetOffset = 0, sourceRadius = 30, targetRadius = 30 } = data || {};
+  
+  // Calculate the angle between nodes
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  if (distance === 0) {
+    return null;
+  }
+  
+  // Calculate base angle between nodes
+  const baseAngle = Math.atan2(dy, dx);
+  
+  // Apply relative offsets to distribute edges around the connection point
+  const sourceAngle = baseAngle + sourceOffset;
+  const targetAngle = baseAngle + Math.PI + targetOffset; // Opposite side + offset
+  
+  // Calculate connection points on the circumference of the circles
+  const sourceConnectX = sourceX + sourceRadius * Math.cos(sourceAngle);
+  const sourceConnectY = sourceY + sourceRadius * Math.sin(sourceAngle);
+  const targetConnectX = targetX + targetRadius * Math.cos(targetAngle);
+  const targetConnectY = targetY + targetRadius * Math.sin(targetAngle);
+  
+ 
+  const edgePath = `M ${sourceConnectX} ${sourceConnectY} L ${targetConnectX} ${targetConnectY}`;
+
+  // Label position
+  const labelX = (sourceConnectX + targetConnectX) / 2;
+  const labelY = (sourceConnectY + targetConnectY) / 2;
+  
+  // Calculate arrow angle for proper orientation
+  const arrowAngle = Math.atan2(targetConnectY - sourceConnectY, targetConnectX - sourceConnectX);
+  const arrowSize = 10;
+  
+  const arrowOffset = 12; 
+  const arrowTipX = targetConnectX - arrowOffset * Math.cos(arrowAngle);
+  const arrowTipY = targetConnectY - arrowOffset * Math.sin(arrowAngle);
+  const arrowBase1X = arrowTipX - arrowSize * Math.cos(arrowAngle - Math.PI / 6);
+  const arrowBase1Y = arrowTipY - arrowSize * Math.sin(arrowAngle - Math.PI / 6);
+  const arrowBase2X = arrowTipX - arrowSize * Math.cos(arrowAngle + Math.PI / 6);
+  const arrowBase2Y = arrowTipY - arrowSize * Math.sin(arrowAngle + Math.PI / 6);
+  
+  return (
+    <g>
+      <path
+        id={id}
+        style={{
+          strokeWidth: 4,
+          stroke: '#3A0CA3',
+          fill: 'none',
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          ...style
+        }}
+        className="react-flow__edge-path"
+        d={edgePath}
+      />
+      {/* Custom arrow head */}
+      <path
+        d={`M ${arrowTipX} ${arrowTipY} L ${arrowBase1X} ${arrowBase1Y} L ${arrowBase2X} ${arrowBase2Y} Z`}
+        fill="#3A0CA3"
+        stroke="#3A0CA3"
+        strokeWidth="1"
+      />
+      {label && (
+        <>
+          {labelShowBg && (
+            <rect
+              x={labelX - (label.length * 3)}
+              y={labelY - 8}
+              width={label.length * 6}
+              height={16}
+              style={{
+                fill: 'rgba(255, 255, 255, 0.9)',
+                stroke: '#ddd',
+                strokeWidth: 1,
+                rx: labelBgBorderRadius || 2,
+                ...labelBgStyle
+              }}
+              className="react-flow__edge-textbg"
+            />
+          )}
+          <text
+            x={labelX}
+            y={labelY}
+            style={{
+              fontSize: 12,
+              fill: '#333',
+              textAnchor: 'middle',
+              dominantBaseline: 'middle',
+              pointerEvents: 'none',
+              ...labelStyle
+            }}
+            className="react-flow__edge-text"
+          >
+            {label}
+          </text>
+        </>
+      )}
+    </g>
+  );
+};
 
 const nodeTypes = {
   circular: CircularNode,
+};
+
+const edgeTypes = {
+  distributed: CustomDistributedEdge,
 };
 
 const SpaceGraph = ({ 
@@ -104,12 +327,33 @@ const SpaceGraph = ({
 
     return nodesWithSizes;
   }, [nodes, edges]);
+
+  const processedEdges = useMemo(() => {
+    return calculateEdgeDistribution(nodesWithSizes, edges);
+  }, [nodesWithSizes, edges]);
   
   useEffect(() => {
     if (nodesWithSizes && nodesWithSizes.length > 0) {
       setLocalNodes(nodesWithSizes);
     }
   }, [nodesWithSizes]);
+
+  useEffect(() => {
+    const styleId = 'space-graph-custom-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = customStyles;
+      document.head.appendChild(style);
+    }
+    
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, []);
   
   const onNodesChange = useCallback((changes) => {
     setLocalNodes((nds) => applyNodeChanges(changes, nds));
@@ -363,8 +607,9 @@ const SpaceGraph = ({
         
         <ReactFlow 
           nodes={localNodes.length > 0 ? localNodes : (nodesWithSizes || [])} 
-          edges={edges || []} 
-          nodeTypes={nodeTypes} 
+          edges={processedEdges || []} 
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
@@ -373,24 +618,8 @@ const SpaceGraph = ({
           elementsSelectable={true}
           fitView
           connectionLineStyle={{
-            strokeWidth: 3,
-            stroke: '#4A90E2',
-          }}
-          defaultEdgeOptions={{
-            style: {
-              strokeWidth: 3,
-              stroke: '#4A90E2',
-              strokeLinecap: 'round',
-            },
-            type: 'straight',
-            markerEnd: {
-              type: 'arrowclosed',
-              color: '#4A90E2',
-              width: 40,
-              height: 40,
-              markerUnits: 'userSpaceOnUse',
-              orient: 'auto',
-            },
+            strokeWidth: 4,
+            stroke: '#3A0CA3',
           }}
         >
           <Background />
@@ -899,8 +1128,9 @@ const SpaceGraph = ({
           <div style={{ flex: 1, position: "relative" }}>
             <ReactFlow 
               nodes={localNodes.length > 0 ? localNodes : (nodesWithSizes || [])} 
-              edges={edges || []} 
-              nodeTypes={nodeTypes} 
+              edges={processedEdges || []} 
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onNodeClick={onNodeClick}
               onEdgeClick={onEdgeClick}
@@ -909,24 +1139,8 @@ const SpaceGraph = ({
               elementsSelectable={true}
               fitView
               connectionLineStyle={{
-                strokeWidth: 3,
-                stroke: '#4A90E2',
-              }}
-              defaultEdgeOptions={{
-                style: {
-                  strokeWidth: 3,
-                  stroke: '#4A90E2',
-                  strokeLinecap: 'round',
-                },
-                type: 'straight',
-                markerEnd: {
-                  type: 'arrowclosed',
-                  color: '#4A90E2',
-                  width: 40,
-                  height: 40,
-                  markerUnits: 'userSpaceOnUse',
-                  orient: 'auto',
-                },
+                strokeWidth: 4,
+                stroke: '#3A0CA3',
               }}
             >
               <Background />

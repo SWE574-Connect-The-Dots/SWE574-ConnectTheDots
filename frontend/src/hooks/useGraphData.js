@@ -11,32 +11,62 @@ const useGraphData = (spaceId) => {
   const nodeWidth = 160;
   const nodeHeight = 160;
 
-  function layoutNodesWithDagre(nodes, edges, direction = "LR") {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: direction });
-
-    nodes.forEach((node) => {
-      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  function layoutNodesCircular(nodes, edges) {
+    if (nodes.length === 0) return [];
+    
+    // Calculate degrees to find the central node
+    const degrees = {};
+    nodes.forEach(n => degrees[n.id] = 0);
+    edges.forEach(e => {
+      if (degrees[e.source] !== undefined) degrees[e.source]++;
+      if (degrees[e.target] !== undefined) degrees[e.target]++;
     });
-    edges.forEach((edge) => {
-      dagreGraph.setEdge(edge.source, edge.target);
+
+    // Find node with max degree
+    let maxDegree = -1;
+    let centerNodeId = null;
+    
+    nodes.forEach(n => {
+      if (degrees[n.id] > maxDegree) {
+        maxDegree = degrees[n.id];
+        centerNodeId = n.id;
+      }
     });
 
-    dagre.layout(dagreGraph);
+    // If no edges, just pick the first one as center or layout in a grid
+    if (centerNodeId === null && nodes.length > 0) {
+      centerNodeId = nodes[0].id;
+    }
 
-    return nodes.map((node) => {
-      const dagreNode = dagreGraph.node(node.id);
+    const radius = 350; // Fixed radius for now, or dynamic: 200 + (nodes.length * 10)
+    const centerX = 0; // Center of the layout
+    const centerY = 0;
+
+    const otherNodes = nodes.filter(n => n.id !== centerNodeId);
+    const angleStep = (2 * Math.PI) / (otherNodes.length || 1);
+
+    return nodes.map(node => {
+      // Center node
+      if (node.id === centerNodeId) {
+        return {
+          ...node,
+          position: { 
+            x: centerX - nodeWidth / 2, 
+            y: centerY - nodeHeight / 2 
+          },
+        };
+      }
+
+      // Other nodes distributed in a circle
+      const index = otherNodes.findIndex(n => n.id === node.id);
+      const angle = index * angleStep;
+      
       return {
         ...node,
-        data: { ...node.data },
         position: {
-          x: dagreNode.x - nodeWidth / 2,
-          y: dagreNode.y - nodeHeight / 2,
+          x: centerX + radius * Math.cos(angle) - nodeWidth / 2,
+          y: centerY + radius * Math.sin(angle) - nodeHeight / 2,
         },
-        // Force left-to-right connections
-        sourcePosition: "right",
-        targetPosition: "left",
       };
     });
   }
@@ -148,7 +178,7 @@ const useGraphData = (spaceId) => {
         };
       });
 
-      const layoutedNodes = layoutNodesWithDagre(flowNodes, flowEdges);
+      const layoutedNodes = layoutNodesCircular(flowNodes, flowEdges);
 
       setNodes(layoutedNodes);
       setEdges(flowEdges);
