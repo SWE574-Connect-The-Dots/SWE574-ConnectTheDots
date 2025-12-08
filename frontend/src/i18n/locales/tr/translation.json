@@ -249,7 +249,19 @@
     "userManagement": "Kullanıcı Yönetimi",
     "contentModeration": "İçerik Denetimi",
     "archive": "Arşiv",
-    "restore": "Restore"
+    "restore": "Geri Yükle",
+    "profession": "Meslek",
+    "createdDate": "Oluşturulma Tarihi",
+    "role": "Rol",
+    "actions": "İşlemler",
+    "username": "Kullanıcı Adı",
+    "email": "Email",
+    "searchUsers": "Kullanıcı ara...",
+    "visitProfile": "Profili Ziyaret Et",
+    "archiveUser": "Arşivle",
+    "showing": "Gösteriliyor",
+    "of": "/",
+    "usersCount": "kullanıcı"
   },
   "errors": {
     "failedToLoadProfile": "Profil verileri yüklenemedi",

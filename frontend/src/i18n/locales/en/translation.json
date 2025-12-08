@@ -249,7 +249,19 @@
     "userManagement": "Users Management",
     "contentModeration": "Content Moderation",
     "archive": "Archive",
-    "restore": "Restore"
+    "restore": "Restore",
+    "profession": "Profession",
+    "createdDate": "Created Date",
+    "role": "Role",
+    "actions": "Actions",
+    "username": "Username",
+    "email": "Email",
+    "searchUsers": "Search users...",
+    "visitProfile": "Visit Profile",
+    "archiveUser": "Archive",
+    "showing": "Showing",
+    "of": "of",
+    "usersCount": "users"
   },
   "errors": {
     "failedToLoadProfile": "Failed to load profile data",
