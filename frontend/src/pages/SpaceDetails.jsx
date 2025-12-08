@@ -3004,7 +3004,11 @@ const SpaceDetails = () => {
                 <select 
                   className="node-sort-select"
                   value={nodeSortOption}
-                  onChange={(e) => setNodeSortOption(e.target.value)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setNodeSortOption(e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <option value="recent">{t("space.recentlyAdded")}</option>
                   <option value="connections">{t("space.mostConnections")}</option>
@@ -3012,6 +3016,10 @@ const SpaceDetails = () => {
                 </select>
                 <button 
                   className="node-list-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsNodeListExpanded(!isNodeListExpanded);
+                  }}
                 >
                   {isNodeListExpanded ? '▼' : '▲'}
                 </button>
