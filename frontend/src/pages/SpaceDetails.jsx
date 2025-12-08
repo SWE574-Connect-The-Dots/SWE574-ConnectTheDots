@@ -442,6 +442,102 @@ const advancedSearchStyles = `
 }
 `;
 
+const nodeListStyles = `
+.node-list-container {
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  background: var(--color-white);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.node-list-header {
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-gray-300);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-list-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.node-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.node-sort-select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-white);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.node-list-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.node-list-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.node-list-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.node-list-item:last-child {
+  border-bottom: none;
+}
+
+.node-list-item:hover {
+  background-color: var(--color-item-bg);
+}
+
+.node-item-label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.node-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-badge {
+  background: var(--color-gray-200);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+`;
+
 const propertySelectionStyles = `
 .property-selection-container {
   border: 1px solid var(--color-gray-300);
@@ -863,6 +959,8 @@ const SpaceDetails = () => {
   const [searchingQuery, setSearchingQuery] = useState(false);
   const [showPropertyDropdown, setShowPropertyDropdown] = useState({});
   const [showValueDropdown, setShowValueDropdown] = useState({});
+  const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
+  const [nodeSortOption, setNodeSortOption] = useState('recent');
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -907,6 +1005,39 @@ const SpaceDetails = () => {
     search,
     fetchProperties,
   } = useWikidataSearch();
+
+  const nodeDegrees = useMemo(() => {
+    const degrees = {};
+    if (!nodes || !edges) return degrees;
+
+    nodes.forEach(node => {
+      degrees[node.id] = 0;
+    });
+
+    edges.forEach(edge => {
+      if (degrees[edge.source] !== undefined) degrees[edge.source]++;
+      if (degrees[edge.target] !== undefined) degrees[edge.target]++;
+    });
+
+    return degrees;
+  }, [nodes, edges]);
+
+  const sortedNodes = useMemo(() => {
+    if (!existingNodes) return [];
+    
+    return [...existingNodes].sort((a, b) => {
+      if (nodeSortOption === 'recent') {
+        return parseInt(b.id) - parseInt(a.id);
+      } else if (nodeSortOption === 'connections') {
+        const degreeA = nodeDegrees[a.id] || 0;
+        const degreeB = nodeDegrees[b.id] || 0;
+        return degreeB - degreeA;
+      } else if (nodeSortOption === 'name') {
+        return a.label.localeCompare(b.label);
+      }
+      return 0;
+    });
+  }, [existingNodes, nodeSortOption, nodeDegrees]);
 
   const filteredAndSortedProperties = useMemo(() => {
     if (!entityProperties) return [];
@@ -2047,6 +2178,7 @@ const SpaceDetails = () => {
       {/* Inject CSS for property selection */}
       <style>{infoModalStyles}</style>
       <style>{advancedSearchStyles}</style>
+      <style>{nodeListStyles}</style>
       <style>{propertySelectionStyles}</style>
 
       <div style={{ flex: 1, marginRight: "20px" }}>
@@ -2858,17 +2990,54 @@ const SpaceDetails = () => {
           </div>
         </div>
 
-        {/* Existing nodes list */}
-        {existingNodes.length === 0 && (
-          <p>This space has no nodes yet. Start by adding one from Wikidata!</p>
+        {sortedNodes.length === 0 && (
+          <p>{t("space.addNodeFromWikidata")}</p>
         )}
-        <ol className="nodes-list">
-          {existingNodes.map((node) => (
-            <li key={node.id} className="node-item">
-              <strong>{node.label}</strong>
-            </li>
-          ))}
-        </ol>
+        
+        {sortedNodes.length > 0 && (
+          <div className="node-list-container">
+            <div 
+              className="node-list-header"
+              onClick={() => setIsNodeListExpanded(!isNodeListExpanded)}>
+              <h3 className="node-list-title">{t("space.nodes")} ({sortedNodes.length})</h3>
+              <div className="node-list-controls">
+                <select 
+                  className="node-sort-select"
+                  value={nodeSortOption}
+                  onChange={(e) => setNodeSortOption(e.target.value)}
+                >
+                  <option value="recent">{t("space.recentlyAdded")}</option>
+                  <option value="connections">{t("space.mostConnections")}</option>
+                  <option value="name">{t("space.nameAZ")}</option>
+                </select>
+                <button 
+                  className="node-list-toggle"
+                >
+                  {isNodeListExpanded ? '▼' : '▲'}
+                </button>
+              </div>
+            </div>
+            
+            {isNodeListExpanded && (
+              <div className="node-list-content">
+                {sortedNodes.map((node) => (
+                  <div 
+                    key={node.id} 
+                    className="node-list-item"
+                    onClick={(e) => handleNodeClick(e, node)}
+                  >
+                    <span className="node-item-label">{node.label}</span>
+                    <div className="node-item-meta">
+                      <span className="connection-badge">
+                        {nodeDegrees[node.id] || 0} {t("space.connections")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Revert Graph Section - Only show if collaborator and not archived */}
         {isCollaborator && !space.is_archived && (

@@ -104,7 +104,13 @@
     "addNodeWithEdge": "Add Node with Edge",
     "archived": "ARCHIVED",
     "failedToExecuteSearch": "Failed to execute search. Please try again.",
-    "addSearchCriteria": "Please add at least one complete search criteria (property and value)."
+    "addSearchCriteria": "Please add at least one complete search criteria (property and value).",
+    "nodes": "Nodes",
+    "addNode": "Add Node",
+    "connections": "connections",
+    "recentlyAdded": "Recently Added",
+    "mostConnections": "Most Connections",
+    "nameAZ": "Name (A-Z)"
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
