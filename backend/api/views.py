@@ -256,7 +256,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'trending', 'new', 'top_scored', 'collaborators', 'top_collaborators', 
-                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties']:
+                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties', 'graph_search']:
             permission_classes = [permissions.IsAuthenticated]
         elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion',
                              'react_discussion', 'add_node', 'delete_node', 'update_node_properties', 'delete_node_property',
@@ -265,6 +265,38 @@ class SpaceViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly, IsNotArchivedUser]
         return [permission() for permission in permission_classes]
+
+    @action(detail=True, methods=['get'], url_path='graph-search')
+    def graph_search(self, request, pk=None):
+        """
+        Search the graph using Neo4j with support for multiple node and edge queries.
+        Supports depth parameter for N-hop neighbor search.
+        """
+        node_query = request.query_params.get('node_q', '').strip()
+        edge_query = request.query_params.get('edge_q', '').strip()
+        depth = request.query_params.get('depth', '1')
+        
+        # Parse depth parameter
+        try:
+            depth = int(depth)
+            if depth < 1:
+                depth = 1
+            elif depth > 5:  # Max depth limit for performance
+                depth = 5
+        except ValueError:
+            depth = 1
+        
+        # Fallback for backward compatibility or single search box
+        general_query = request.query_params.get('q', '').strip()
+        if general_query and not node_query and not edge_query:
+            node_query = general_query
+            edge_query = general_query
+            
+        if not node_query and not edge_query:
+            return Response({'nodes': [], 'edges': []})
+            
+        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, depth=depth)
+        return Response(results)
         
     def perform_create(self, serializer):
         space = serializer.save(creator=self.request.user)

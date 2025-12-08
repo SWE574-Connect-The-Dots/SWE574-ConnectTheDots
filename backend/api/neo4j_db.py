@@ -59,9 +59,10 @@ class Neo4jConnection:
             properties = {}
         
         properties['pg_id'] = edge_id
+        properties['label'] = relation_label
         
         
-        safe_label = "".join(x for x in relation_label if x.isalnum() or x == "_")
+        safe_label = relation_label.replace("`", "``")
         if not safe_label:
             safe_label = "RELATED_TO"
 
@@ -164,3 +165,103 @@ class Neo4jConnection:
                 session.run(query, node_id=node_id)
         except Exception as e:
             logger.error(f"Failed to delete node property in Neo4j: {e}")
+
+    @staticmethod
+    @staticmethod
+    def search_graph(space_id, node_queries=None, edge_queries=None, depth=1):
+        """
+        Search for nodes and edges in a specific space using multiple search terms.
+        Returns a subgraph containing matching nodes, matching edges, their neighbors up to 'depth' levels,
+        and all edges between them.
+        
+        Args:
+            space_id: The space ID to search in
+            node_queries: List of node search terms
+            edge_queries: List of edge search terms
+            depth: Number of relationship levels to include (1 = direct connections only)
+        """
+        query = """
+        // 1. Find matching nodes
+        OPTIONAL MATCH (n:Node {space_id: $space_id})
+        WHERE size($node_queries) > 0 AND 
+              any(term IN $node_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)
+        WITH collect(n) as matchingNodes
+        
+        // 2. Find matching edges
+        OPTIONAL MATCH (source:Node {space_id: $space_id})-[r]->(target:Node {space_id: $space_id})
+        WHERE size($edge_queries) > 0 AND 
+              any(term IN $edge_queries WHERE type(r) CONTAINS term OR r.label CONTAINS term)
+        WITH matchingNodes, collect(r) as matchingEdges, collect(source) + collect(target) as edgeEndpointNodes
+        
+        // 3. Combine to get seed nodes
+        WITH matchingNodes + edgeEndpointNodes as initialNodes
+        UNWIND initialNodes as n
+        WITH collect(DISTINCT n) as seedNodes
+        
+        // 4. Expand and collect paths (up to depth)
+        UNWIND seedNodes as seed
+        MATCH path = (seed)-[*0..""" + str(depth) + """]-(neighbor:Node {space_id: $space_id})
+        WHERE none(r IN relationships(path) WHERE type(r) = 'IN_SPACE')
+        WITH path
+        LIMIT 5000
+        WITH collect(path) as paths
+        
+        // 5. Extract unique nodes
+        UNWIND paths as p
+        UNWIND nodes(p) as n
+        WITH collect(DISTINCT n) as uniqueNodes, paths
+        
+        // 6. Extract unique edges (handling empty relationships safely)
+        UNWIND paths as p
+        UNWIND (CASE WHEN size(relationships(p)) > 0 THEN relationships(p) ELSE [null] END) as r
+        WITH uniqueNodes, collect(DISTINCT r) as uniqueRels
+        
+        // 7. Clean up nulls from edges
+        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges
+        
+        RETURN uniqueNodes, finalEdges as allEdges
+        """
+        
+        result_data = {'nodes': [], 'edges': []}
+        
+        # Convert queries to lists if they're strings
+        if node_queries is None:
+            node_queries = []
+        elif isinstance(node_queries, str):
+            node_queries = [q.strip() for q in node_queries.split(',') if q.strip()]
+            
+        if edge_queries is None:
+            edge_queries = []
+        elif isinstance(edge_queries, str):
+            edge_queries = [q.strip() for q in edge_queries.split(',') if q.strip()]
+        
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                result = session.run(query, space_id=space_id, node_queries=node_queries, edge_queries=edge_queries)
+                record = result.single()
+                
+                if record:
+                    nodes = record['uniqueNodes']
+                    edges = record['allEdges']
+                    
+                    for node in nodes:
+                        result_data['nodes'].append({
+                            'id': str(node.get('pg_id')), # Ensure string ID for frontend
+                            'label': node.get('label'),
+                            'description': node.get('description'),
+                            'group': 'node' # Helper for visualization
+                        })
+                        
+                    for edge in edges:
+                        result_data['edges'].append({
+                            'id': str(edge.get('pg_id')),
+                            'label': edge.get('label', edge.type),
+                            'source': str(edge.start_node.get('pg_id')),
+                            'target': str(edge.end_node.get('pg_id'))
+                        })
+                        
+        except Exception as e:
+            logger.error(f"Graph search failed: {e}")
+            
+        return result_data

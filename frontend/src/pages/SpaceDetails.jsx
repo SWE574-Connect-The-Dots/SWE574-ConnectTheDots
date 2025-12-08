@@ -735,6 +735,10 @@ const SpaceDetails = () => {
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [simpleSearchResults, setSimpleSearchResults] = useState(null);
   const [searchingSimpleQuery, setSearchingSimpleQuery] = useState(false);
+  const [graphSearchQuery, setGraphSearchQuery] = useState("");
+  const [graphSearchResults, setGraphSearchResults] = useState(null);
+  const [isGraphSearching, setIsGraphSearching] = useState(false);
+  const [graphSearchDepth, setGraphSearchDepth] = useState(1);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
 
@@ -1388,6 +1392,32 @@ const SpaceDetails = () => {
       alert("search.failedToExecuteSearch");
     } finally {
       setSearchingSimpleQuery(false);
+    }
+  };
+
+  const [graphNodeQuery, setGraphNodeQuery] = useState("");
+  const [graphEdgeQuery, setGraphEdgeQuery] = useState("");
+
+  const handleGraphSearch = async () => {
+    if (!graphNodeQuery.trim() && !graphEdgeQuery.trim()) return;
+    
+    setIsGraphSearching(true);
+    try {
+      const params = new URLSearchParams();
+      if (graphNodeQuery.trim()) params.append('node_q', graphNodeQuery.trim());
+      if (graphEdgeQuery.trim()) params.append('edge_q', graphEdgeQuery.trim());
+      params.append('depth', graphSearchDepth.toString());
+      
+      const response = await api.get(`/spaces/${id}/graph-search/?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setGraphSearchResults(response.data);
+    } catch (error) {
+      console.error("Graph search failed:", error);
+    } finally {
+      setIsGraphSearching(false);
     }
   };
 
@@ -2250,6 +2280,427 @@ const SpaceDetails = () => {
             </div>
           )}
 
+          {/* Graph Search Section */}
+          <div style={{ 
+            marginTop: '20px', 
+            borderTop: '2px solid #0076B5', 
+            paddingTop: '20px',
+            backgroundColor: '#f8f9fa',
+            padding: '20px',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{ marginBottom: '10px', color: '#1B1F3B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🕸️</span> Advanced Graph Search
+            </h4>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
+              Search for multiple nodes and edges by separating terms with commas. Adjust relation depth to include neighbors.
+            </p>
+            
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '15px' }}>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
+                  🔵 Node Search
+                </label>
+                <input
+                  type="text"
+                  value={graphNodeQuery}
+                  onChange={(e) => setGraphNodeQuery(e.target.value)}
+                  placeholder="e.g., Mersin, Istanbul, Ankara (comma-separated)"
+                  onKeyUp={(e) => e.key === 'Enter' && handleGraphSearch()}
+                  disabled={isGraphSearching}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  Searches in node labels and descriptions
+                </span>
+              </div>
+              
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
+                  🔗 Edge Search
+                </label>
+                <input
+                  type="text"
+                  value={graphEdgeQuery}
+                  onChange={(e) => setGraphEdgeQuery(e.target.value)}
+                  placeholder="e.g., owned by, located in (comma-separated)"
+                  onKeyUp={(e) => e.key === 'Enter' && handleGraphSearch()}
+                  disabled={isGraphSearching}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  Searches in relationship types and labels
+                </span>
+              </div>
+
+              <div style={{ minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
+                  📏 Relation Depth
+                </label>
+                <select
+                  value={graphSearchDepth}
+                  onChange={(e) => setGraphSearchDepth(parseInt(e.target.value))}
+                  disabled={isGraphSearching}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="1">1 Level</option>
+                  <option value="2">2 Levels</option>
+                  <option value="3">3 Levels</option>
+                  <option value="4">4 Levels</option>
+                  <option value="5">5 Levels</option>
+                </select>
+                <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  How far to explore
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '12px', color: '#1565c0' }}>
+              <strong>💡 Tip:</strong> Depth {graphSearchDepth} will include nodes up to {graphSearchDepth} {graphSearchDepth === 1 ? 'relationship' : 'relationships'} away from your search terms.
+              {graphSearchDepth === 1 && " (Direct connections only)"}
+              {graphSearchDepth === 2 && " (Friends of friends)"}
+              {graphSearchDepth >= 3 && " (Extended network)"}
+            </div>
+
+            <button 
+                onClick={handleGraphSearch} 
+                disabled={isGraphSearching} 
+                style={{ 
+                    padding: '12px 30px', 
+                    backgroundColor: isGraphSearching ? '#ccc' : '#2D6A4F',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isGraphSearching ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#1e4d38')}
+                onMouseLeave={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#2D6A4F')}
+            >
+                {isGraphSearching ? (
+                  <>
+                    <span>⏳</span> Searching...
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span> Search Graph
+                  </>
+                )}
+            </button>
+          </div>
+
+          {graphSearchResults && (
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '20px', 
+              backgroundColor: '#fff', 
+              border: '2px solid #2D6A4F', 
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h4 style={{ margin: 0, color: '#1B1F3B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📊</span> Graph Search Results
+                    </h4>
+                    <button 
+                      onClick={() => setGraphSearchResults(null)} 
+                      style={{ 
+                        background: '#f44336', 
+                        color: 'white',
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        fontSize: '14px',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Close
+                    </button>
+                </div>
+                
+                {(!graphSearchResults.nodes || graphSearchResults.nodes.length === 0) && (!graphSearchResults.edges || graphSearchResults.edges.length === 0) ? (
+                    <div style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
+                      <p style={{ fontSize: '16px', marginBottom: '8px' }}>🔍 No results found</p>
+                      <p style={{ fontSize: '13px' }}>Try different search terms or check your spelling</p>
+                    </div>
+                ) : (
+                    <div>
+                        {/* Summary */}
+                        <div style={{ 
+                          padding: '12px', 
+                          backgroundColor: '#e8f5e9', 
+                          borderRadius: '6px',
+                          marginBottom: '20px',
+                          border: '1px solid #c8e6c9'
+                        }}>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#2D6A4F' }}>
+                            Found: {graphSearchResults.nodes?.length || 0} Nodes, {graphSearchResults.edges?.length || 0} Edges
+                          </div>
+                        </div>
+
+                        {/* Graph Visualization */}
+                        <div style={{ marginBottom: '20px' }}>
+                          <h5 style={{ 
+                            color: '#1B1F3B',
+                            marginBottom: '10px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <span>🕸️</span> Subgraph Visualization
+                          </h5>
+                          <div style={{ 
+                            height: '400px', 
+                            border: '2px solid #ddd', 
+                            borderRadius: '8px', 
+                            overflow: 'hidden',
+                            backgroundColor: '#fafafa'
+                          }}>
+                            <SpaceGraph
+                              nodes={graphSearchResults.nodes.map((node, index) => {
+                                // Convert to full node format
+                                const fullNode = nodes.find(n => String(n.id) === String(node.id));
+                                return fullNode || {
+                                  id: String(node.id),
+                                  type: 'circular',
+                                  position: { 
+                                    x: 100 + (index % 5) * 150 + Math.random() * 50, 
+                                    y: 100 + Math.floor(index / 5) * 100 + Math.random() * 50 
+                                  },
+                                  data: {
+                                    label: node.label,
+                                    description: node.description
+                                  }
+                                };
+                              })}
+                              edges={graphSearchResults.edges.map(edge => {
+                                // Convert to full edge format
+                                const fullEdge = edges.find(e => String(e.id) === String(edge.id));
+                                return fullEdge || {
+                                  id: String(edge.id),
+                                  source: String(edge.source),
+                                  target: String(edge.target),
+                                  label: edge.label
+                                };
+                              })}
+                              loading={false}
+                              error={null}
+                              onNodeClick={handleNodeClick}
+                              onEdgeClick={handleEdgeClick}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                            {/* Nodes Section */}
+                            {graphSearchResults.nodes && graphSearchResults.nodes.length > 0 && (
+                                <div>
+                                    <h5 style={{ 
+                                      color: '#fff',
+                                      backgroundColor: '#0076B5',
+                                      padding: '10px 12px',
+                                      marginBottom: '12px', 
+                                      borderRadius: '4px',
+                                      fontSize: '14px',
+                                      fontWeight: '600'
+                                    }}>
+                                        🔵 Nodes ({graphSearchResults.nodes.length})
+                                    </h5>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {graphSearchResults.nodes.map(node => (
+                                            <div 
+                                                key={node.id}
+                                                style={{
+                                                    padding: '14px',
+                                                    backgroundColor: '#fff',
+                                                    borderRadius: '6px',
+                                                    border: '2px solid #e3f2fd',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                                }}
+                                                onClick={() => {
+                                                    const fullNode = nodes.find(n => n.id === node.id) || node;
+                                                    handleNodeClick(null, fullNode);
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.borderColor = '#0076B5';
+                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,118,181,0.2)';
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.borderColor = '#e3f2fd';
+                                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                }}
+                                            >
+                                                <div style={{ 
+                                                  fontWeight: '700', 
+                                                  color: '#0076B5', 
+                                                  marginBottom: '6px',
+                                                  fontSize: '15px'
+                                                }}>
+                                                    {node.label}
+                                                </div>
+                                                {node.description && (
+                                                    <div style={{ 
+                                                      fontSize: '13px', 
+                                                      color: '#555',
+                                                      lineHeight: '1.4'
+                                                    }}>
+                                                        {node.description}
+                                                    </div>
+                                                )}
+                                                <div style={{ 
+                                                  marginTop: '8px', 
+                                                  fontSize: '11px', 
+                                                  color: '#999',
+                                                  fontStyle: 'italic'
+                                                }}>
+                                                  Click to view details
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Edges Section */}
+                            {graphSearchResults.edges && graphSearchResults.edges.length > 0 && (
+                                <div>
+                                    <h5 style={{ 
+                                      color: '#fff',
+                                      backgroundColor: '#2D6A4F',
+                                      padding: '10px 12px',
+                                      marginBottom: '12px', 
+                                      borderRadius: '4px',
+                                      fontSize: '14px',
+                                      fontWeight: '600'
+                                    }}>
+                                        🔗 Edges ({graphSearchResults.edges.length})
+                                    </h5>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {graphSearchResults.edges.map(edge => {
+                                            const sourceNode = graphSearchResults.nodes.find(n => n.id === edge.source) || nodes.find(n => n.id === edge.source);
+                                            const targetNode = graphSearchResults.nodes.find(n => n.id === edge.target) || nodes.find(n => n.id === edge.target);
+                                            const sourceName = sourceNode ? sourceNode.label : `Node ${edge.source}`;
+                                            const targetName = targetNode ? targetNode.label : `Node ${edge.target}`;
+
+                                            return (
+                                                <div 
+                                                    key={edge.id}
+                                                    style={{
+                                                        padding: '14px',
+                                                        backgroundColor: '#fff',
+                                                        borderRadius: '6px',
+                                                        border: '2px solid #e8f5e9',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                                    }}
+                                                    onClick={() => {
+                                                         const fullEdge = edges.find(e => e.id === edge.id) || edge;
+                                                         handleEdgeClick(null, fullEdge);
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.borderColor = '#2D6A4F';
+                                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(45,106,79,0.2)';
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.borderColor = '#e8f5e9';
+                                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                    }}
+                                                >
+                                                    <div style={{ 
+                                                      display: 'flex', 
+                                                      flexDirection: 'column',
+                                                      gap: '8px'
+                                                    }}>
+                                                        <div style={{ 
+                                                          display: 'flex', 
+                                                          alignItems: 'center', 
+                                                          gap: '8px', 
+                                                          fontSize: '13px', 
+                                                          fontWeight: '600', 
+                                                          color: '#1B1F3B',
+                                                          flexWrap: 'wrap'
+                                                        }}>
+                                                            <span style={{ 
+                                                              backgroundColor: '#e3f2fd', 
+                                                              padding: '4px 8px', 
+                                                              borderRadius: '4px',
+                                                              color: '#0076B5'
+                                                            }}>
+                                                              {sourceName}
+                                                            </span>
+                                                            <span style={{ 
+                                                              color: '#2D6A4F', 
+                                                              fontSize: '11px',
+                                                              fontWeight: '700',
+                                                              display: 'flex',
+                                                              alignItems: 'center',
+                                                              gap: '4px'
+                                                            }}>
+                                                              ── {edge.label} ──▶
+                                                            </span>
+                                                            <span style={{ 
+                                                              backgroundColor: '#e3f2fd', 
+                                                              padding: '4px 8px', 
+                                                              borderRadius: '4px',
+                                                              color: '#0076B5'
+                                                            }}>
+                                                              {targetName}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ 
+                                                          fontSize: '11px', 
+                                                          color: '#999',
+                                                          fontStyle: 'italic'
+                                                        }}>
+                                                          Click to view details
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+          )}
 
         </div>
 
