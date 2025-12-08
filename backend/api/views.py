@@ -16,6 +16,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property, EdgeProperty, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
+from .neo4j_db import Neo4jConnection 
 from .serializers import (RegisterSerializer, SpaceSerializer, TagSerializer, 
                           UserSerializer, ProfileSerializer, DiscussionSerializer, 
                           ReportSerializer, ActivityStreamSerializer, ArchiveSerializer,
@@ -557,6 +558,25 @@ class SpaceViewSet(viewsets.ModelViewSet):
             created_by=request.user,
             space = space
         )
+
+        # --- NEO4J INTEGRATION START ---
+        # Prepare properties for Neo4j
+        neo4j_props = {
+            'wikidata_id': new_node.wikidata_id,
+            'description': new_node.description,
+            'created_by': request.user.username,
+            'created_at': new_node.created_at.isoformat()
+        }
+        
+        # Save to Neo4j
+        Neo4jConnection.create_node(
+            node_id=new_node.id,
+            label=new_node.label,
+            space_id=space.id,
+            properties=neo4j_props
+        )
+        # --- NEO4J INTEGRATION END ---
+
         try:
             record_activity(
                 actor_user=request.user,
@@ -600,6 +620,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                # --- NEO4J INTEGRATION START ---
+                Neo4jConnection.create_edge(
+                    edge_id=e.id,
+                    source_node_id=new_node.id,
+                    target_node_id=related_node.id,
+                    relation_label=edge_label,
+                    properties={'wikidata_property_id': wikidata_property_id}
+                )
+                # --- NEO4J INTEGRATION END ---
                 try:
                     edge_summary = self._format_edge_summary(
                         request.user.username,
@@ -624,6 +653,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                # --- NEO4J INTEGRATION START ---
+                Neo4jConnection.create_edge(
+                    edge_id=e.id,
+                    source_node_id=related_node.id,
+                    target_node_id=new_node.id,
+                    relation_label=edge_label,
+                    properties={'wikidata_property_id': wikidata_property_id}
+                )
+                # --- NEO4J INTEGRATION END ---
                 try:
                     edge_summary = self._format_edge_summary(
                         request.user.username,
@@ -1511,6 +1549,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 relation_property=label,
                 wikidata_property_id=wikidata_property_id
             )
+
+            # --- NEO4J INTEGRATION START ---
+            Neo4jConnection.create_edge(
+                edge_id=edge.id,
+                source_node_id=source.id,
+                target_node_id=target.id,
+                relation_label=label,
+                properties={'wikidata_property_id': wikidata_property_id}
+            )
+            # --- NEO4J INTEGRATION END ---
+
             for prop in edge_properties:
                 value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
                 EdgeProperty.objects.create(
@@ -2073,8 +2122,6 @@ def change_user_type(request):
             
             try:
                 space = Space.objects.get(id=space_id)
-                
-                # Check if requesting user can moderate this space
                 if not requesting_profile.can_moderate_space(space):
                     return Response({'error': 'You are not a moderator of this space'}, status=status.HTTP_403_FORBIDDEN)
                 
@@ -2406,7 +2453,7 @@ def archive_item(request):
                     if space.id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Space.DoesNotExist:
-                    return Response({'error': 'Space not found'}, status=404)
+                    return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
             
             elif content_type == Archive.CONTENT_NODE:
                 try:
@@ -2414,7 +2461,7 @@ def archive_item(request):
                     if node.space_id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Node.DoesNotExist:
-                    return Response({'error': 'Node not found'}, status=404)
+                    return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
         
         Report.objects.filter(
             content_type=content_type,
@@ -2527,7 +2574,7 @@ def restore_archived_item(request, archive_id):
                     if space.id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Space.DoesNotExist:
-                    return Response({'error': 'Space not found'}, status=404)
+                    return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
             
             elif archive.content_type == Archive.CONTENT_NODE:
                 try:
@@ -2535,7 +2582,7 @@ def restore_archived_item(request, archive_id):
                     if node.space_id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Node.DoesNotExist:
-                    return Response({'error': 'Node not found'}, status=404)
+                    return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
         
         if archive.content_type == Archive.CONTENT_SPACE:
             try:
