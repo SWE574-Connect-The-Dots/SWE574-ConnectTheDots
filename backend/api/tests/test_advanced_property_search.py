@@ -107,3 +107,53 @@ class AdvancedPropertySearchTests(APITestCase):
         node_ids = [n['id'] for n in resp.data['nodes']]
         self.assertIn(self.n1.id, node_ids)
         self.assertIn(self.n2.id, node_ids)
+
+    def test_search_query_sequential_operators(self):
+        """Test sequential operators: each rule specifies how to combine with next"""
+        n3 = Node.objects.create(label='N3', space=self.space, created_by=self.user)
+        Property.objects.create(
+            node=n3,
+            property_id='P31',
+            property_label='instance of',
+            statement_id='S4',
+            value={'type': 'entity', 'id': 'Q5', 'text': 'human'},
+            value_text='human',
+            value_id='Q5'
+        )
+        Property.objects.create(
+            node=n3,
+            property_id='P27',
+            property_label='country of citizenship',
+            statement_id='S5',
+            value={'type': 'entity', 'id': 'Q30', 'text': 'United States'},
+            value_text='United States',
+            value_id='Q30'
+        )
+        
+        url = f'/api/spaces/{self.space.id}/search/query/'
+        # Query: (P31=Q5 AND P27=Q30) should match only n3
+        payload = {
+            'rules': [
+                {'property_id': 'P31', 'value_id': 'Q5', 'operator': 'AND'},
+                {'property_id': 'P27', 'value_id': 'Q30'}
+            ]
+        }
+        resp = self.client.post(url, payload, format='json', follow=True)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        node_ids = [n['id'] for n in resp.data['nodes']]
+        self.assertIn(n3.id, node_ids)
+        self.assertNotIn(self.n1.id, node_ids)
+        self.assertNotIn(self.n2.id, node_ids)
+        
+        payload = {
+            'rules': [
+                {'property_id': 'P31', 'value_id': 'Q5', 'operator': 'OR'},
+                {'property_id': 'P27', 'value_id': 'Q30'}
+            ]
+        }
+        resp = self.client.post(url, payload, format='json', follow=True)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        node_ids = [n['id'] for n in resp.data['nodes']]
+        self.assertIn(self.n1.id, node_ids)  # has P31=Q5
+        self.assertIn(self.n2.id, node_ids)  # has P27=Q30
+        self.assertIn(n3.id, node_ids)  # has both
