@@ -14,6 +14,7 @@ import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
+import { marked } from "marked";
 
 const infoModalStyles = `
 .info-icon-btn {
@@ -654,6 +655,36 @@ const propertySelectionStyles = `
   margin-top: 4px;
 }
 
+.summarize-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.summarize-btn:hover {
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.summarize-btn:active {
+  transform: translateY(0);
+}
+
+.summarize-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .dropdown-item {
   display: flex;
   align-items: center;
@@ -942,6 +973,12 @@ const SpaceDetails = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // AI Summary states
+  const [aiSummary, setAiSummary] = useState(null);
+  const [showAiSummary, setShowAiSummary] = useState(false);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState(null);
 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [simpleSearchResults, setSimpleSearchResults] = useState(null);
@@ -1589,6 +1626,31 @@ const SpaceDetails = () => {
     setShowReportModal(true);
   };
 
+  const handleAiSummarize = async () => {
+    setLoadingAiSummary(true);
+    setAiSummaryError(null);
+    setShowAiSummary(true);
+    
+    try {
+      const response = await api.post(
+        `/spaces/${id}/summarize/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setAiSummary(response.data);
+    } catch (error) {
+      console.error("Error generating AI summary:", error);
+      setAiSummaryError(error.response?.data?.error || "Failed to generate AI summary");
+    } finally {
+      setLoadingAiSummary(false);
+    }
+  };
+
   const handleAddCriteria = () => {
     const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
     setSearchCriteria([
@@ -1926,6 +1988,7 @@ const SpaceDetails = () => {
     }, [showDropdown]);
 
     return (
+      
       <div className="space-actions-dropdown" ref={dropdownRef}>
         <button
           className="dropdown-toggle"
@@ -1948,6 +2011,8 @@ const SpaceDetails = () => {
             >
               Show Space Map
             </button>
+
+            
             
             <button
               className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
@@ -2216,8 +2281,19 @@ const SpaceDetails = () => {
             >
               ℹ︎
             </button>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="summarize-btn"
+              onClick={handleAiSummarize}
+              disabled={loadingAiSummary}
+            >
+              <span>✨</span>
+              {loadingAiSummary ? 'Generating...' : 'Summarize'}
+            </button>
             <SpaceActionsDropdown />
           </div>
+        </div>
         </div>
         <p>{space.description}</p>
         
@@ -3664,6 +3740,239 @@ const SpaceDetails = () => {
 
       {/* Info Modal */}
       <InfoModal />
+      {/* AI Summary Modal */}
+      {showAiSummary && (
+        <div 
+          className="modal-backdrop" 
+          onClick={() => setShowAiSummary(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="ai-summary-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                fontSize: '24px',
+                color: '#1B1F3B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span>✨</span>
+                AI Summary
+              </h2>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingAiSummary && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#666'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #f3f3f3',
+                  borderTop: '4px solid #2D6A4F',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 20px'
+                }}></div>
+                <p style={{ margin: 0, fontSize: '16px' }}>
+                  Generating AI summary...
+                </p>
+                <style>
+                  {`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            {aiSummaryError && !loadingAiSummary && (
+              <div style={{
+                padding: '20px',
+                backgroundColor: '#fee',
+                borderRadius: '8px',
+                color: '#c33',
+                marginBottom: '20px'
+              }}>
+                <p style={{ margin: 0, fontWeight: '600' }}>Error</p>
+                <p style={{ margin: '8px 0 0 0' }}>{aiSummaryError}</p>
+              </div>
+            )}
+
+            {aiSummary && !loadingAiSummary && !aiSummaryError && (
+              <div>
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  gap: '20px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Nodes
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.node_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Edges
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.edge_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Discussions
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.discussion_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Collaborators
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.collaborator_count || 0}
+                    </div>
+                  </div>
+                </div>
+
+                <div 
+                  className="ai-summary-content"
+                  style={{
+                    fontSize: '15px',
+                    lineHeight: '1.7',
+                    color: '#333'
+                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: marked.parse(aiSummary.summary || '') 
+                  }}
+                />
+                
+                <style>
+                  {`
+                    .ai-summary-content h3 {
+                      color: #1B1F3B;
+                      font-size: 18px;
+                      font-weight: 600;
+                      margin: 20px 0 10px 0;
+                      border-bottom: 2px solid #2D6A4F;
+                      padding-bottom: 5px;
+                    }
+                    
+                    .ai-summary-content h3:first-child {
+                      margin-top: 0;
+                    }
+                    
+                    .ai-summary-content strong {
+                      color: #2D6A4F;
+                      font-weight: 600;
+                    }
+                    
+                    .ai-summary-content p {
+                      margin: 12px 0;
+                    }
+                    
+                    .ai-summary-content ul {
+                      margin: 10px 0;
+                      padding-left: 25px;
+                    }
+                    
+                    .ai-summary-content li {
+                      margin: 6px 0;
+                    }
+                    
+                    .ai-summary-content code {
+                      background-color: #f5f5f5;
+                      padding: 2px 6px;
+                      border-radius: 3px;
+                      font-family: monospace;
+                      font-size: 14px;
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            <div style={{ marginTop: '30px', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#2D6A4F',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
