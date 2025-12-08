@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.WikidataProperty
+import com.yybb.myapplication.data.network.dto.CountryPosition
 import com.yybb.myapplication.data.network.dto.ReportReasonItem
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 class SpaceNodeDetailsViewModel @Inject constructor(
     private val spaceNodeDetailsRepository: SpaceNodeDetailsRepository,
     private val spacesRepository: SpacesRepository,
+    private val countriesRepository: CountriesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -186,6 +189,37 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             initialValue = _propertyOptions.value
         )
 
+    // Location state
+    private val _locationName = MutableStateFlow<String?>(null)
+    val locationName: StateFlow<String?> = _locationName.asStateFlow()
+
+    private val _nodeDetails = MutableStateFlow<com.yybb.myapplication.data.model.SpaceNode?>(null)
+    val nodeDetails: StateFlow<com.yybb.myapplication.data.model.SpaceNode?> = _nodeDetails.asStateFlow()
+
+    private val _showEditLocationDialog = MutableStateFlow(false)
+    val showEditLocationDialog: StateFlow<Boolean> = _showEditLocationDialog.asStateFlow()
+
+    private val _countries = MutableStateFlow<List<CountryPosition>>(emptyList())
+    val countries: StateFlow<List<CountryPosition>> = _countries.asStateFlow()
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities.asStateFlow()
+
+    private val _isLoadingCountries = MutableStateFlow(false)
+    val isLoadingCountries: StateFlow<Boolean> = _isLoadingCountries.asStateFlow()
+
+    private val _isLoadingCities = MutableStateFlow(false)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities.asStateFlow()
+
+    private val _isGettingCoordinates = MutableStateFlow(false)
+    val isGettingCoordinates: StateFlow<Boolean> = _isGettingCoordinates.asStateFlow()
+
+    private val _isUpdatingLocation = MutableStateFlow(false)
+    val isUpdatingLocation: StateFlow<Boolean> = _isUpdatingLocation.asStateFlow()
+
+    private val _locationUpdateError = MutableStateFlow<String?>(null)
+    val locationUpdateError: StateFlow<String?> = _locationUpdateError.asStateFlow()
+
     init {
         // Validate required data
         if (nodeLabelArg.isNullOrBlank()) {
@@ -195,6 +229,8 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             fetchNodeProperties()
             fetchWikidataProperties()
             fetchNodeConnections()
+            fetchNodeDetails()
+            loadCountries()
         }
     }
 
@@ -605,6 +641,151 @@ class SpaceNodeDetailsViewModel @Inject constructor(
 
     fun clearReportError() {
         _reportError.value = null
+    }
+
+    // Location functions
+    fun showEditLocationDialog() {
+        _showEditLocationDialog.value = true
+    }
+
+    fun hideEditLocationDialog() {
+        _showEditLocationDialog.value = false
+    }
+
+    fun loadCountries() {
+        viewModelScope.launch {
+            _isLoadingCountries.value = true
+            countriesRepository.getCountries()
+                .onSuccess { countriesList ->
+                    _countries.value = countriesList.sortedBy { it.name }
+                    _isLoadingCountries.value = false
+                }
+                .onFailure {
+                    _isLoadingCountries.value = false
+                }
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _isLoadingCities.value = true
+            _cities.value = emptyList()
+            countriesRepository.getCities(country)
+                .onSuccess { citiesList ->
+                    _cities.value = citiesList.sorted()
+                    _isLoadingCities.value = false
+                }
+                .onFailure {
+                    _isLoadingCities.value = false
+                }
+        }
+    }
+
+    private val _coordinatesResult = MutableStateFlow<com.yybb.myapplication.data.network.dto.NominatimCoordinates?>(null)
+    val coordinatesResult: StateFlow<com.yybb.myapplication.data.network.dto.NominatimCoordinates?> = _coordinatesResult.asStateFlow()
+
+    fun getCoordinatesFromAddress(city: String?, country: String?) {
+        if (city == null || country == null) {
+            _coordinatesResult.value = null
+            return
+        }
+
+        viewModelScope.launch {
+            _isGettingCoordinates.value = true
+            _locationUpdateError.value = null
+            _coordinatesResult.value = null
+            val query = "$city, $country"
+            val result = spaceNodeDetailsRepository.getCoordinatesFromAddress(query)
+            _isGettingCoordinates.value = false
+            result.onSuccess { coordinates ->
+                _coordinatesResult.value = coordinates
+            }.onFailure { throwable ->
+                _coordinatesResult.value = null
+                _locationUpdateError.value = throwable.message ?: "Failed to get coordinates"
+            }
+        }
+    }
+
+    fun updateNodeLocation(
+        country: String?,
+        city: String?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) {
+        if (_isUpdatingLocation.value) return
+        
+        viewModelScope.launch {
+            _isUpdatingLocation.value = true
+            _locationUpdateError.value = null
+
+            try {
+                val updateResult = spaceNodeDetailsRepository.updateNodeLocation(
+                    spaceId = spaceId,
+                    nodeId = nodeId,
+                    country = country,
+                    city = city,
+                    locationName = locationName,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+
+                updateResult.onSuccess {
+                    // Create snapshot
+                    val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+                    snapshotResult.onSuccess {
+                        // Refresh node details by calling getSpaceNodes and finding matching node
+                        refreshNodeDetailsFromSpaceNodes()
+                        _isUpdatingLocation.value = false
+                        _showEditLocationDialog.value = false
+                    }.onFailure { throwable ->
+                        _locationUpdateError.value = throwable.message ?: "Failed to create snapshot"
+                        _isUpdatingLocation.value = false
+                    }
+                }.onFailure { throwable ->
+                    _locationUpdateError.value = throwable.message ?: "Failed to update location"
+                    _isUpdatingLocation.value = false
+                }
+            } catch (e: Exception) {
+                _locationUpdateError.value = e.message ?: "An unexpected error occurred"
+                _isUpdatingLocation.value = false
+            }
+        }
+    }
+
+    private suspend fun refreshNodeDetailsFromSpaceNodes() {
+        val result = spaceNodeDetailsRepository.getSpaceNodes(spaceId)
+        result.onSuccess { nodes ->
+            // First try to find by wikidata_id if available
+            val currentWikidataId = _wikidataId.value
+            val matchingNode = if (currentWikidataId.isNotBlank()) {
+                nodes.find { it.wikidataId == currentWikidataId }
+            } else {
+                // Fallback to matching by nodeId if wikidata_id is not available
+                nodes.find { it.id.toString() == nodeId }
+            }
+            
+            if (matchingNode != null) {
+                _nodeDetails.value = matchingNode
+                _locationName.value = matchingNode.locationName
+                // Update node name if it has changed
+                if (matchingNode.label.isNotBlank()) {
+                    _nodeName.value = matchingNode.label
+                }
+            }
+        }.onFailure {
+            // Silently fail - location is optional
+        }
+    }
+
+    private fun fetchNodeDetails() {
+        viewModelScope.launch {
+            refreshNodeDetailsFromSpaceNodes()
+        }
+    }
+
+    fun clearLocationUpdateError() {
+        _locationUpdateError.value = null
     }
 }
 

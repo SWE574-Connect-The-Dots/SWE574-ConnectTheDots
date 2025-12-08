@@ -447,6 +447,42 @@ fun SpaceDetailsScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
+                    // Location Section
+                    if (currentSpace.city != null || currentSpace.country != null || 
+                        currentSpace.latitude != null || currentSpace.longitude != null) {
+                        Column(
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        ) {
+                            Text(
+                                text = "Location",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            val locationText = buildString {
+                                if (currentSpace.city != null && currentSpace.country != null) {
+                                    append("${currentSpace.city}, ${currentSpace.country}")
+                                } else if (currentSpace.city != null) {
+                                    append(currentSpace.city)
+                                } else if (currentSpace.country != null) {
+                                    append(currentSpace.country)
+                                }
+                                if (currentSpace.latitude != null && currentSpace.longitude != null) {
+                                    if (isNotEmpty()) {
+                                        append("\n")
+                                    }
+                                    append("Coordinates: ${currentSpace.latitude}, ${currentSpace.longitude}")
+                                }
+                            }
+                            if (locationText.isNotEmpty()) {
+                                Text(
+                                    text = locationText,
+                                    fontSize = 15.sp
+                                )
+                            }
+                        }
+                    }
+
                     // Tags Display
                     if (currentSpace.tags.isNotEmpty()) {
                         Row(

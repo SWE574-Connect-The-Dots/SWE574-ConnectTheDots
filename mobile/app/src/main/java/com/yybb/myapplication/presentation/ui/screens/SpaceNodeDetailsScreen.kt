@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.focusable
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.TAG_ICON_SIZE
@@ -90,7 +92,6 @@ import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel.NodeOption
 import androidx.compose.ui.window.DialogProperties
-import com.yybb.myapplication.presentation.ui.screens.LoadingDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,30 +136,23 @@ fun SpaceNodeDetailsScreen(
     val isSubmittingReport by viewModel.isSubmittingReport.collectAsState()
     val reportSubmitSuccess by viewModel.reportSubmitSuccess.collectAsState()
     val reportError by viewModel.reportError.collectAsState()
+    val nodeDetails by viewModel.nodeDetails.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val showEditLocationDialog by viewModel.showEditLocationDialog.collectAsState()
 
 
-    // Refresh connections when the Connections tab is selected or visible
-    // This ensures we have the latest data when:
-    // 1. Tab is first selected
-    // 2. User navigates back from EdgeDetailsScreen (composable recomposes with Connections tab visible)
-    // The ViewModel prevents duplicate concurrent calls via job cancellation
     LaunchedEffect(selectedTabIndex) {
         if (selectedTabIndex == 1) { // Connections tab
             viewModel.refreshNodeConnections()
         }
     }
     
-    // Additional refresh when composable is composed/recomposed and Connections tab is visible
-    // This handles the case when user navigates back while already on Connections tab
     LaunchedEffect(Unit) {
-        // Refresh connections when the screen becomes visible and Connections tab is active
-        // This runs when the composable is composed (including after navigation back)
         if (selectedTabIndex == 1) {
             viewModel.refreshNodeConnections()
         }
@@ -316,6 +310,24 @@ fun SpaceNodeDetailsScreen(
 
     if (isDeletingNode) {
         LoadingDialog(message = stringResource(id = R.string.deleting_node_message))
+    }
+
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+    val isUpdatingLocation by viewModel.isUpdatingLocation.collectAsState()
+    
+    if (isLoadingCities && showEditLocationDialog) {
+        LoadingDialog(message = "Loading cities...")
+    }
+
+    if (isUpdatingLocation) {
+        LoadingDialog(message = "Updating location...")
+    }
+
+    if (showEditLocationDialog) {
+        EditLocationDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.hideEditLocationDialog() }
+        )
     }
 
     LaunchedEffect(deleteNodeSuccess) {
@@ -527,7 +539,10 @@ fun SpaceNodeDetailsScreen(
                     isSavingProperties = isUpdatingNodeProperties,
                     isWikidataPropertiesLoading = isWikidataPropertiesLoading,
                     wikidataPropertiesError = wikidataPropertiesError,
-                    onNavigateToWebView = onNavigateToWebView
+                    onNavigateToWebView = onNavigateToWebView,
+                    locationName = viewModel.locationName.value,
+                    nodeDetails = nodeDetails,
+                    onEditLocationClick = { viewModel.showEditLocationDialog() }
                 )
 
                 else -> ConnectionsContent(
@@ -576,7 +591,10 @@ private fun DetailsContent(
     isSavingProperties: Boolean,
     isWikidataPropertiesLoading: Boolean,
     wikidataPropertiesError: String?,
-    onNavigateToWebView: (String) -> Unit
+    onNavigateToWebView: (String) -> Unit,
+    locationName: String?,
+    nodeDetails: com.yybb.myapplication.data.model.SpaceNode?,
+    onEditLocationClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -627,6 +645,61 @@ private fun DetailsContent(
                         }
                     }
                 )
+                
+                // Location Section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Location:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Button(
+                        onClick = onEditLocationClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF436FED)
+                        )
+                    ) {
+                        Text("Edit Location", color = Color.White)
+                    }
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = locationName ?: "Location not specified",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (locationName != null) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        val latitude = nodeDetails?.latitude
+                        val longitude = nodeDetails?.longitude
+                        if (latitude != null && longitude != null) {
+                            Text(
+                                text = "Coordinates: $latitude, $longitude",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+                
                 Text(
                     text = stringResource(id = R.string.node_properties_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -1605,6 +1678,415 @@ private fun NodeActionFab(
         containerColor = containerColor,
         contentColor = Color.White,
         modifier = Modifier.padding(horizontal = 4.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditLocationDialog(
+    viewModel: SpaceNodeDetailsViewModel,
+    onDismiss: () -> Unit
+) {
+    val countries by viewModel.countries.collectAsState()
+    val cities by viewModel.cities.collectAsState()
+    val isLoadingCountries by viewModel.isLoadingCountries.collectAsState()
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+    val isGettingCoordinates by viewModel.isGettingCoordinates.collectAsState()
+    val isUpdatingLocation by viewModel.isUpdatingLocation.collectAsState()
+    val locationUpdateError by viewModel.locationUpdateError.collectAsState()
+    val locationName by viewModel.locationName.collectAsState()
+    val coordinatesResult by viewModel.coordinatesResult.collectAsState()
+    val nodeDetails by viewModel.nodeDetails.collectAsState()
+
+    var selectedCountry by remember { mutableStateOf<String?>(null) }
+    var selectedCity by remember { mutableStateOf<String?>(null) }
+    var locationNameText by remember { mutableStateOf("") }
+    var latitudeText by remember { mutableStateOf("") }
+    var longitudeText by remember { mutableStateOf("") }
+    var countrySearchQuery by remember { mutableStateOf("") }
+    var citySearchQuery by remember { mutableStateOf("") }
+    var isCountryDropdownExpanded by remember { mutableStateOf(false) }
+    var isCityDropdownExpanded by remember { mutableStateOf(false) }
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+    var isInitialized by remember { mutableStateOf(false) }
+
+    val countryFocusRequester = remember { FocusRequester() }
+    val cityFocusRequester = remember { FocusRequester() }
+
+    // Initialize with existing location data
+    LaunchedEffect(nodeDetails) {
+        nodeDetails?.let { node ->
+            if (!isInitialized) {
+                selectedCountry = node.country
+                selectedCity = node.city
+                locationNameText = node.locationName ?: ""
+                latitudeText = node.latitude ?: ""
+                longitudeText = node.longitude ?: ""
+                countrySearchQuery = node.country ?: ""
+                citySearchQuery = node.city ?: ""
+                if (node.country != null) {
+                    viewModel.loadCities(node.country)
+                }
+                isInitialized = true
+            }
+        }
+    }
+
+    // Load cities when country is selected
+    // Note: This also triggers when country is selected from dropdown (which calls loadCities)
+    // This ensures cities are loaded even if country is set programmatically
+    LaunchedEffect(selectedCountry) {
+        if (selectedCountry != null) {
+            // Reset city when country changes (unless it's initial load with existing city)
+            if (hasUnsavedChanges || (isInitialized && nodeDetails?.city == null)) {
+                selectedCity = null
+                citySearchQuery = ""
+            }
+        } else {
+            selectedCity = null
+            citySearchQuery = ""
+        }
+    }
+
+    // Filter countries and cities
+    val filteredCountries = remember(countries, countrySearchQuery) {
+        val query = countrySearchQuery.trim()
+        if (query.isEmpty()) {
+            countries
+        } else {
+            countries.filter { country ->
+                country.name.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    val filteredCities = remember(cities, citySearchQuery) {
+        val query = citySearchQuery.trim()
+        if (query.isEmpty()) {
+            cities
+        } else {
+            cities.filter { city ->
+                city.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    // Handle coordinate response
+    LaunchedEffect(coordinatesResult) {
+        coordinatesResult?.let { coordinates ->
+            locationNameText = coordinates.displayName
+            latitudeText = coordinates.latitude.toString()
+            longitudeText = coordinates.longitude.toString()
+            hasUnsavedChanges = true
+        }
+    }
+
+    AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        confirmButton = {},
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 300.dp, max = 550.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Location:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (hasUnsavedChanges) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFE65100)
+                                ),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "Unsaved Changes",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                    Divider()
+                }
+
+                // Country Dropdown
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Country:",
+                        fontSize = 13.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = isCountryDropdownExpanded,
+                        onExpandedChange = { isCountryDropdownExpanded = !isCountryDropdownExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = countrySearchQuery,
+                            onValueChange = { query ->
+                                countrySearchQuery = query
+                                isCountryDropdownExpanded = true
+                                hasUnsavedChanges = true
+                            },
+                            placeholder = { Text("-- Select Country --") },
+                            trailingIcon = {
+                                if (isLoadingCountries) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                } else {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = isCountryDropdownExpanded
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                                .focusRequester(countryFocusRequester),
+                            enabled = !isLoadingCountries
+                        )
+                        LaunchedEffect(isCountryDropdownExpanded) {
+                            if (isCountryDropdownExpanded) {
+                                countryFocusRequester.requestFocus()
+                            }
+                        }
+                        ExposedDropdownMenu(
+                            expanded = isCountryDropdownExpanded && !isLoadingCountries,
+                            onDismissRequest = { isCountryDropdownExpanded = false },
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No countries found") },
+                                    onClick = { }
+                                )
+                            } else {
+                                filteredCountries.take(100).forEach { country ->
+                                    DropdownMenuItem(
+                                        text = { Text(country.name) },
+                                        onClick = {
+                                            selectedCountry = country.name
+                                            countrySearchQuery = country.name
+                                            isCountryDropdownExpanded = false
+                                            hasUnsavedChanges = true
+                                            // Load cities when country is selected
+                                            viewModel.loadCities(country.name)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // City Dropdown (only visible when country is selected)
+                if (selectedCountry != null) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "City:",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = isCityDropdownExpanded,
+                            onExpandedChange = { isCityDropdownExpanded = !isCityDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = citySearchQuery,
+                                onValueChange = { query ->
+                                    citySearchQuery = query
+                                    isCityDropdownExpanded = true
+                                    hasUnsavedChanges = true
+                                },
+                                placeholder = { Text("-- Select City --") },
+                                trailingIcon = {
+                                    if (isLoadingCities) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                    } else {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                            expanded = isCityDropdownExpanded
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .focusRequester(cityFocusRequester),
+                                enabled = !isLoadingCities
+                            )
+                            LaunchedEffect(isCityDropdownExpanded) {
+                                if (isCityDropdownExpanded) {
+                                    cityFocusRequester.requestFocus()
+                                }
+                            }
+                            ExposedDropdownMenu(
+                                expanded = isCityDropdownExpanded && !isLoadingCities,
+                                onDismissRequest = { isCityDropdownExpanded = false },
+                                modifier = Modifier.heightIn(max = 200.dp)
+                            ) {
+                                if (filteredCities.isEmpty() && citySearchQuery.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No cities found") },
+                                        onClick = { }
+                                    )
+                                } else {
+                                    filteredCities.take(100).forEach { city ->
+                                        DropdownMenuItem(
+                                            text = { Text(city) },
+                                            onClick = {
+                                                selectedCity = city
+                                                citySearchQuery = city
+                                                isCityDropdownExpanded = false
+                                                hasUnsavedChanges = true
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Get Coordinates Button
+                if (selectedCountry != null && selectedCity != null) {
+                    Button(
+                        onClick = {
+                            viewModel.getCoordinatesFromAddress(selectedCity, selectedCountry)
+                        },
+                        enabled = !isGettingCoordinates,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isGettingCoordinates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Get Coordinates from Address", color = Color.White)
+                    }
+                }
+
+                // Location Name
+                OutlinedTextField(
+                    value = locationNameText,
+                    onValueChange = {
+                        locationNameText = it
+                        hasUnsavedChanges = true
+                    },
+                    label = { Text("Location Name (optional)", fontSize = 13.sp) },
+                    placeholder = { Text("Enter location name manually", fontSize = 13.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                )
+
+                // Latitude and Longitude
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = latitudeText,
+                        onValueChange = {
+                            latitudeText = it
+                            hasUnsavedChanges = true
+                        },
+                        label = { Text("Latitude", fontSize = 13.sp) },
+                        placeholder = { Text("e.g., 40.7128", fontSize = 13.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                    OutlinedTextField(
+                        value = longitudeText,
+                        onValueChange = {
+                            longitudeText = it
+                            hasUnsavedChanges = true
+                        },
+                        label = { Text("Longitude", fontSize = 13.sp) },
+                        placeholder = { Text("e.g., -74.0060", fontSize = 13.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                }
+
+                if (locationUpdateError != null) {
+                    Text(
+                        text = locationUpdateError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (isUpdatingLocation) return@Button
+                            val lat = latitudeText.toDoubleOrNull()
+                            val lon = longitudeText.toDoubleOrNull()
+                            viewModel.updateNodeLocation(
+                                country = selectedCountry,
+                                city = selectedCity,
+                                locationName = locationNameText.takeIf { it.isNotBlank() },
+                                latitude = lat,
+                                longitude = lon
+                            )
+                        },
+                        enabled = !isUpdatingLocation && !isLoadingCities,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black,
+                            disabledContainerColor = Color.Black.copy(alpha = 0.6f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isUpdatingLocation) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Save Changes", color = Color.White)
+                    }
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFBDBDBD),
+                            contentColor = Color.Black
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
     )
 }
 

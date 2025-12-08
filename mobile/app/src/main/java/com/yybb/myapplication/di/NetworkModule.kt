@@ -6,6 +6,8 @@ import com.yybb.myapplication.data.SessionManager
 import com.yybb.myapplication.data.network.ApiService
 import com.yybb.myapplication.data.network.AuthInterceptor
 import com.yybb.myapplication.data.network.CountriesApiService
+import com.yybb.myapplication.data.network.NominatimApiService
+import com.yybb.myapplication.data.network.NominatimUserAgentInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,6 +15,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Named
@@ -41,11 +45,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient, @ApplicationContext context: Context): Retrofit {
+    fun provideGson(): Gson {
+        return GsonBuilder()
+            .serializeNulls()
+            .create()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient, gson: Gson, @ApplicationContext context: Context): Retrofit {
         return Retrofit.Builder()
             .baseUrl(context.getString(R.string.base_url))
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 
@@ -53,6 +65,29 @@ object NetworkModule {
     @Singleton
     fun provideApiService(retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("nominatim")
+    fun provideNominatimRetrofit(): Retrofit {
+        val userAgentInterceptor = NominatimUserAgentInterceptor()
+        val client = OkHttpClient.Builder()
+            .addInterceptor(userAgentInterceptor)
+            .build()
+        return Retrofit.Builder()
+            .baseUrl("https://nominatim.openstreetmap.org/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNominatimApiService(
+        @Named("nominatim") nominatimRetrofit: Retrofit
+    ): NominatimApiService {
+        return nominatimRetrofit.create(NominatimApiService::class.java)
     }
 
     @Provides

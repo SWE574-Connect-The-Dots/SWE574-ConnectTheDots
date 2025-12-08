@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,14 +27,25 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -122,13 +134,28 @@ fun CreateSpaceScreen(
         else -> { /* Nothing to do */ }
     }
 
+    val showLocationDialog by viewModel.showLocationDialog.collectAsState()
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+
+    if (isLoadingCities && showLocationDialog) {
+        LoadingDialog(message = "Loading cities...")
+    }
+
+    if (showLocationDialog) {
+        AddSpaceLocationDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.hideLocationDialog() }
+        )
+    }
+
     CreateSpaceContent(
         formState = formState,
         onFormStateChange = { newState -> viewModel.updateFormState(newState) },
         onNavigateBack = onNavigateBack,
         onGetWikiTags = { query -> viewModel.getTags(query) },
         onCreateClicked = { form -> viewModel.createSpace(formState) },
-        searchResults = searchResults
+        searchResults = searchResults,
+        viewModel = viewModel
     )
 }
 
@@ -159,7 +186,8 @@ fun CreateSpaceContent(
     onNavigateBack: () -> Unit,
     onGetWikiTags: (tagQuery: String) -> Unit,
     onCreateClicked: (CreateSpaceFormState) -> Unit,
-    searchResults: List<TagDto> = emptyList()
+    searchResults: List<TagDto> = emptyList(),
+    viewModel: CreateSpaceViewModel
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -271,6 +299,28 @@ fun CreateSpaceContent(
                 },
                 onSearchClick = handleSearchClick
             )
+
+            // Location Section
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Location:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Button(
+                    onClick = { viewModel.showLocationDialog() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF436FED)
+                    )
+                ) {
+                    Text("Add Location", color = Color.White)
+                }
+            }
 
             // Create Space Button
             Spacer(modifier = Modifier.height(16.dp))
@@ -581,4 +631,258 @@ private fun SearchResultItem(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddSpaceLocationDialog(
+    viewModel: CreateSpaceViewModel,
+    onDismiss: () -> Unit
+) {
+    val countries by viewModel.countries.collectAsState()
+    val cities by viewModel.cities.collectAsState()
+    val isLoadingCountries by viewModel.isLoadingCountries.collectAsState()
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+    val selectedCountry by viewModel.selectedCountry.collectAsState()
+    val selectedCity by viewModel.selectedCity.collectAsState()
+
+    var tempSelectedCountry by remember { mutableStateOf<String?>(selectedCountry) }
+    var tempSelectedCity by remember { mutableStateOf<String?>(selectedCity) }
+    var countrySearchQuery by remember { mutableStateOf(tempSelectedCountry ?: "") }
+    var citySearchQuery by remember { mutableStateOf(tempSelectedCity ?: "") }
+    var isCountryDropdownExpanded by remember { mutableStateOf(false) }
+    var isCityDropdownExpanded by remember { mutableStateOf(false) }
+
+    val countryFocusRequester = remember { FocusRequester() }
+    val cityFocusRequester = remember { FocusRequester() }
+
+    // Load cities when country is selected
+    LaunchedEffect(tempSelectedCountry) {
+        if (tempSelectedCountry != null) {
+            if (tempSelectedCity == null || tempSelectedCity != selectedCity) {
+                citySearchQuery = ""
+                tempSelectedCity = null
+            }
+            viewModel.loadCities(tempSelectedCountry!!)
+        } else {
+            citySearchQuery = ""
+            tempSelectedCity = null
+        }
+    }
+
+    // Filter countries and cities
+    val filteredCountries = remember(countries, countrySearchQuery) {
+        val query = countrySearchQuery.trim()
+        if (query.isEmpty()) {
+            countries
+        } else {
+            countries.filter { country ->
+                country.name.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    val filteredCities = remember(cities, citySearchQuery) {
+        val query = citySearchQuery.trim()
+        if (query.isEmpty()) {
+            cities
+        } else {
+            cities.filter { city ->
+                city.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        confirmButton = {},
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Location:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Divider()
+                }
+
+                // Country Dropdown
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Country:",
+                        fontSize = 13.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = isCountryDropdownExpanded,
+                        onExpandedChange = { isCountryDropdownExpanded = !isCountryDropdownExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = countrySearchQuery,
+                            onValueChange = { query ->
+                                countrySearchQuery = query
+                                isCountryDropdownExpanded = true
+                            },
+                            placeholder = { Text("-- Select Country --") },
+                            trailingIcon = {
+                                if (isLoadingCountries) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                } else {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = isCountryDropdownExpanded
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                                .focusRequester(countryFocusRequester),
+                            enabled = !isLoadingCountries
+                        )
+                        LaunchedEffect(isCountryDropdownExpanded) {
+                            if (isCountryDropdownExpanded) {
+                                countryFocusRequester.requestFocus()
+                            }
+                        }
+                        ExposedDropdownMenu(
+                            expanded = isCountryDropdownExpanded && !isLoadingCountries,
+                            onDismissRequest = { isCountryDropdownExpanded = false },
+                            modifier = Modifier.heightIn(max = 200.dp)
+                        ) {
+                            if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No countries found") },
+                                    onClick = { }
+                                )
+                            } else {
+                                filteredCountries.take(100).forEach { country ->
+                                    DropdownMenuItem(
+                                        text = { Text(country.name) },
+                                        onClick = {
+                                            countrySearchQuery = country.name
+                                            tempSelectedCountry = country.name
+                                            isCountryDropdownExpanded = false
+                                            viewModel.loadCities(country.name)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // City Dropdown (only visible when country is selected)
+                if (tempSelectedCountry != null) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "City:",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = isCityDropdownExpanded,
+                            onExpandedChange = { isCityDropdownExpanded = !isCityDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = citySearchQuery,
+                                onValueChange = { query ->
+                                    citySearchQuery = query
+                                    isCityDropdownExpanded = true
+                                },
+                                placeholder = { Text("-- Select City --") },
+                                trailingIcon = {
+                                    if (isLoadingCities) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                    } else {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                            expanded = isCityDropdownExpanded
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .focusRequester(cityFocusRequester),
+                                enabled = !isLoadingCities
+                            )
+                            LaunchedEffect(isCityDropdownExpanded) {
+                                if (isCityDropdownExpanded) {
+                                    cityFocusRequester.requestFocus()
+                                }
+                            }
+                            ExposedDropdownMenu(
+                                expanded = isCityDropdownExpanded && !isLoadingCities,
+                                onDismissRequest = { isCityDropdownExpanded = false },
+                                modifier = Modifier.heightIn(max = 200.dp)
+                            ) {
+                                if (filteredCities.isEmpty() && citySearchQuery.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No cities found") },
+                                        onClick = { }
+                                    )
+                                } else {
+                                    filteredCities.take(100).forEach { city ->
+                                        DropdownMenuItem(
+                                            text = { Text(city) },
+                                            onClick = {
+                                                citySearchQuery = city
+                                                tempSelectedCity = city
+                                                isCityDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.saveLocationData(tempSelectedCountry, tempSelectedCity)
+                        },
+                        enabled = !isLoadingCities,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save", color = Color.White)
+                    }
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFBDBDBD),
+                            contentColor = Color.Black
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    )
 }
