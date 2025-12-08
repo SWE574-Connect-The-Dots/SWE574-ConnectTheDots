@@ -104,7 +104,13 @@
     "addNodeWithEdge": "Bağlantı ile Düğüm Ekle",
     "archived": "Arşivlendi",
     "failedToExecuteSearch": "Arama gerçekleştirilemedi. Lütfen tekrar deneyin.",
-    "addSearchCriteria": "Lütfen en az bir eksiksiz arama kriteri (özellik ve değer) ekleyin."
+    "addSearchCriteria": "Lütfen en az bir eksiksiz arama kriteri (özellik ve değer) ekleyin.",
+    "nodes": "Düğümler",
+    "addNode": "Düğüm Ekle",
+    "connections": "bağlantı",
+    "recentlyAdded": "Yen Eklenenler",
+    "mostConnections": "En Fazla Bağlantısı Olanlar",
+    "nameAZ": "İsme göre sırala(A-Z)"
   },
   "spaceAnalytics": {
     "dashboard": "Alan Analitik Paneli",
