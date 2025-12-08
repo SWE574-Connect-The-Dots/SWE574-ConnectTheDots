@@ -568,6 +568,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
             'created_at': new_node.created_at.isoformat()
         }
         
+        for prop in selected_properties:
+            key = prop.get('property_label') or prop.get('property')
+            value = prop.get('value')
+            if key and value:
+                # Sanitize key for Neo4j property
+                safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                if safe_key:
+                    neo4j_props[safe_key] = str(value)
+
         # Save to Neo4j
         Neo4jConnection.create_node(
             node_id=new_node.id,
@@ -1257,6 +1266,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
             Property.objects.filter(node=node).delete()
             deleted_node_id = node.id
             node.delete()
+
+            # --- NEO4J INTEGRATION START ---
+            Neo4jConnection.delete_node(deleted_node_id)
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1314,6 +1328,27 @@ class SpaceViewSet(viewsets.ModelViewSet):
                             setattr(node, field, value)
                     node.save()
                 
+                # --- NEO4J INTEGRATION START ---
+                # Update Neo4j properties
+                neo4j_update_props = {}
+                if location_data:
+                    neo4j_update_props.update(location_data)
+                
+                for prop in selected_properties:
+                    key = prop.get('property_label') or prop.get('property')
+                    value = prop.get('value')
+                    if key and value:
+                        safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                        if safe_key:
+                            neo4j_update_props[safe_key] = str(value)
+                
+                if neo4j_update_props:
+                    Neo4jConnection.update_node(
+                        node_id=node.id,
+                        properties=neo4j_update_props
+                    )
+                # --- NEO4J INTEGRATION END ---
+                
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1345,6 +1380,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
             property_to_delete = Property.objects.get(node=node, statement_id=statement_id)
+            
+            # --- NEO4J INTEGRATION START ---
+            prop_key = property_to_delete.property_label or property_to_delete.property_id
+            if prop_key:
+                safe_key = "".join(x for x in prop_key if x.isalnum() or x == "_")
+                if safe_key:
+                    Neo4jConnection.delete_node_property(node.id, safe_key)
+            # --- NEO4J INTEGRATION END ---
+
             property_to_delete.delete()
             try:
                 record_activity(
@@ -1395,6 +1439,23 @@ class SpaceViewSet(viewsets.ModelViewSet):
             print(f"Updated node location - Country: {node.country}, City: {node.city}, Lat: {node.latitude}, Lng: {node.longitude}")
             
             node.save()
+
+            # --- NEO4J INTEGRATION START ---
+            neo4j_loc_props = {
+                'country': node.country,
+                'city': node.city,
+                'district': node.district,
+                'street': node.street,
+                'latitude': node.latitude,
+                'longitude': node.longitude,
+                'location_name': node.location_name
+            }
+            Neo4jConnection.update_node(
+                node_id=node.id,
+                properties=neo4j_loc_props
+            )
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1456,6 +1517,32 @@ class SpaceViewSet(viewsets.ModelViewSet):
             edge.wikidata_property_id = wikidata_property_id
             edge.save()
 
+            # --- NEO4J INTEGRATION START ---
+            # If label or endpoints changed, we must recreate the edge in Neo4j
+            # because relationship types are immutable and endpoints define the relationship identity.
+            # For simplicity, we'll delete and recreate if there's any structural change.
+            # If only properties changed, we could just update properties, but recreating is safer for consistency here.
+            
+            neo4j_edge_props = {'wikidata_property_id': wikidata_property_id}
+            if edge_properties:
+                for prop in edge_properties:
+                    key = prop.get('property_label') or prop.get('property')
+                    value = prop.get('value')
+                    if key and value:
+                        safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                        if safe_key:
+                            neo4j_edge_props[safe_key] = str(value)
+
+            Neo4jConnection.delete_edge(edge.id)
+            Neo4jConnection.create_edge(
+                edge_id=edge.id,
+                source_node_id=edge.source.id,
+                target_node_id=edge.target.id,
+                relation_label=edge.relation_property,
+                properties=neo4j_edge_props
+            )
+            # --- NEO4J INTEGRATION END ---
+
             if edge_properties is not None:
                 EdgeProperty.objects.filter(edge=edge).delete()
                 for prop in edge_properties:
@@ -1504,6 +1591,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
             sid = edge.source_id
             tid = edge.target_id
             edge.delete()
+
+            # --- NEO4J INTEGRATION START ---
+            Neo4jConnection.delete_edge(eid)
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1551,12 +1643,21 @@ class SpaceViewSet(viewsets.ModelViewSet):
             )
 
             # --- NEO4J INTEGRATION START ---
+            neo4j_edge_props = {'wikidata_property_id': wikidata_property_id}
+            for prop in edge_properties:
+                key = prop.get('property_label') or prop.get('property')
+                value = prop.get('value')
+                if key and value:
+                    safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                    if safe_key:
+                        neo4j_edge_props[safe_key] = str(value)
+
             Neo4jConnection.create_edge(
                 edge_id=edge.id,
                 source_node_id=source.id,
                 target_node_id=target.id,
                 relation_label=label,
-                properties={'wikidata_property_id': wikidata_property_id}
+                properties=neo4j_edge_props
             )
             # --- NEO4J INTEGRATION END ---
 

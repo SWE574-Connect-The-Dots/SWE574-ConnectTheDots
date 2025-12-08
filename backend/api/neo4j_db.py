@@ -79,3 +79,88 @@ class Neo4jConnection:
                 session.run(query, source_id=source_node_id, target_id=target_node_id, properties=properties)
         except Exception as e:
             logger.error(f"Failed to create edge in Neo4j: {e}")
+
+    @staticmethod
+    def update_node(node_id, properties):
+        """
+        Updates properties of a node in Neo4j.
+        """
+        query = """
+        MATCH (n:Node {pg_id: $node_id})
+        SET n += $properties
+        RETURN n
+        """
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                session.run(query, node_id=node_id, properties=properties)
+        except Exception as e:
+            logger.error(f"Failed to update node in Neo4j: {e}")
+
+    @staticmethod
+    def update_edge(edge_id, properties):
+        """
+        Updates properties of an edge in Neo4j.
+        """
+        query = """
+        MATCH ()-[r]->()
+        WHERE r.pg_id = $edge_id
+        SET r += $properties
+        RETURN r
+        """
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                session.run(query, edge_id=edge_id, properties=properties)
+        except Exception as e:
+            logger.error(f"Failed to update edge in Neo4j: {e}")
+
+    @staticmethod
+    def delete_node(node_id):
+        """
+        Deletes a node and its relationships in Neo4j.
+        """
+        query = """
+        MATCH (n:Node {pg_id: $node_id})
+        DETACH DELETE n
+        """
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                session.run(query, node_id=node_id)
+        except Exception as e:
+            logger.error(f"Failed to delete node in Neo4j: {e}")
+
+    @staticmethod
+    def delete_edge(edge_id):
+        """
+        Deletes an edge in Neo4j.
+        """
+        query = """
+        MATCH ()-[r]->()
+        WHERE r.pg_id = $edge_id
+        DELETE r
+        """
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                session.run(query, edge_id=edge_id)
+        except Exception as e:
+            logger.error(f"Failed to delete edge in Neo4j: {e}")
+
+    @staticmethod
+    def delete_node_property(node_id, property_key):
+        """
+        Deletes a specific property from a node in Neo4j.
+        """
+        query = """
+        MATCH (n:Node {pg_id: $node_id})
+        REMOVE n.`""" + property_key + """`
+        RETURN n
+        """
+        try:
+            driver = Neo4jConnection.get_driver()
+            with driver.session() as session:
+                session.run(query, node_id=node_id)
+        except Exception as e:
+            logger.error(f"Failed to delete node property in Neo4j: {e}")
