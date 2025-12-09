@@ -311,14 +311,12 @@ class SpaceNodesViewModelTest {
         // Ensure loading is still false before second resume
         assertFalse(viewModel.isLoading.value)
 
- - second resume should trigger fetch exactly once
         viewModel.onScreenResumed()
         advanceUntilIdle()
         
         // Ensure loading completed
         assertFalse(viewModel.isLoading.value)
 
- - verify it was called exactly once after clearing
         val inOrder = inOrder(mockRepository)
         inOrder.verify(mockRepository, times(1)).getSpaceNodes(spaceId)
         inOrder.verify(mockRepository, times(1)).getSpaceEdges(spaceId)
@@ -345,7 +343,6 @@ class SpaceNodesViewModelTest {
         viewModel.onScreenResumed()
         advanceUntilIdle()
 
- - should not trigger additional call if loading
         // This test verifies the guard condition
     }
 
