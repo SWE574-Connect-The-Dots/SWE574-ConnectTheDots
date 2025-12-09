@@ -160,7 +160,6 @@ class ActivityStreamViewModelTest {
     fun `loadActivities should clear previous error`() = runTest {
         val activities = listOf(createTestActivity())
 
-        // First call fails
         whenever(mockRepository.getActivityStream(eq(100), any()))
             .thenReturn(kotlin.Result.failure(Exception("First error")))
             .thenReturn(kotlin.Result.success(activities))
@@ -168,23 +167,19 @@ class ActivityStreamViewModelTest {
         viewModel = ActivityStreamViewModel(mockRepository, mockUserPreferencesRepository)
         advanceUntilIdle()
 
-        // Verify error was set
         viewModel.error.test {
             assertNotNull(awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Reload activities (should succeed)
         viewModel.loadActivities()
         advanceUntilIdle()
 
-        // Verify error was cleared
         viewModel.error.test {
             assertNull(awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Verify activities were loaded
         viewModel.activities.test {
             assertEquals(1, awaitItem().size)
             cancelAndIgnoreRemainingEvents()
@@ -206,17 +201,14 @@ class ActivityStreamViewModelTest {
         viewModel = ActivityStreamViewModel(mockRepository, mockUserPreferencesRepository)
         advanceUntilIdle()
 
-        // Verify initial load
         viewModel.activities.test {
             assertEquals(1, awaitItem().size)
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Refresh
         viewModel.refresh()
         advanceUntilIdle()
 
-        // Verify refreshed activities
         viewModel.activities.test {
             val emitted = awaitItem()
             assertEquals(2, emitted.size)
@@ -230,7 +222,6 @@ class ActivityStreamViewModelTest {
     fun `loadActivities should use custom limit parameter`() = runTest {
         val activities = listOf(createTestActivity())
 
-        // Mock both init call (limit 100) and custom call (limit 50)
         whenever(mockRepository.getActivityStream(eq(100), any())).thenReturn(
             kotlin.Result.success(activities)
         )
@@ -241,7 +232,6 @@ class ActivityStreamViewModelTest {
         viewModel = ActivityStreamViewModel(mockRepository, mockUserPreferencesRepository)
         advanceUntilIdle()
 
-        // Load with custom limit
         viewModel.loadActivities(limit = 50)
         advanceUntilIdle()
 
@@ -261,7 +251,6 @@ class ActivityStreamViewModelTest {
         viewModel = ActivityStreamViewModel(mockRepository, mockUserPreferencesRepository)
         advanceUntilIdle()
 
-        // Load with custom since
         viewModel.loadActivities(since = customSince)
         advanceUntilIdle()
 
@@ -310,7 +299,6 @@ class ActivityStreamViewModelTest {
         viewModel = ActivityStreamViewModel(mockRepository, mockUserPreferencesRepository)
         advanceUntilIdle()
 
-        // Refresh multiple times
         viewModel.refresh()
         advanceUntilIdle()
         

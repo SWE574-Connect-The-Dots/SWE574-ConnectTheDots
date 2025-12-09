@@ -24,26 +24,20 @@ class SettingsRepositoryTest {
 
     @Test
     fun `isColorBlindTheme should return flow from userPreferencesRepository`() = runTest {
-        // Given
         val expectedFlow = flowOf(true)
         whenever(userPreferencesRepository.isColorBlindTheme).thenReturn(expectedFlow)
 
-        // When
         val resultFlow = settingsRepository.isColorBlindTheme
 
-        // Then
         assertEquals(expectedFlow.first(), resultFlow.first())
     }
 
     @Test
     fun `setColorBlindTheme should call userPreferencesRepository`() = runTest {
-        // Given
         val isColorBlind = true
 
-        // When
         settingsRepository.setColorBlindTheme(isColorBlind)
 
-        // Then
         verify(userPreferencesRepository).setColorBlindTheme(isColorBlind)
     }
 }

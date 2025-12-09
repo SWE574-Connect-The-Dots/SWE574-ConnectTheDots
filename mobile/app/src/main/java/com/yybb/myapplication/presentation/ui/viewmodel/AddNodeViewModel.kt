@@ -410,7 +410,7 @@ class AddNodeViewModel @Inject constructor(
             _isLoadingCountries.value = true
             countriesRepository.getCountries()
                 .onSuccess { countriesList ->
-                    _countries.value = countriesList.sortedBy { it.name }
+                    _countries.value = (countriesList ?: emptyList()).sortedBy { it.name }
                     _isLoadingCountries.value = false
                 }
                 .onFailure {
