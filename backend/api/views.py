@@ -1594,6 +1594,22 @@ class SpaceViewSet(viewsets.ModelViewSet):
             edges = Edge.objects.filter(source__space=space, source__is_archived=False, target__is_archived=False)
             discussions = Discussion.objects.filter(space=space).order_by('-created_at')[:10]  # Latest 10 discussions
             
+            nodes_with_connections = nodes.annotate(
+                outgoing_count=Count('source_edges', distinct=True),
+                incoming_count=Count('target_edges', distinct=True)
+            )
+            
+            total_nodes = nodes_with_connections.count()
+            
+            if total_nodes > 0:
+                nodes_sorted_by_connections = sorted(
+                    nodes_with_connections,
+                    key=lambda n: n.outgoing_count + n.incoming_count,
+                    reverse=True
+                )
+            else:
+                nodes_sorted_by_connections = []
+            
             space_data = {
                 'title': space.title,
                 'description': space.description or 'No description',
@@ -1606,16 +1622,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 }
             }
             
-            # nodes
+            # nodes with connection counts
             nodes_data = []
-            for node in nodes[:50]:
+            for node in nodes_with_connections[:30]:
                 try:
                     node_info = {
                         'label': node.label or 'Unlabeled',
                         'wikidata_id': node.wikidata_id or 'N/A',
+                        'connections': node.outgoing_count + node.incoming_count,
                         'properties': []
                     }
-                    for prop in node.properties.all()[:5]:
+                    for prop in node.node_properties.all()[:5]:
                         node_info['properties'].append({
                             'property': prop.property_label or prop.property_id or 'Unknown',
                             'value': prop.value_text or prop.value_id or 'N/A'
@@ -1626,7 +1643,18 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
             # edges
             edges_data = []
-            for edge in edges[:50]:
+            
+            top_node_ids = {node.id for node in nodes_sorted_by_connections[:30]}
+            filtered_edges = [
+                e for e in edges 
+                if e.source_id in top_node_ids and e.target_id in top_node_ids
+            ]
+            
+            if len(filtered_edges) < 30:
+                remaining_edges = [e for e in edges if e not in filtered_edges]
+                filtered_edges.extend(remaining_edges[:30 - len(filtered_edges)])
+            
+            for edge in filtered_edges[:30]:
                 try:
                     edge_info = {
                         'source': edge.source.label if (edge.source and edge.source.label) else 'Unknown',
@@ -1649,15 +1677,16 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 except Exception as disc_error:
                     continue
             
-            # NODE
+            # NODE with connection counts
             nodes_text = []
-            for n in nodes_data[:20]:
+            for n in nodes_data:  # Use all 30 sorted nodes
                 try:
+                    connection_info = f"[{n['connections']} connections]"
                     if n['properties']:
                         props_text = ', '.join([f"{p['property']}: {p['value']}" for p in n['properties']])
-                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}): {props_text}")
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: {props_text}")
                     else:
-                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}): No properties")
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: No properties")
                 except Exception as e:
                     continue
             nodes_section = '\n'.join(nodes_text) if nodes_text else 'No nodes yet'
@@ -1679,7 +1708,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     continue
             discussions_section = '\n'.join(discussions_text) if discussions_text else 'No discussions yet'
             
-            ##### PROMT #######
+            ##### PROMPT #######
             prompt = f"""Analyze and summarize the following knowledge graph space:
 
 **Space Information:**
@@ -1694,7 +1723,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
 - Total Nodes: {nodes.count()}
 - Total Edges: {edges.count()}
 
-**Sample Nodes (with properties):**
+**Sample Nodes (top 30 by connections):**
 {nodes_section}
 
 **Sample Connections:**
@@ -1733,15 +1762,30 @@ Keep the summary concise (2-3 paragraphs total) but well-formatted for easy read
             
             genai.configure(api_key=api_key)
             
-            model = genai.GenerativeModel('gemini-flash-latest')
+            model_name = 'gemini-2.5-flash'
+            model_used = model_name
             
-            response = model.generate_content(prompt)
-            print(f"Gemini response: {response}")
-            print(f"prompt: {prompt}")
-            summary = response.text
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                summary = response.text
+            except Exception as flash_error:
+                error_str = str(flash_error).lower()
+                if 'quota' in error_str or 'resource' in error_str or '429' in error_str:
+                    model_name = 'gemini-2.5-flash-lite'
+                    model_used = model_name
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        response = model.generate_content(prompt)
+                        summary = response.text
+                    except Exception as lite_error:
+                        raise Exception(f"Both models failed. Flash error: {flash_error}, Lite error: {lite_error}")
+                else:
+                    raise flash_error
             
             return Response({
                 'summary': summary,
+                'model_used': model_used,
                 'metadata': {
                     'node_count': nodes.count(),
                     'edge_count': edges.count(),
