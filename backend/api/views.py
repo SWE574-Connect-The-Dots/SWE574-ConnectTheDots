@@ -26,6 +26,7 @@ from .reporting import REASON_CODES, REASONS_VERSION
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.db.models import Count
+import google.generativeai as genai
 
 def _recompute_entity_reports(content_type, content_id):
     """Recalculate report_count and is_reported based on OPEN reports only."""
@@ -255,7 +256,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'trending', 'new', 'top_scored', 'collaborators', 'top_collaborators', 
-                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties']:
+                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties', 'summarize_space']:
             permission_classes = [permissions.IsAuthenticated]
         elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion',
                              'react_discussion', 'add_node', 'delete_node', 'update_node_properties', 'delete_node_property',
@@ -1582,6 +1583,221 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
         return response
 
+    @action(detail=True, methods=['post'], url_path='summarize')
+    def summarize_space(self, request, pk=None):
+        import os
+        
+        try:
+            space = self.get_object()
+            
+            nodes = Node.objects.filter(space=space, is_archived=False)
+            edges = Edge.objects.filter(source__space=space, source__is_archived=False, target__is_archived=False)
+            discussions = Discussion.objects.filter(space=space).order_by('-created_at')[:10]  # Latest 10 discussions
+            
+            nodes_with_connections = nodes.annotate(
+                outgoing_count=Count('source_edges', distinct=True),
+                incoming_count=Count('target_edges', distinct=True)
+            )
+            
+            total_nodes = nodes_with_connections.count()
+            
+            if total_nodes > 0:
+                nodes_sorted_by_connections = sorted(
+                    nodes_with_connections,
+                    key=lambda n: n.outgoing_count + n.incoming_count,
+                    reverse=True
+                )
+            else:
+                nodes_sorted_by_connections = []
+            
+            space_data = {
+                'title': space.title,
+                'description': space.description or 'No description',
+                'creator': space.creator.username,
+                'collaborators': [user.username for user in space.collaborators.all()],
+                'tags': [tag.name for tag in space.tags.all()],
+                'location': {
+                    'country': space.country or 'Not specified',
+                    'city': space.city or 'Not specified',
+                }
+            }
+            
+            # nodes with connection counts
+            nodes_data = []
+            for node in nodes_with_connections[:30]:
+                try:
+                    node_info = {
+                        'label': node.label or 'Unlabeled',
+                        'wikidata_id': node.wikidata_id or 'N/A',
+                        'connections': node.outgoing_count + node.incoming_count,
+                        'properties': []
+                    }
+                    for prop in node.node_properties.all()[:5]:
+                        node_info['properties'].append({
+                            'property': prop.property_label or prop.property_id or 'Unknown',
+                            'value': prop.value_text or prop.value_id or 'N/A'
+                        })
+                    nodes_data.append(node_info)
+                except Exception as node_error:
+                    continue
+            
+            # edges
+            edges_data = []
+            
+            top_node_ids = {node.id for node in nodes_sorted_by_connections[:30]}
+            filtered_edges = [
+                e for e in edges 
+                if e.source_id in top_node_ids and e.target_id in top_node_ids
+            ]
+            
+            if len(filtered_edges) < 30:
+                remaining_edges = [e for e in edges if e not in filtered_edges]
+                filtered_edges.extend(remaining_edges[:30 - len(filtered_edges)])
+            
+            for edge in filtered_edges[:30]:
+                try:
+                    edge_info = {
+                        'source': edge.source.label if (edge.source and edge.source.label) else 'Unknown',
+                        'target': edge.target.label if (edge.target and edge.target.label) else 'Unknown',
+                        'relation': edge.relation_property or 'connected to'
+                    }
+                    edges_data.append(edge_info)
+                except Exception as edge_error:
+                    continue
+            
+            # COMMENTS
+            discussions_data = []
+            for discussion in discussions:
+                try:
+                    discussions_data.append({
+                        'user': discussion.user.username,
+                        'text': (discussion.text[:200] if discussion.text else 'No text'),
+                        'created_at': discussion.created_at.strftime('%Y-%m-%d')
+                    })
+                except Exception as disc_error:
+                    continue
+            
+            # NODE with connection counts
+            nodes_text = []
+            for n in nodes_data:  # Use all 30 sorted nodes
+                try:
+                    connection_info = f"[{n['connections']} connections]"
+                    if n['properties']:
+                        props_text = ', '.join([f"{p['property']}: {p['value']}" for p in n['properties']])
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: {props_text}")
+                    else:
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: No properties")
+                except Exception as e:
+                    continue
+            nodes_section = '\n'.join(nodes_text) if nodes_text else 'No nodes yet'
+            
+            # EDGE
+            edges_text = []
+            for e in edges_data[:20]:
+                try:
+                    edges_text.append(f"- {e['source']} → [{e['relation']}] → {e['target']}")
+                except Exception as e_error:
+                    continue
+            edges_section = '\n'.join(edges_text) if edges_text else 'No edges yet'
+            
+            discussions_text = []
+            for d in discussions_data[:5]:
+                try:
+                    discussions_text.append(f"- {d['user']} ({d['created_at']}): {d['text']}")
+                except Exception as d_error:
+                    continue
+            discussions_section = '\n'.join(discussions_text) if discussions_text else 'No discussions yet'
+            
+            ##### PROMPT #######
+            prompt = f"""Analyze and summarize the following knowledge graph space:
+
+**Space Information:**
+- Title: {space_data['title']}
+- Description: {space_data['description']}
+- Creator: {space_data['creator']}
+- Collaborators: {', '.join(space_data['collaborators']) if space_data['collaborators'] else 'None'}
+- Tags: {', '.join(space_data['tags']) if space_data['tags'] else 'None'}
+- Location: {space_data['location']['city']}, {space_data['location']['country']}
+
+**Graph Structure:**
+- Total Nodes: {nodes.count()}
+- Total Edges: {edges.count()}
+
+**Sample Nodes (top 30 by connections):**
+{nodes_section}
+
+**Sample Connections:**
+{edges_section}
+
+**Recent Discussions:**
+{discussions_section}
+
+Please provide a comprehensive summary using markdown formatting:
+- Use **bold** for important concepts, entities, and key insights
+- Use ### for section headings
+- Use bullet points (-) for lists
+- Keep it organized and easy to scan
+- Make it engaging and informative
+
+Include these sections:
+### Overview
+Briefly describe the main theme and purpose of this knowledge graph (2-3 sentences with key terms in **bold**)
+
+### Key Entities & Relationships
+List the most important entities and their connections using **bold** for entity names
+
+### Insights & Patterns
+Highlight interesting patterns or notable findings with **bold** emphasis on key points
+
+### Activity & Collaboration
+Describe the collaboration level and discussion activity with important metrics in **bold**
+
+Keep the summary concise (2-3 paragraphs total) but well-formatted for easy reading."""
+
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                return Response({
+                    'error': 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable.'
+                }, status=500)
+            
+            genai.configure(api_key=api_key)
+            
+            model_name = 'gemini-2.5-flash'
+            model_used = model_name
+            
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                summary = response.text
+            except Exception as flash_error:
+                error_str = str(flash_error).lower()
+                if 'quota' in error_str or 'resource' in error_str or '429' in error_str:
+                    model_name = 'gemini-2.5-flash-lite'
+                    model_used = model_name
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        response = model.generate_content(prompt)
+                        summary = response.text
+                    except Exception as lite_error:
+                        raise Exception(f"Both models failed. Flash error: {flash_error}, Lite error: {lite_error}")
+                else:
+                    raise flash_error
+            
+            return Response({
+                'summary': summary,
+                'model_used': model_used,
+                'metadata': {
+                    'node_count': nodes.count(),
+                    'edge_count': edges.count(),
+                    'discussion_count': discussions.count(),
+                    'collaborator_count': space.collaborators.count()
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate summary: {str(e)}'
+            }, status=500)
 
     @action(detail=False, methods=['get'], url_path='top-scored', permission_classes=[IsAuthenticated])
     def top_scored(self, request):
@@ -1881,7 +2097,6 @@ class ReportViewSet(viewsets.ModelViewSet):
             pass
 
     def partial_update(self, request, *args, **kwargs):
-        # Get report directly from database to check permissions before filtering
         pk = kwargs.get('pk')
         try:
             report = Report.objects.get(pk=pk)

@@ -338,13 +338,20 @@ class SpaceSerializer(serializers.ModelSerializer):
 
 class NodeSerializer(serializers.ModelSerializer):
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
+    connection_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Node
         fields = [
             'id', 'label', 'wikidata_id', 'created_at', 'created_by', 'created_by_username', 
             'space', 'country', 'city', 'district', 'street', 
-            'latitude', 'longitude', 'location_name', 'description', 'is_archived'
+            'latitude', 'longitude', 'location_name', 'description', 'is_archived',
+            'connection_count'
         ]
+    
+    def get_connection_count(self, obj):
+        """Get total number of connections (incoming + outgoing)"""
+        return obj.get_connection_count()
 
 class DiscussionSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
