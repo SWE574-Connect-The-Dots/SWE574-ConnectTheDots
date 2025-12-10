@@ -2097,7 +2097,6 @@ class ReportViewSet(viewsets.ModelViewSet):
             pass
 
     def partial_update(self, request, *args, **kwargs):
-        # Get report directly from database to check permissions before filtering
         pk = kwargs.get('pk')
         try:
             report = Report.objects.get(pk=pk)
