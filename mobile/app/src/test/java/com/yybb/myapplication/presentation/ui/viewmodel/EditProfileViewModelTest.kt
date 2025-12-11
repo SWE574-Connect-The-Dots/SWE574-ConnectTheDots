@@ -3,6 +3,7 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.yybb.myapplication.data.model.User
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.ProfileRepository
 import junit.framework.TestCase
 import kotlinx.coroutines.Dispatchers
@@ -25,12 +26,14 @@ class EditProfileViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: EditProfileViewModel
     private lateinit var repository: ProfileRepository
+    private lateinit var mockCountriesRepository: CountriesRepository
     private lateinit var savedStateHandle: SavedStateHandle
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = mock()
+        mockCountriesRepository = mock()
         savedStateHandle = mock()
     }
 
@@ -44,7 +47,7 @@ class EditProfileViewModelTest {
         val user = User("1", "test", "test", "test", "test", "test", emptyList(), emptyList())
         whenever(repository.getProfile(null)).thenReturn(flowOf(user))
 
-        viewModel = EditProfileViewModel(repository, savedStateHandle)
+        viewModel = EditProfileViewModel(repository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
         viewModel.uiState.test {
@@ -56,21 +59,20 @@ class EditProfileViewModelTest {
 
     @Test
     fun `saveProfile should call repository updateProfile`() = runTest {
-        // Given
         val profession = "Software Engineer"
         val bio = "Android Developer"
+        val city: String? = null
+        val country: String? = null
         val user = User("1", "test", "test", "test", "test", "test", emptyList(), emptyList())
         whenever(repository.getProfile(null)).thenReturn(flowOf(user))
-        whenever(repository.updateProfile(profession, bio)).thenReturn(Result.success(user))
-        viewModel = EditProfileViewModel(repository, savedStateHandle)
+        whenever(repository.updateProfile(profession, bio, city, country, null)).thenReturn(Result.success(user))
+        viewModel = EditProfileViewModel(repository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
 
-        // When
-        viewModel.saveProfile(profession, bio)
+        viewModel.saveProfile(profession, bio, city, country)
         advanceUntilIdle()
 
-        // Then
-        verify(repository).updateProfile(profession, bio)
+        verify(repository).updateProfile(profession, bio, city, country, null)
     }
 }

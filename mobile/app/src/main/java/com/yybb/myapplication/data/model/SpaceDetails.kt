@@ -16,7 +16,11 @@ data class SpaceDetails(
     val tags: List<SpaceTag>,
     val collaborators: List<String>,
     val isArchived: Boolean = false,
-    val discussions: List<Discussion> = emptyList()
+    val discussions: List<Discussion> = emptyList(),
+    val country: String? = null,
+    val city: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null
 )
 
 data class SpaceTag(
@@ -60,7 +64,11 @@ fun SpaceDetailsResponse.toSpaceDetails(): SpaceDetails {
         creatorUsername = creatorUsername,
         tags = tags.map { it.toSpaceTag() },
         collaborators = collaborators,
-        isArchived = isArchived
+        isArchived = isArchived,
+        country = country,
+        city = city,
+        latitude = latitude,
+        longitude = longitude
     )
 }
 

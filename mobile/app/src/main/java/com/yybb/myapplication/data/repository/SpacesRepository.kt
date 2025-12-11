@@ -280,7 +280,9 @@ class SpacesRepository @Inject constructor(
     suspend fun createSpace(
         title: String,
         description: String,
-        selectedTags: List<TagDto>
+        selectedTags: List<TagDto>,
+        country: String? = null,
+        city: String? = null
     ): Result<CreateSpaceResponse> {
         return try {
             val tagNames = mutableListOf<String>()
@@ -296,7 +298,9 @@ class SpacesRepository @Inject constructor(
             val createSpaceRequest = CreateSpaceRequest(
                 title = title,
                 description = description,
-                tags = tagNames
+                tags = tagNames,
+                country = country,
+                city = city
             )
             val response = apiService.createSpace(createSpaceRequest)
             if (response.isSuccessful && response.body() != null) {
@@ -309,8 +313,6 @@ class SpacesRepository @Inject constructor(
         }
     }
 
-    // Get report reasons for a specific content type
-    // contentType can be: "space", "node", "discussion", "profile"
     suspend fun getReportReasons(contentType: String): Result<List<ReportReasonItem>> {
         return withContext(Dispatchers.IO) {
             try {

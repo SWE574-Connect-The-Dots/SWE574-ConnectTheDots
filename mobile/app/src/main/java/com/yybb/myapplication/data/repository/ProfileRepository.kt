@@ -36,7 +36,13 @@ class ProfileRepository @Inject constructor(
         }
     }
 
-    suspend fun updateProfile(profession: String, bio: String?): Result<User> {
+    suspend fun updateProfile(
+        profession: String, 
+        bio: String?,
+        city: String? = null,
+        country: String? = null,
+        locationName: String? = null
+    ): Result<User> {
         return withContext(Dispatchers.IO) {
             try {
                 val token = sessionManager.authToken.first()
@@ -44,7 +50,7 @@ class ProfileRepository @Inject constructor(
                     return@withContext Result.failure(Exception("Not authenticated"))
                 }
                 val response = apiService.updateProfile(
-                    UpdateProfileRequest(bio, profession)
+                    UpdateProfileRequest(bio, profession, city, country, locationName)
                 )
                 if (response.isSuccessful) {
                     response.body()?.let {
@@ -80,7 +86,8 @@ class ProfileRepository @Inject constructor(
                     name = it.name,
                     description = it.description
                 )
-            }
+            },
+            locationName = this.locationName
         )
     }
 }

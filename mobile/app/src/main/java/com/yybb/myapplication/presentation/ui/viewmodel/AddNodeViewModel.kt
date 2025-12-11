@@ -12,6 +12,9 @@ import com.yybb.myapplication.data.network.dto.AddNodePropertyValue
 import com.yybb.myapplication.data.network.dto.AddNodeRequest
 import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.AddNodeWikidataEntity
+import com.yybb.myapplication.data.network.dto.CountryPosition
+import com.yybb.myapplication.data.network.dto.NominatimCoordinates
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import com.yybb.myapplication.data.repository.SpaceNodesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +32,7 @@ import javax.inject.Inject
 class AddNodeViewModel @Inject constructor(
     private val spaceNodeDetailsRepository: SpaceNodeDetailsRepository,
     private val spaceNodesRepository: SpaceNodesRepository,
+    private val countriesRepository: CountriesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -95,6 +99,31 @@ class AddNodeViewModel @Inject constructor(
     private val _createNodeSuccess = MutableStateFlow<String?>(null)
     val createNodeSuccess: StateFlow<String?> = _createNodeSuccess.asStateFlow()
 
+    // Location state
+    private val _showLocationDialog = MutableStateFlow(false)
+    val showLocationDialog: StateFlow<Boolean> = _showLocationDialog.asStateFlow()
+
+    private val _countries = MutableStateFlow<List<CountryPosition>>(emptyList())
+    val countries: StateFlow<List<CountryPosition>> = _countries.asStateFlow()
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities.asStateFlow()
+
+    private val _isLoadingCountries = MutableStateFlow(false)
+    val isLoadingCountries: StateFlow<Boolean> = _isLoadingCountries.asStateFlow()
+
+    private val _isLoadingCities = MutableStateFlow(false)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities.asStateFlow()
+
+    private val _isGettingCoordinates = MutableStateFlow(false)
+    val isGettingCoordinates: StateFlow<Boolean> = _isGettingCoordinates.asStateFlow()
+
+    private val _coordinatesResult = MutableStateFlow<NominatimCoordinates?>(null)
+    val coordinatesResult: StateFlow<NominatimCoordinates?> = _coordinatesResult.asStateFlow()
+
+    private val _locationData = MutableStateFlow<AddNodeLocation?>(null)
+    val locationData: StateFlow<AddNodeLocation?> = _locationData.asStateFlow()
+
     // Navigation events
     private val _eventChannel = Channel<AddNodeEvent>()
     val eventFlow = _eventChannel.receiveAsFlow()
@@ -102,6 +131,7 @@ class AddNodeViewModel @Inject constructor(
     init {
         loadSpaceNodes()
         observePropertyFilter()
+        loadCountries()
     }
 
     fun searchWikidataEntities(query: String) {
@@ -269,6 +299,8 @@ class AddNodeViewModel @Inject constructor(
                 )
             }
 
+        val location = _locationData.value ?: AddNodeLocation()
+
         val request = AddNodeRequest(
             relatedNodeId = relatedNodeId,
             wikidataEntity = AddNodeWikidataEntity(
@@ -280,7 +312,7 @@ class AddNodeViewModel @Inject constructor(
             ),
             edgeLabel = edgeLabel.trim(),
             isNewNodeSource = isNewNodeSource,
-            location = AddNodeLocation(), // Empty location for now
+            location = location,
             selectedProperties = selectedPropertiesList
         )
 
@@ -291,19 +323,63 @@ class AddNodeViewModel @Inject constructor(
 
             val result = spaceNodeDetailsRepository.addNode(spaceId, request)
             result.onSuccess { response ->
-                // After successful node creation, create a snapshot
-                val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
-                snapshotResult.onSuccess {
-                    _createNodeSuccess.value = response.message
-                    _isCreatingNode.value = false
-                    // Emit navigation event
-                    _eventChannel.send(AddNodeEvent.NavigateBack)
-                }.onFailure { throwable ->
-                    // If snapshot creation fails, still show success but log the error
-                    _createNodeSuccess.value = response.message
-                    _isCreatingNode.value = false
-                    // Emit navigation event even if snapshot fails
-                    _eventChannel.send(AddNodeEvent.NavigateBack)
+                val locationData = _locationData.value
+                if (locationData != null && (
+                    locationData.country != null ||
+                    locationData.city != null ||
+                    locationData.locationName != null ||
+                    locationData.latitude != null ||
+                    locationData.longitude != null
+                )) {
+                    val nodesResult = spaceNodeDetailsRepository.getSpaceNodes(spaceId)
+                    nodesResult.onSuccess { nodes ->
+                        val createdNode = nodes.find { it.wikidataId == selectedEntity.id }
+                        if (createdNode != null) {
+                            val updateLocationResult = spaceNodeDetailsRepository.updateNodeLocation(
+                                spaceId = spaceId,
+                                nodeId = createdNode.id.toString(),
+                                country = locationData.country,
+                                city = locationData.city,
+                                locationName = locationData.locationName,
+                                latitude = locationData.latitude,
+                                longitude = locationData.longitude
+                            )
+                            updateLocationResult.onFailure {
+                            }
+                        }
+                        val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+                        snapshotResult.onSuccess {
+                            _createNodeSuccess.value = response.message
+                            _isCreatingNode.value = false
+                            _eventChannel.send(AddNodeEvent.NavigateBack)
+                        }.onFailure { throwable ->
+                            _createNodeSuccess.value = response.message
+                            _isCreatingNode.value = false
+                            _eventChannel.send(AddNodeEvent.NavigateBack)
+                        }
+                    }.onFailure {
+                        val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+                        snapshotResult.onSuccess {
+                            _createNodeSuccess.value = response.message
+                            _isCreatingNode.value = false
+                            _eventChannel.send(AddNodeEvent.NavigateBack)
+                        }.onFailure {
+                            _createNodeSuccess.value = response.message
+                            _isCreatingNode.value = false
+                            _eventChannel.send(AddNodeEvent.NavigateBack)
+                        }
+                    }
+                } else {
+                    val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+                    snapshotResult.onSuccess {
+                        _createNodeSuccess.value = response.message
+                        _isCreatingNode.value = false
+                        _eventChannel.send(AddNodeEvent.NavigateBack)
+                    }.onFailure { throwable ->
+                        _createNodeSuccess.value = response.message
+                        _isCreatingNode.value = false
+                        _eventChannel.send(AddNodeEvent.NavigateBack)
+                    }
                 }
             }.onFailure { throwable ->
                 _createNodeError.value = throwable.message ?: "Failed to create node"
@@ -318,6 +394,81 @@ class AddNodeViewModel @Inject constructor(
 
     fun clearCreateNodeSuccess() {
         _createNodeSuccess.value = null
+    }
+
+    // Location functions
+    fun showLocationDialog() {
+        _showLocationDialog.value = true
+    }
+
+    fun hideLocationDialog() {
+        _showLocationDialog.value = false
+    }
+
+    fun loadCountries() {
+        viewModelScope.launch {
+            _isLoadingCountries.value = true
+            countriesRepository.getCountries()
+                .onSuccess { countriesList ->
+                    _countries.value = (countriesList ?: emptyList()).sortedBy { it.name }
+                    _isLoadingCountries.value = false
+                }
+                .onFailure {
+                    _isLoadingCountries.value = false
+                }
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _isLoadingCities.value = true
+            _cities.value = emptyList()
+            countriesRepository.getCities(country)
+                .onSuccess { citiesList ->
+                    _cities.value = citiesList.sorted()
+                    _isLoadingCities.value = false
+                }
+                .onFailure {
+                    _isLoadingCities.value = false
+                }
+        }
+    }
+
+    fun getCoordinatesFromAddress(city: String?, country: String?) {
+        if (city == null || country == null) {
+            _coordinatesResult.value = null
+            return
+        }
+
+        viewModelScope.launch {
+            _isGettingCoordinates.value = true
+            _coordinatesResult.value = null
+            val query = "$city, $country"
+            val result = spaceNodeDetailsRepository.getCoordinatesFromAddress(query)
+            _isGettingCoordinates.value = false
+            result.onSuccess { coordinates ->
+                _coordinatesResult.value = coordinates
+            }.onFailure {
+                _coordinatesResult.value = null
+            }
+        }
+    }
+
+    fun saveLocationData(
+        country: String?,
+        city: String?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) {
+        _locationData.value = AddNodeLocation(
+            country = country,
+            city = city,
+            locationName = locationName?.takeIf { it.isNotBlank() },
+            latitude = latitude,
+            longitude = longitude
+        )
+        _showLocationDialog.value = false
     }
 
     override fun onCleared() {

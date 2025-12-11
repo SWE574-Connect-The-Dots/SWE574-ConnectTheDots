@@ -42,11 +42,9 @@ class SettingsViewModelTest {
 
     @Test
     fun `isColorBlindTheme should have initial value of false`() = runTest {
-        // Given
         whenever(settingsRepository.isColorBlindTheme).thenReturn(flowOf(false))
         viewModel = SettingsViewModel(settingsRepository, authRepository)
 
-        // Then
         viewModel.isColorBlindTheme.test {
             assertEquals(false, awaitItem())
         }
@@ -54,12 +52,10 @@ class SettingsViewModelTest {
 
     @Test
     fun `isColorBlindTheme should update when repository emits new value`() = runTest {
-        // Given
         whenever(settingsRepository.isColorBlindTheme).thenReturn(flowOf(false, true))
         viewModel = SettingsViewModel(settingsRepository, authRepository)
 
 
-        // Then
         viewModel.isColorBlindTheme.test {
             assertEquals(false, awaitItem())
             assertEquals(true, awaitItem())
@@ -68,26 +64,21 @@ class SettingsViewModelTest {
 
     @Test
     fun `setColorBlindTheme should call repository`() = runTest {
-        // Given
         whenever(settingsRepository.isColorBlindTheme).thenReturn(flowOf(false))
         viewModel = SettingsViewModel(settingsRepository, authRepository)
         val isColorBlind = true
 
-        // When
         viewModel.setColorBlindTheme(isColorBlind)
         advanceUntilIdle()
 
-        // Then
         verify(settingsRepository).setColorBlindTheme(isColorBlind)
     }
 
     @Test
     fun `logout should call authRepository and emit logout event`() = runTest {
-        // Given
         whenever(settingsRepository.isColorBlindTheme).thenReturn(flowOf(false))
         viewModel = SettingsViewModel(settingsRepository, authRepository)
 
-        // Then
         viewModel.logoutEvent.test {
             viewModel.logout()
             advanceUntilIdle()

@@ -3,6 +3,7 @@ package com.yybb.myapplication.presentation.ui.viewmodel
 import android.content.Context
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.repository.AuthRepository
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.presentation.ui.utils.ViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +34,7 @@ class RegisterViewModelTest {
     private lateinit var viewModel: RegisterViewModel
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var mockAuthRepository: AuthRepository
+    private lateinit var mockCountriesRepository: CountriesRepository
 
     @Before
     fun setUp() {
@@ -40,6 +42,7 @@ class RegisterViewModelTest {
 
         MockitoAnnotations.openMocks(this)
         mockAuthRepository = Mockito.mock(AuthRepository::class.java)
+        mockCountriesRepository = Mockito.mock(CountriesRepository::class.java)
         mockContext.apply {
             Mockito.`when`(getString(R.string.fill_all_fileds_error))
                 .thenReturn("Please fill all fields")
@@ -50,13 +53,13 @@ class RegisterViewModelTest {
             Mockito.`when`(getString(R.string.consent_error)).thenReturn("Consent required")
         }
 
-        viewModel = RegisterViewModel(mockContext, mockAuthRepository)
+        viewModel = RegisterViewModel(mockContext, mockAuthRepository, mockCountriesRepository)
     }
 
     @Test
     fun `checkInputsAndNavigate with at least one blank fields should set ViewState_Error`() =
         runTest(dispatcher) {
-            viewModel.checkInputsAndNavigate("", "", "", "", "", true)
+            viewModel.checkInputsAndNavigate("", "", "", "", "", null, null)
             advanceUntilIdle()
 
             val state = viewModel.viewState.value
@@ -73,7 +76,8 @@ class RegisterViewModelTest {
                 password = "john1234",
                 profession = "Engineer",
                 dateOfBirth = "01/01/2000",
-                agreeToShareLocation = true
+                country = "Turkey",
+                city = "Istanbul"
             )
             advanceUntilIdle()
 
@@ -91,7 +95,8 @@ class RegisterViewModelTest {
                 password = "john1234",
                 profession = "123Engineer!",
                 dateOfBirth = "01/01/2000",
-                agreeToShareLocation = true
+                country = "Turkey",
+                city = "Istanbul"
             )
             advanceUntilIdle()
 
@@ -110,7 +115,8 @@ class RegisterViewModelTest {
                 password = "john1234",
                 profession = "Engineer",
                 dateOfBirth = "01/01/2015",
-                agreeToShareLocation = true
+                country = "Turkey",
+                city = "Istanbul"
             )
             advanceUntilIdle()
 
@@ -120,20 +126,22 @@ class RegisterViewModelTest {
         }
 
     @Test
-    fun `checkInputsAndNavigate without consent should set ViewState_Error`() =
+    fun `checkInputsAndNavigate without country should set ViewState_Error`() =
         runTest(dispatcher) {
             viewModel.checkInputsAndNavigate(
                 email = "john@example.com",
                 username = "johnDoe",
                 password = "john1234",
                 profession = "Engineer",
-                dateOfBirth = "01/01/2000",
-                agreeToShareLocation = false
+                dateOfBirth = "2000-01-01",
+                country = null,
+                city = "Istanbul"
             )
             advanceUntilIdle()
 
             val state = viewModel.viewState.value
             assertTrue(state is ViewState.Error)
+            assertEquals("Please select a country", (state as ViewState.Error).message)
         }
     @Test
     fun `checkInputsAndNavigate with valid inputs should emit NavigateToLogin event`() = runTest(dispatcher) {
@@ -146,7 +154,8 @@ class RegisterViewModelTest {
             password = "john1234",
             profession = "Engineer",
             dateOfBirth = "2000-01-01",
-            agreeToShareLocation = true
+            country = "Turkey",
+            city = "Istanbul"
         )
         advanceUntilIdle()
 
@@ -167,7 +176,8 @@ class RegisterViewModelTest {
             password = "john1234",
             profession = "Engineer",
             dateOfBirth = "2000-01-01",
-            agreeToShareLocation = true
+            country = "Turkey",
+            city = "Istanbul"
         )
         advanceUntilIdle()
 
@@ -188,7 +198,7 @@ class RegisterViewModelTest {
 
     @Test
     fun `clearError should reset ViewState to Success`() = runTest(dispatcher) {
-        viewModel.checkInputsAndNavigate("", "", "", "", "", true)
+        viewModel.checkInputsAndNavigate("", "", "", "", "", null, null)
         advanceUntilIdle()
         assertTrue(viewModel.viewState.value is ViewState.Error)
 

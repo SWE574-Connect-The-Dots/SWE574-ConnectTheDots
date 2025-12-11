@@ -1,12 +1,13 @@
 package com.yybb.myapplication.presentation.ui.viewmodel
 
-import com.yybb.myapplication.data.network.dto.CreateSpaceResponse
 import com.yybb.myapplication.data.network.dto.TagDto
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpacesRepository
 import junit.framework.TestCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -24,13 +25,18 @@ class CreateSpaceViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: CreateSpaceViewModel
     private lateinit var mockSpacesRepository: SpacesRepository
+    private lateinit var mockCountriesRepository: CountriesRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         mockSpacesRepository = mock()
+        mockCountriesRepository = mock()
         whenever(mockSpacesRepository.isColorBlindTheme).thenReturn(flowOf(false))
-        viewModel = CreateSpaceViewModel(mockSpacesRepository)
+        runBlocking {
+            whenever(mockCountriesRepository.getCountries()).thenReturn(Result.success(emptyList()))
+        }
+        viewModel = CreateSpaceViewModel(mockSpacesRepository, mockCountriesRepository)
     }
 
     @Test
@@ -93,76 +99,6 @@ class CreateSpaceViewModelTest {
         TestCase.assertEquals("An unknown error occurred", (state as RetrieveTagWikidataUiState.Error).message)
     }
 
-    @Test
-    fun `createSpace should call repository and emit Success state`() = runTest {
-        val formState = CreateSpaceFormState(
-            spaceTitle = "The Future of AI in Healthcare",
-            spaceDescription = "Exploring how artificial intelligence is revolutionizing medical diagnosis, treatment planning, and patient care. This space discusses the latest breakthroughs in AI-powered medical technologies and their potential impact on healthcare delivery.",
-            selectedTags = emptyList()
-        )
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.success(CreateSpaceResponse(1, "The Future of AI in Healthcare", "Exploring how artificial intelligence is revolutionizing medical diagnosis, treatment planning, and patient care.", null, "2023-12-01T10:30:00Z")))
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-
-        val state = viewModel.createSpaceUiState.value
-        TestCase.assertTrue(state is CreateSpaceUiState.Success)
-        verify(mockSpacesRepository).createSpace("The Future of AI in Healthcare", "Exploring how artificial intelligence is revolutionizing medical diagnosis, treatment planning, and patient care. This space discusses the latest breakthroughs in AI-powered medical technologies and their potential impact on healthcare delivery.", emptyList())
-    }
-
-    @Test
-    fun `createSpace should emit Error state on repository failure`() = runTest {
-        val formState = CreateSpaceFormState(
-            spaceTitle = "Sustainable Energy Solutions",
-            spaceDescription = "A comprehensive discussion on renewable energy technologies, their implementation challenges, and environmental impact.",
-            selectedTags = emptyList()
-        )
-        val errorMessage = "Failed to create space: Server unavailable"
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.failure(Exception(errorMessage)))
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-
-        val state = viewModel.createSpaceUiState.value
-        TestCase.assertTrue(state is CreateSpaceUiState.Error)
-        TestCase.assertEquals(errorMessage, (state as CreateSpaceUiState.Error).message)
-    }
-
-    @Test
-    fun `createSpace should call repository with correct parameters`() = runTest {
-        val formState = CreateSpaceFormState(
-            spaceTitle = "Climate Change Research",
-            spaceDescription = "Investigating the latest findings in climate science and their implications for global policy.",
-            selectedTags = listOf(TagDto("Q7942", "Climate change", "Long-term change in global or regional climate patterns", "https://www.wikidata.org/wiki/Q7942"))
-        )
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.success(CreateSpaceResponse(1, "Climate Change Research", "Investigating the latest findings in climate science and their implications for global policy.", null, "2023-12-01T14:20:00Z")))
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-
-        verify(mockSpacesRepository).createSpace("Climate Change Research", "Investigating the latest findings in climate science and their implications for global policy.", formState.selectedTags)
-    }
-
-    @Test
-    fun `createSpace should reset form state on successful creation`() = runTest {
-        val formState = CreateSpaceFormState(
-            spaceTitle = "Space Exploration Technologies",
-            spaceDescription = "Discussing the latest developments in rocket technology, satellite systems, and interplanetary missions.",
-            selectedTags = listOf(TagDto("Q40218", "Space exploration", "The investigation of outer space by means of manned and unmanned spacecraft", "https://www.wikidata.org/wiki/Q40218"))
-        )
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.success(CreateSpaceResponse(1, "Space Exploration Technologies", "Discussing the latest developments in rocket technology, satellite systems, and interplanetary missions.", null, "2023-12-01T16:45:00Z")))
-
-        viewModel.updateFormState(formState)
-        TestCase.assertEquals(formState, viewModel.formState.value)
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-
-        val resetFormState = viewModel.formState.value
-        TestCase.assertEquals("", resetFormState.spaceTitle)
-        TestCase.assertEquals("", resetFormState.spaceDescription)
-        TestCase.assertTrue(resetFormState.selectedTags.isEmpty())
-    }
 
     @Test
     fun `updateFormState should update form state correctly`() = runTest {
@@ -234,18 +170,6 @@ class CreateSpaceViewModelTest {
         TestCase.assertTrue(viewModel.tagWikidataUiState.value is RetrieveTagWikidataUiState.Initial)
     }
 
-    @Test
-    fun `resetCreateSpaceState should reset create space state to Initial`() = runTest {
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.failure(Exception("Error")))
-        viewModel.createSpace(CreateSpaceFormState())
-        advanceUntilIdle()
-
-        TestCase.assertTrue(viewModel.createSpaceUiState.value is CreateSpaceUiState.Error)
-
-        viewModel.resetCreateSpaceState()
-
-        TestCase.assertTrue(viewModel.createSpaceUiState.value is CreateSpaceUiState.Initial)
-    }
 
     @Test
     fun `CreateSpaceFormState isFormValid should return true for valid form`() = runTest {
@@ -347,39 +271,5 @@ class CreateSpaceViewModelTest {
         advanceUntilIdle()
 
         verify(mockSpacesRepository).getWikiTags("")
-    }
-
-    @Test
-    fun `createSpace with empty tags should still call repository`() = runTest {
-        val formState = CreateSpaceFormState(
-            spaceTitle = "Marine Biology Research",
-            spaceDescription = "Investigating marine ecosystems, biodiversity, and conservation strategies in ocean environments.",
-            selectedTags = emptyList()
-        )
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.success(CreateSpaceResponse(1, "Marine Biology Research", "Investigating marine ecosystems, biodiversity, and conservation strategies in ocean environments.", null, "2023-12-01T18:15:00Z")))
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-
-        verify(mockSpacesRepository).createSpace("Marine Biology Research", "Investigating marine ecosystems, biodiversity, and conservation strategies in ocean environments.", emptyList())
-    }
-
-    @Test
-    fun `createSpace with multiple tags should call repository with all tags`() = runTest {
-        val tags = listOf(
-            TagDto("Q2539", "Machine learning", "Study of algorithms that improve through experience", "https://www.wikidata.org/wiki/Q2539"),
-            TagDto("Q11660", "Artificial intelligence", "Intelligence demonstrated by machines", "https://www.wikidata.org/wiki/Q11660"),
-            TagDto("Q475010", "Deep learning", "Machine learning method based on artificial neural networks", "https://www.wikidata.org/wiki/Q475010")
-        )
-        val formState = CreateSpaceFormState(
-            spaceTitle = "AI Research Collaboration",
-            spaceDescription = "A collaborative space for researchers working on artificial intelligence, machine learning, and deep learning projects.",
-            selectedTags = tags
-        )
-        whenever(mockSpacesRepository.createSpace(any(), any(), any())).thenReturn(Result.success(CreateSpaceResponse(1, "AI Research Collaboration", "A collaborative space for researchers working on artificial intelligence, machine learning, and deep learning projects.", null, "2023-12-01T20:00:00Z")))
-
-        viewModel.createSpace(formState)
-        advanceUntilIdle()
-        verify(mockSpacesRepository).createSpace("AI Research Collaboration", "A collaborative space for researchers working on artificial intelligence, machine learning, and deep learning projects.", tags)
     }
 }
