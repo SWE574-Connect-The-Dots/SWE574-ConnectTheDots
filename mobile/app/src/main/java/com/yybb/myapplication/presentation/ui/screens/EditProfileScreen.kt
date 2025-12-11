@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,6 +113,7 @@ fun EditProfileContent(
     var citySearchQuery by remember { mutableStateOf(initialCity ?: "") }
     var isCountryDropdownExpanded by remember { mutableStateOf(false) }
     var isCityDropdownExpanded by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val countries by viewModel.countries.collectAsState()
     val cities by viewModel.cities.collectAsState()
@@ -232,6 +234,9 @@ fun EditProfileContent(
                     expanded = isCountryDropdownExpanded,
                     onExpandedChange = { expanded ->
                         isCountryDropdownExpanded = expanded
+                        if (expanded) {
+                            keyboardController?.hide()
+                        }
                     }
                 ) {
                     OutlinedTextField(
@@ -256,18 +261,11 @@ fun EditProfileContent(
                             .focusRequester(countryFocusRequester),
                         enabled = !isLoadingCountries
                     )
-                    // Keep focus when typing or when dropdown opens
-                    LaunchedEffect(isCountryDropdownExpanded, countrySearchQuery) {
-                        if (isCountryDropdownExpanded) {
-                            countryFocusRequester.requestFocus()
-                        }
-                    }
                     ExposedDropdownMenu(
                         expanded = isCountryDropdownExpanded && !isLoadingCountries,
                         onDismissRequest = { 
                             isCountryDropdownExpanded = false
-                        },
-                        modifier = Modifier.heightIn(max = 300.dp)
+                        }
                     ) {
                         if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
                             DropdownMenuItem(
@@ -275,22 +273,21 @@ fun EditProfileContent(
                                 onClick = { }
                             )
                         } else {
-                            val displayCountries = filteredCountries.take(100)
-                            displayCountries.forEach { country ->
-                                DropdownMenuItem(
-                                    text = { Text(country.name) },
-                                    onClick = {
-                                        selectedCountry = country.name
-                                        countrySearchQuery = country.name
-                                        isCountryDropdownExpanded = false
-                                    }
-                                )
-                            }
-                            if (filteredCountries.size > 100) {
-                                DropdownMenuItem(
-                                    text = { Text("... and ${filteredCountries.size - 100} more. Refine your search.") },
-                                    onClick = { }
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .heightIn(max = 250.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                filteredCountries.forEach { country ->
+                                    DropdownMenuItem(
+                                        text = { Text(country.name) },
+                                        onClick = {
+                                            selectedCountry = country.name
+                                            countrySearchQuery = country.name
+                                            isCountryDropdownExpanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

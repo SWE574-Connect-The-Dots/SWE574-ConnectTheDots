@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -425,7 +425,6 @@ fun SpaceNodeDetailsScreen(
                 actions = {
                     when (selectedTabIndex) {
                         0 -> {
-                            // Details tab - show menu with Delete and Report options
                             var showMenu by remember { mutableStateOf(false) }
                             Box {
                                 IconButton(onClick = { showMenu = true }) {
@@ -469,7 +468,6 @@ fun SpaceNodeDetailsScreen(
                             }
                         }
                         else -> {
-                            // Connections tab - show Add connection button
                             IconButton(onClick = { showAddEdgeDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
@@ -1712,8 +1710,8 @@ private fun EditLocationDialog(
 
     val countryFocusRequester = remember { FocusRequester() }
     val cityFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Initialize with existing location data
     LaunchedEffect(nodeDetails) {
         nodeDetails?.let { node ->
             if (!isInitialized) {
@@ -1732,12 +1730,8 @@ private fun EditLocationDialog(
         }
     }
 
-    // Load cities when country is selected
-    // Note: This also triggers when country is selected from dropdown (which calls loadCities)
-    // This ensures cities are loaded even if country is set programmatically
     LaunchedEffect(selectedCountry) {
         if (selectedCountry != null) {
-            // Reset city when country changes (unless it's initial load with existing city)
             if (hasUnsavedChanges || (isInitialized && nodeDetails?.city == null)) {
                 selectedCity = null
                 citySearchQuery = ""
@@ -1771,7 +1765,6 @@ private fun EditLocationDialog(
         }
     }
 
-    // Handle coordinate response
     LaunchedEffect(coordinatesResult) {
         coordinatesResult?.let { coordinates ->
             locationNameText = coordinates.displayName
@@ -1834,12 +1827,18 @@ private fun EditLocationDialog(
                     )
                     ExposedDropdownMenuBox(
                         expanded = isCountryDropdownExpanded,
-                        onExpandedChange = { isCountryDropdownExpanded = !isCountryDropdownExpanded }
+                        onExpandedChange = { expanded ->
+                            isCountryDropdownExpanded = expanded
+                            if (expanded) {
+                                keyboardController?.hide()
+                            }
+                        }
                     ) {
                         OutlinedTextField(
                             value = countrySearchQuery,
                             onValueChange = { query ->
                                 countrySearchQuery = query
+                                keyboardController?.hide()
                                 isCountryDropdownExpanded = true
                                 hasUnsavedChanges = true
                             },
@@ -1861,13 +1860,12 @@ private fun EditLocationDialog(
                         )
                         LaunchedEffect(isCountryDropdownExpanded) {
                             if (isCountryDropdownExpanded) {
-                                countryFocusRequester.requestFocus()
+                                keyboardController?.hide()
                             }
                         }
                         ExposedDropdownMenu(
                             expanded = isCountryDropdownExpanded && !isLoadingCountries,
-                            onDismissRequest = { isCountryDropdownExpanded = false },
-                            modifier = Modifier.heightIn(max = 200.dp)
+                            onDismissRequest = { isCountryDropdownExpanded = false }
                         ) {
                             if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
                                 DropdownMenuItem(
@@ -1875,18 +1873,24 @@ private fun EditLocationDialog(
                                     onClick = { }
                                 )
                             } else {
-                                filteredCountries.take(100).forEach { country ->
-                                    DropdownMenuItem(
-                                        text = { Text(country.name) },
-                                        onClick = {
-                                            selectedCountry = country.name
-                                            countrySearchQuery = country.name
-                                            isCountryDropdownExpanded = false
-                                            hasUnsavedChanges = true
-                                            // Load cities when country is selected
-                                            viewModel.loadCities(country.name)
-                                        }
-                                    )
+                                Column(
+                                    modifier = Modifier
+                                        .heightIn(max = 250.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    filteredCountries.forEach { country ->
+                                        DropdownMenuItem(
+                                            text = { Text(country.name) },
+                                            onClick = {
+                                                selectedCountry = country.name
+                                                countrySearchQuery = country.name
+                                                isCountryDropdownExpanded = false
+                                                hasUnsavedChanges = true
+                                                // Load cities when country is selected
+                                                viewModel.loadCities(country.name)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

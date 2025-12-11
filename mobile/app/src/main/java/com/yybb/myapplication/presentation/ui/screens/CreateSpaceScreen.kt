@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -655,6 +656,7 @@ private fun AddSpaceLocationDialog(
 
     val countryFocusRequester = remember { FocusRequester() }
     val cityFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Load cities when country is selected
     LaunchedEffect(tempSelectedCountry) {
@@ -731,14 +733,21 @@ private fun AddSpaceLocationDialog(
                     )
                     ExposedDropdownMenuBox(
                         expanded = isCountryDropdownExpanded,
-                        onExpandedChange = { isCountryDropdownExpanded = !isCountryDropdownExpanded }
+                        onExpandedChange = { expanded ->
+                            isCountryDropdownExpanded = expanded
+                            if (expanded) {
+                                keyboardController?.hide()
+                            }
+                        }
                     ) {
                         OutlinedTextField(
                             value = countrySearchQuery,
                             onValueChange = { query ->
                                 countrySearchQuery = query
+                                keyboardController?.hide()
                                 isCountryDropdownExpanded = true
                             },
+                            readOnly = false,
                             placeholder = { Text("-- Select Country --") },
                             trailingIcon = {
                                 if (isLoadingCountries) {
@@ -757,13 +766,12 @@ private fun AddSpaceLocationDialog(
                         )
                         LaunchedEffect(isCountryDropdownExpanded) {
                             if (isCountryDropdownExpanded) {
-                                countryFocusRequester.requestFocus()
+                                keyboardController?.hide()
                             }
                         }
                         ExposedDropdownMenu(
                             expanded = isCountryDropdownExpanded && !isLoadingCountries,
-                            onDismissRequest = { isCountryDropdownExpanded = false },
-                            modifier = Modifier.heightIn(max = 200.dp)
+                            onDismissRequest = { isCountryDropdownExpanded = false }
                         ) {
                             if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
                                 DropdownMenuItem(
@@ -771,16 +779,22 @@ private fun AddSpaceLocationDialog(
                                     onClick = { }
                                 )
                             } else {
-                                filteredCountries.take(100).forEach { country ->
-                                    DropdownMenuItem(
-                                        text = { Text(country.name) },
-                                        onClick = {
-                                            countrySearchQuery = country.name
-                                            tempSelectedCountry = country.name
-                                            isCountryDropdownExpanded = false
-                                            viewModel.loadCities(country.name)
-                                        }
-                                    )
+                                Column(
+                                    modifier = Modifier
+                                        .heightIn(max = 250.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    filteredCountries.forEach { country ->
+                                        DropdownMenuItem(
+                                            text = { Text(country.name) },
+                                            onClick = {
+                                                countrySearchQuery = country.name
+                                                tempSelectedCountry = country.name
+                                                isCountryDropdownExpanded = false
+                                                viewModel.loadCities(country.name)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -798,13 +812,19 @@ private fun AddSpaceLocationDialog(
                         )
                         ExposedDropdownMenuBox(
                             expanded = isCityDropdownExpanded,
-                            onExpandedChange = { isCityDropdownExpanded = !isCityDropdownExpanded }
+                            onExpandedChange = { expanded ->
+                                isCityDropdownExpanded = expanded
+                                if (expanded) {
+                                    keyboardController?.hide()
+                                }
+                            }
                         ) {
                             OutlinedTextField(
                                 value = citySearchQuery,
                                 onValueChange = { query ->
                                     citySearchQuery = query
                                     isCityDropdownExpanded = true
+                                    keyboardController?.hide()
                                 },
                                 placeholder = { Text("-- Select City --") },
                                 trailingIcon = {
@@ -824,7 +844,7 @@ private fun AddSpaceLocationDialog(
                             )
                             LaunchedEffect(isCityDropdownExpanded) {
                                 if (isCityDropdownExpanded) {
-                                    cityFocusRequester.requestFocus()
+                                    keyboardController?.hide()
                                 }
                             }
                             ExposedDropdownMenu(
@@ -838,15 +858,21 @@ private fun AddSpaceLocationDialog(
                                         onClick = { }
                                     )
                                 } else {
-                                    filteredCities.take(100).forEach { city ->
-                                        DropdownMenuItem(
-                                            text = { Text(city) },
-                                            onClick = {
-                                                citySearchQuery = city
-                                                tempSelectedCity = city
-                                                isCityDropdownExpanded = false
-                                            }
-                                        )
+                                    Column(
+                                        modifier = Modifier
+                                            .heightIn(max = 250.dp)
+                                            .verticalScroll(rememberScrollState())
+                                    ) {
+                                        filteredCities.forEach { city ->
+                                            DropdownMenuItem(
+                                                text = { Text(city) },
+                                                onClick = {
+                                                    citySearchQuery = city
+                                                    tempSelectedCity = city
+                                                    isCityDropdownExpanded = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }

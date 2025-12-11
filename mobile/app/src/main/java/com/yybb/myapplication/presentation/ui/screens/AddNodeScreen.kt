@@ -839,6 +839,7 @@ private fun AddLocationDialog(
 
     val countryFocusRequester = remember { FocusRequester() }
     val cityFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Load cities when country is selected
     LaunchedEffect(selectedCountry) {
@@ -924,12 +925,18 @@ private fun AddLocationDialog(
                     )
                     ExposedDropdownMenuBox(
                         expanded = isCountryDropdownExpanded,
-                        onExpandedChange = { isCountryDropdownExpanded = !isCountryDropdownExpanded }
+                        onExpandedChange = { expanded ->
+                            isCountryDropdownExpanded = expanded
+                            if (expanded) {
+                                keyboardController?.hide()
+                            }
+                        }
                     ) {
                         OutlinedTextField(
                             value = countrySearchQuery,
                             onValueChange = { query ->
                                 countrySearchQuery = query
+                                keyboardController?.hide()
                                 isCountryDropdownExpanded = true
                             },
                             placeholder = { Text("-- Select Country --") },
@@ -950,13 +957,12 @@ private fun AddLocationDialog(
                         )
                         LaunchedEffect(isCountryDropdownExpanded) {
                             if (isCountryDropdownExpanded) {
-                                countryFocusRequester.requestFocus()
+                                keyboardController?.hide()
                             }
                         }
                         ExposedDropdownMenu(
                             expanded = isCountryDropdownExpanded && !isLoadingCountries,
-                            onDismissRequest = { isCountryDropdownExpanded = false },
-                            modifier = Modifier.heightIn(max = 200.dp)
+                            onDismissRequest = { isCountryDropdownExpanded = false }
                         ) {
                             if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
                                 DropdownMenuItem(
@@ -964,16 +970,22 @@ private fun AddLocationDialog(
                                     onClick = { }
                                 )
                             } else {
-                                filteredCountries.take(100).forEach { country ->
-                                    DropdownMenuItem(
-                                        text = { Text(country.name) },
-                                        onClick = {
-                                            selectedCountry = country.name
-                                            countrySearchQuery = country.name
-                                            isCountryDropdownExpanded = false
-                                            viewModel.loadCities(country.name)
-                                        }
-                                    )
+                                Column(
+                                    modifier = Modifier
+                                        .heightIn(max = 250.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    filteredCountries.forEach { country ->
+                                        DropdownMenuItem(
+                                            text = { Text(country.name) },
+                                            onClick = {
+                                                selectedCountry = country.name
+                                                countrySearchQuery = country.name
+                                                isCountryDropdownExpanded = false
+                                                viewModel.loadCities(country.name)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
