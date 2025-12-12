@@ -169,6 +169,10 @@
     "nodeDetails": "Düğüm Detayları",
     "edgeDetails": "Bağlantı Detayları",
     "connectedNodes": "Bağlı Düğümler",
+    "showFilters": "Filtreleri Göster",
+    "hideFilters": "Filtreleri Gizle",
+    "showSidebar": "Kenar Çubuğunu Göster",
+    "hideSidebar": "Kenar Çubuğunu Gizle",
     "source": "Kaynak",
     "target": "Hedef",
     "wikidataProperty": "Wikidata Özelliği",
@@ -273,6 +277,30 @@
     "showing": "Gösteriliyor",
     "of": "/",
     "usersCount": "kullanıcı"
+  },
+  "instanceTypes": {
+    "title": "Örnek Türleri",
+    "filterByType": "Türe Göre Filtrele",
+    "selectAll": "Tümünü Seç",
+    "deselectAll": "Tümünü Kaldır",
+    "legend": "Renk Açıklaması",
+    "showLegend": "Açıklamayı Göster",
+    "hideLegend": "Açıklamayı Gizle",
+    "noInstanceType": "Örnek türü yok",
+    "otherTypes": "Diğer türler",
+    "filtering": "Gösteriliyor",
+    "groups": {
+      "HUMAN": "İnsan",
+      "CITY": "Şehir",
+      "COUNTRY": "Ülke",
+      "SETTLEMENT": "Yerleşim",
+      "ORGANIZATION": "Organizasyon",
+      "GEOGRAPHIC_FEATURE": "Coğrafi Özellik",
+      "SPECIES": "Tür",
+      "WORK": "Eser",
+      "BUILDING": "Bina",
+      "ADMINISTRATIVE": "İdari Bölüm"
+    }
   },
   "errors": {
     "failedToLoadProfile": "Profil verileri yüklenemedi",

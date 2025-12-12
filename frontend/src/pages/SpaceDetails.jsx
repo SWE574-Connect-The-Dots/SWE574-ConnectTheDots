@@ -14,6 +14,9 @@ import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
+import InstanceTypeFilter from "../components/InstanceTypeFilter";
+import InstanceTypeLegend from "../components/InstanceTypeLegend";
+import { getGroupById } from "../config/instanceTypes";
 import { marked } from "marked";
 
 const infoModalStyles = `
@@ -1029,6 +1032,12 @@ const SpaceDetails = () => {
   
   // Dropdown state
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  const [instanceTypes, setInstanceTypes] = useState([]);
+  const [selectedInstanceTypes, setSelectedInstanceTypes] = useState(new Set());
+  const [showLegend, setShowLegend] = useState(true);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   const {
     nodes,
@@ -1060,6 +1069,36 @@ const SpaceDetails = () => {
 
     return degrees;
   }, [nodes, edges]);
+
+  const nodesWithColors = useMemo(() => {
+    if (!nodes) return [];
+    
+    return nodes.map(node => {
+      const instanceType = node.instance_type;
+      let color = 'var(--color-success)';
+      let label = null;
+      let icon = null;
+      
+      if (instanceType && instanceType.group_id) {
+        const group = getGroupById(instanceType.group_id);
+        if (group) {
+          color = group.color;
+          label = group.label;
+          icon = group.icon;
+        }
+      }
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          instanceTypeColor: color,
+          instanceTypeLabel: label,
+          instanceTypeIcon: icon
+        }
+      };
+    });
+  }, [nodes]);
 
   const sortedNodes = useMemo(() => {
     if (!existingNodes) return [];
@@ -1163,6 +1202,29 @@ const SpaceDetails = () => {
 
     fetchData();
   }, [id, fetchGraphData]);
+
+  useEffect(() => {
+    const fetchInstanceTypes = async () => {
+      try {
+        const response = await api.get(`/spaces/${id}/instance-types/`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        const groups = response.data.instance_groups || [];
+        setInstanceTypes(groups);
+        
+        setSelectedInstanceTypes(new Set());
+      } catch (error) {
+        console.error('Error fetching instance groups:', error);
+      }
+    };
+    
+    if (id) {
+      fetchInstanceTypes();
+    }
+  }, [id]);
 
   // Fetch countries on mount
   useEffect(() => {
@@ -2248,11 +2310,11 @@ const SpaceDetails = () => {
       style={{
         width: "100%",
         margin: "0 auto",
-        padding: "20px 20px 20px 60px",
+        padding: "10px",
         display: "flex",
         overflowX: "hidden",
         boxSizing: "border-box",
-        maxWidth: "100vw",
+        maxWidth: "100%",
       }}
     >
       {/* Inject CSS for property selection */}
@@ -2261,7 +2323,11 @@ const SpaceDetails = () => {
       <style>{nodeListStyles}</style>
       <style>{propertySelectionStyles}</style>
 
-      <div style={{ flex: 1, marginRight: "20px" }}>
+      <div style={{ 
+        flex: 1, 
+        marginRight: isRightPanelCollapsed ? "30px" : "10px",
+        transition: "all 0.3s ease"
+      }}>
         <div
           style={{
             display: "flex",
@@ -3057,27 +3123,142 @@ const SpaceDetails = () => {
           </div>
         )}
 
-        {/* Graph Visualization */}
+        {/* Graph Visualization with Filter */}
         <div style={{ marginBottom: "30px" }}>
           <h3>Space Graph</h3>
-          <div
-            style={{
-              width: "100%",
-              height: "600px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              overflow: "hidden",
-              background: "#f8f9fa",
-            }}
-          >
-            <SpaceGraph
-              nodes={nodes}
-              edges={edges}
-              loading={graphLoading}
-              error={graphError}
-              onNodeClick={handleNodeClick}
-              onEdgeClick={handleEdgeClick}
-            />
+          <div style={{ 
+            display: "flex", 
+            gap: isLeftPanelCollapsed ? "0" : "12px", 
+            alignItems: "flex-start",
+            marginLeft: isLeftPanelCollapsed ? "30px" : "0",
+            transition: "all 0.3s ease"
+          }}>
+            {/* Left side: Filter and Legend (Collapsible) */}
+            {!isLeftPanelCollapsed && (
+              <div style={{ width: "240px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <InstanceTypeFilter
+                  instanceTypes={instanceTypes}
+                  selectedTypes={selectedInstanceTypes}
+                  onToggleType={(typeId) => {
+                    const newSet = new Set(selectedInstanceTypes);
+                    if (newSet.has(typeId)) {
+                      newSet.delete(typeId);
+                    } else {
+                      newSet.add(typeId);
+                    }
+                    setSelectedInstanceTypes(newSet);
+                  }}
+                  onSelectAll={() => {
+                    setSelectedInstanceTypes(new Set(instanceTypes.map(t => t.group_id)));
+                  }}
+                  onDeselectAll={() => {
+                    setSelectedInstanceTypes(new Set());
+                  }}
+                />
+                
+                <InstanceTypeLegend
+                  visibleTypes={instanceTypes}
+                  isVisible={showLegend}
+                  onToggle={() => setShowLegend(!showLegend)}
+                />
+              </div>
+            )}
+
+            {/* Graph Container with both toggle buttons */}
+            <div
+              style={{
+                flex: 1,
+                position: "relative"
+              }}
+            >
+              {/* Left Panel Toggle Button */}
+              <button
+                onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  left: isLeftPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isLeftPanelCollapsed ? t("graph.showFilters") : t("graph.hideFilters")}
+              >
+                {isLeftPanelCollapsed ? "►" : "◄"}
+              </button>
+
+              {/* Right Panel Toggle Button */}
+              <button
+                onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  right: isRightPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isRightPanelCollapsed ? t("graph.showSidebar") : t("graph.hideSidebar")}
+              >
+                {isRightPanelCollapsed ? "◄" : "►"}
+              </button>
+
+              {/* Actual Graph with border and styling */}
+              <div
+                style={{
+                  height: "700px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  background: "#f8f9fa",
+                }}
+              >
+            
+                <SpaceGraph
+                  nodes={nodesWithColors}
+                  edges={edges}
+                  loading={graphLoading}
+                  error={graphError}
+                  onNodeClick={handleNodeClick}
+                  onEdgeClick={handleEdgeClick}
+                  selectedInstanceTypes={selectedInstanceTypes}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3637,16 +3818,18 @@ const SpaceDetails = () => {
         )}
       </div>
 
-      {/* Collaborators sidebar */}
-      <div
-        style={{
-          width: "260px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <ActivityStream spaceId={id} dense />
+      {/* Right sidebar (Collapsible) */}
+      {!isRightPanelCollapsed && (
+        <div
+          style={{
+            width: "260px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            transition: "all 0.3s ease"
+          }}
+        >
+          <ActivityStream spaceId={id} dense />
 
         <div
           style={{
@@ -3799,7 +3982,8 @@ const SpaceDetails = () => {
 
         {/* Add discussions component */}
         <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} isArchived={space.is_archived} />
-      </div>
+        </div>
+      )}
 
       {/* Node detail modal */}
       {selectedNode && isCollaborator && (

@@ -339,6 +339,7 @@ class SpaceSerializer(serializers.ModelSerializer):
 class NodeSerializer(serializers.ModelSerializer):
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
     connection_count = serializers.SerializerMethodField()
+    instance_type = serializers.SerializerMethodField()
     
     class Meta:
         model = Node
@@ -346,12 +347,90 @@ class NodeSerializer(serializers.ModelSerializer):
             'id', 'label', 'wikidata_id', 'created_at', 'created_by', 'created_by_username', 
             'space', 'country', 'city', 'district', 'street', 
             'latitude', 'longitude', 'location_name', 'description', 'is_archived',
-            'connection_count'
+            'connection_count', 'instance_type'
         ]
     
     def get_connection_count(self, obj):
         """Get total number of connections (incoming + outgoing)"""
         return obj.get_connection_count()
+    
+    def get_instance_type(self, obj):
+        """
+        Get the highest priority instance type GROUP for this node.
+        
+        When a node has multiple P31 values, they're all mapped to groups,
+        then the highest priority group is returned.
+        
+        Returns:
+            dict or None: {
+                'group_id': 'CITY',
+                'group_label': 'City', 
+                'specific_types': ['Q515', 'Q1637706']  # For debugging/logging
+            } or None
+        """
+        try:
+            GROUPS = {
+                'HUMAN': {'types': ['Q5', 'Q215627'], 'priority': 100},
+                'COUNTRY': {'types': ['Q6256', 'Q3024240', 'Q859563', 'Q1520223'], 'priority': 90},
+                'CITY': {'types': ['Q515', 'Q1549591', 'Q1637706', 'Q5119', 'Q200250', 'Q1093829', 'Q7930989', 'Q2514025'], 'priority': 85},
+                'ADMINISTRATIVE': {'types': ['Q15042037', 'Q10864048', 'Q56061', 'Q842112', 'Q192611', 'Q174844', 'Q82794'], 'priority': 80},
+                'SETTLEMENT': {'types': ['Q486972', 'Q532', 'Q3957', 'Q5084', 'Q3191695', 'Q15221371'], 'priority': 75},
+                'ORGANIZATION': {'types': ['Q43229', 'Q4830453', 'Q783794', 'Q891723', 'Q219577', 'Q7210356', 'Q31855', 'Q2085381', 'Q294163'], 'priority': 70},
+                'BUILDING': {'types': ['Q41176', 'Q16560', 'Q44494', 'Q16970', 'Q34627', 'Q44539', 'Q33506', 'Q483110', 'Q5003624'], 'priority': 65},
+                'GEOGRAPHIC_FEATURE': {'types': ['Q8502', 'Q23442', 'Q4022', 'Q23397', 'Q39594', 'Q185113', 'Q39816', 'Q54050', 'Q177634'], 'priority': 60},
+                'WORK': {'types': ['Q11424', 'Q571', 'Q7725634', 'Q13442814', 'Q732577', 'Q2188189', 'Q386724', 'Q3305213', 'Q860861'], 'priority': 55},
+                'SPECIES': {'types': ['Q16521', 'Q7432', 'Q34740', 'Q35409', 'Q36602', 'Q37517'], 'priority': 50},
+            }
+            
+            TYPE_TO_GROUP = {}
+            for group_id, group_data in GROUPS.items():
+                for type_id in group_data['types']:
+                    TYPE_TO_GROUP[type_id] = group_id
+            
+            p31_props = obj.node_properties.filter(property_id='P31')
+            
+            if not p31_props.exists():
+                return None
+            
+            matched_groups = {}
+            specific_types = []
+            
+            for prop in p31_props:
+                # Get value_id from prop.value_id or extract from prop.value JSONField (for backward compatibility)
+                value_id = prop.value_id
+                if not value_id and prop.value:
+                    # Fallback: extract ID from value JSONField for older properties
+                    if isinstance(prop.value, dict):
+                        value_id = prop.value.get('id') or prop.value.get('value')
+                
+                if value_id:
+                    specific_types.append(value_id)
+                    group_id = TYPE_TO_GROUP.get(value_id)
+                    if group_id and group_id not in matched_groups:
+                        matched_groups[group_id] = GROUPS[group_id]['priority']
+            
+            if not matched_groups:
+                # Log for future addition
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Unmapped instance types for node {obj.id}: {specific_types}")
+                return None
+            
+            best_group_id = max(matched_groups.keys(), key=lambda g: matched_groups[g])
+            
+            return {
+                'group_id': best_group_id,
+                'group_label': best_group_id.replace('_', ' ').title(),
+                'specific_types': specific_types 
+            }
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error getting instance type for node {obj.id}: {e}")
+            pass
+        
+        return None
 
 class DiscussionSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')

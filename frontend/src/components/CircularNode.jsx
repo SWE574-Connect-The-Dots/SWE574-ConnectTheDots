@@ -4,11 +4,27 @@ import { Handle, Position } from 'reactflow';
 const CircularNode = ({ data, selected }) => {
   const nodeSize = data.size || 80;
   const fontSize = Math.max(10, Math.min(14, Math.round(nodeSize * 0.15)));
-  const nodeColor = data.color || 'var(--color-success)';
+  const nodeColor = data.instanceTypeColor || data.color || 'var(--color-success)';
+  
+  const isFiltered = data.isFiltered || false;
+  const greyedOutColor = 'var(--color-gray-300)';
+  const greyedOutBorder = 'var(--color-gray-400)';
+  
+  const finalColor = isFiltered ? greyedOutColor : nodeColor;
+  const finalBorderColor = isFiltered ? greyedOutBorder : nodeColor;
   
   const selectedColor = selected 
-    ? `color-mix(in srgb, ${nodeColor} 100%, #000 20%)` 
-    : nodeColor;
+    ? `color-mix(in srgb, ${finalColor} 100%, #000 20%)` 
+    : finalColor;
+
+  const tooltipParts = [data.label];
+  if (data.instanceTypeLabel) {
+    tooltipParts.push(`(${data.instanceTypeLabel})`);
+  }
+  if (data.wikidata_id) {
+    tooltipParts.push(`[${data.wikidata_id}]`);
+  }
+  const tooltipText = tooltipParts.join(' ');
 
   const handleStyle = {
     opacity: 0,
@@ -20,9 +36,9 @@ const CircularNode = ({ data, selected }) => {
         width: `${nodeSize}px`,
         height: `${nodeSize}px`,
         borderRadius: "50%",
-        border: selected ? `4px solid ${nodeColor}` : `3px solid ${nodeColor}`,
-        backgroundColor: selected ? selectedColor : nodeColor,
-        color: 'var(--color-white)',
+        border: selected ? `4px solid ${finalBorderColor}` : `3px solid ${finalBorderColor}`,
+        backgroundColor: selected ? selectedColor : finalColor,
+        color: isFiltered ? 'var(--color-text-secondary)' : 'var(--color-white)',
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -33,12 +49,17 @@ const CircularNode = ({ data, selected }) => {
         textAlign: "center",
         wordBreak: "break-word",
         lineHeight: "1.2",
-        boxShadow: selected 
-          ? `0 4px 12px ${nodeColor}66` 
-          : "0 2px 8px rgba(0,0,0,0.15)",
+        boxShadow: isFiltered 
+          ? "0 1px 3px rgba(0,0,0,0.1)"
+          : selected 
+            ? `0 4px 12px ${nodeColor}66` 
+            : "0 2px 8px rgba(0,0,0,0.15)",
         transition: "all 0.2s ease",
         position: "relative",
+        opacity: isFiltered ? 0.4 : 1,
+        cursor: isFiltered ? 'default' : 'pointer',
       }}
+      title={tooltipText}
     >
       <Handle 
         type="target" 
@@ -114,6 +135,9 @@ CircularNode.propTypes = {
     longitude: PropTypes.number,
     location_name: PropTypes.string,
     description: PropTypes.string,
+    instanceTypeColor: PropTypes.string,
+    instanceTypeLabel: PropTypes.string,
+    isFiltered: PropTypes.bool
   }).isRequired,
   selected: PropTypes.bool,
 };

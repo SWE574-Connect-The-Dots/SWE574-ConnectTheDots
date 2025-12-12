@@ -169,6 +169,10 @@
     "nodeDetails": "Node Details",
     "edgeDetails": "Edge Details",
     "connectedNodes": "Connected Nodes",
+    "showFilters": "Show Filters",
+    "hideFilters": "Hide Filters",
+    "showSidebar": "Show Sidebar",
+    "hideSidebar": "Hide Sidebar",
     "source": "Source",
     "target": "Target",
     "wikidataProperty": "Wikidata Property",
@@ -273,6 +277,30 @@
     "showing": "Showing",
     "of": "of",
     "usersCount": "users"
+  },
+  "instanceTypes": {
+    "title": "Instance Types",
+    "filterByType": "Filter by Type",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "legend": "Color Legend",
+    "showLegend": "Show Legend",
+    "hideLegend": "Hide Legend",
+    "noInstanceType": "No instance type",
+    "otherTypes": "Other types",
+    "filtering": "Showing",
+    "groups": {
+      "HUMAN": "Human",
+      "CITY": "City",
+      "COUNTRY": "Country",
+      "SETTLEMENT": "Settlement",
+      "ORGANIZATION": "Organization",
+      "GEOGRAPHIC_FEATURE": "Geographic Feature",
+      "SPECIES": "Species",
+      "WORK": "Work",
+      "BUILDING": "Building",
+      "ADMINISTRATIVE": "Administrative Division"
+    }
   },
   "errors": {
     "failedToLoadProfile": "Failed to load profile data",
