@@ -20,6 +20,7 @@
     "next": "İleri",
     "yes": "Evet",
     "no": "Hayır",
+    "ok": "Tamam",
     "processing": "İşleniyor...",
     "searching": "Aranıyor...",
     "report": "Raporla",
@@ -289,7 +290,9 @@
     "unauthorized": "Bu işlemi gerçekleştirmek için yetkiniz yok.",
     "notFound": "İstenen kaynak bulunamadı.",
     "validationError": "Lütfen bilgilerinizi kontrol edip tekrar deneyin.",
-    "failedToLoadActivity": "Etkinlik akışı yüklenemedi."
+    "failedToLoadActivity": "Etkinlik akışı yüklenemedi.",
+    "accessDenied": "Erişim Engellendi",
+    "accessDeniedMessage": "Backoffice kontrol paneline erişim yetkiniz bulunmamaktadır. Bu alan yalnızca yöneticiler, moderatörler ve alan oluşturanlar için kullanılabilir."
   },
   "messages": {
     "saveSuccess": "Değişiklikler başarıyla kaydedildi.",

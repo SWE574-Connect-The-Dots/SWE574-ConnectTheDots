@@ -20,6 +20,7 @@
     "next": "Next",
     "yes": "Yes",
     "no": "No",
+    "ok": "OK",
     "processing": "Processing...",
     "searching": "Searching...",
     "report": "Report",
@@ -289,7 +290,9 @@
     "unauthorized": "You are not authorized to perform this action.",
     "notFound": "The requested resource was not found.",
     "validationError": "Please check your input and try again.",
-    "failedToLoadActivity": "Failed to load activity stream."
+    "failedToLoadActivity": "Failed to load activity stream.",
+    "accessDenied": "Access Denied",
+    "accessDeniedMessage": "You don't have permission to access the Backoffice dashboard. This area is only available to administrators, moderators, and space creators."
   },
   "messages": {
     "saveSuccess": "Changes saved successfully.",
