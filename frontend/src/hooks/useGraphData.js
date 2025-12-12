@@ -158,6 +158,7 @@ const useGraphData = (spaceId) => {
         longitude: node.longitude || null,
         location_name: node.location_name || null,
         description: node.description || null,
+        instance_type: node.instance_type || null,
       }));
 
       const edgesDataArray = Array.isArray(edgesData) ? edgesData : [];

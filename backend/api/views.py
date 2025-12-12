@@ -582,6 +582,37 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 value_id=value_id
             )
         
+        # Auto-fetch and store ALL P31 values if none were selected
+        has_p31 = any(prop.get('property') == 'P31' for prop in selected_properties)
+        
+        if not has_p31 and wikidata_entity and wikidata_entity.get('id'):
+            try:
+                from .wikidata import get_wikidata_properties
+                all_properties = get_wikidata_properties(wikidata_entity.get('id'))
+                
+                # Find ALL P31 properties (note: key is 'property', not 'property_id')
+                p31_props = [p for p in all_properties if p.get('property') == 'P31']
+                
+                # Store ALL P31 values
+                for p31 in p31_props:
+                    value_text, value_id = _normalize_property_value_for_storage(p31.get('value'))
+                    Property.objects.create(
+                        node=new_node,
+                        property_id='P31',
+                        statement_id=p31.get('statement_id'),
+                        property_label=p31.get('property_label', 'instance of'),
+                        value=p31.get('value'),
+                        value_text=value_text,
+                        value_id=value_id
+                    )
+                    
+                if p31_props:
+                    print(f"Auto-fetched {len(p31_props)} P31 properties for node {new_node.id}")
+                    
+            except Exception as e:
+                # Don't fail node creation if P31 fetch fails
+                print(f"Failed to auto-fetch P31 for {wikidata_entity.get('id')}: {e}")
+        
         # Extract location information from selected properties if they exist
         if selected_properties:
             location_data = extract_location_from_properties(selected_properties)
@@ -1237,6 +1268,70 @@ class SpaceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
     
+    @action(detail=True, methods=['get'], url_path='instance-types')
+    def get_instance_types(self, request, pk=None):
+        """
+        Get instance type GROUPS for nodes in this space.
+        
+        Returns groups (not individual types) with counts.
+        
+        Returns:
+            {
+                'instance_groups': [
+                    {'group_id': 'CITY', 'group_label': 'City', 'count': 10},
+                    {'group_id': 'HUMAN', 'group_label': 'Human', 'count': 5},
+                    ...
+                ],
+                'nodes_by_group': {
+                    'CITY': [1, 2, 3, ...],
+                    'HUMAN': [4, 5, ...],
+                    ...
+                }
+            }
+        """
+        try:
+            space = self.get_object()
+            
+            # Get all nodes with their instance types
+            from .serializers import NodeSerializer
+            nodes = space.node_set.all()
+            
+            # Count nodes per group
+            group_counts = {}
+            nodes_by_group = {}
+            
+            for node in nodes:
+                serializer = NodeSerializer(node)
+                instance_type = serializer.data.get('instance_type')
+                
+                if instance_type and instance_type.get('group_id'):
+                    group_id = instance_type['group_id']
+                    
+                    if group_id not in group_counts:
+                        group_counts[group_id] = {
+                            'group_id': group_id,
+                            'group_label': instance_type['group_label'],
+                            'count': 0
+                        }
+                        nodes_by_group[group_id] = []
+                    
+                    group_counts[group_id]['count'] += 1
+                    nodes_by_group[group_id].append(node.id)
+            
+            # Sort by count
+            instance_groups = sorted(
+                group_counts.values(),
+                key=lambda x: x['count'],
+                reverse=True
+            )
+            
+            return Response({
+                'instance_groups': instance_groups,
+                'nodes_by_group': nodes_by_group
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+    
     @action(detail=True, methods=['put'], url_path='nodes/(?P<node_id>[^/.]+)/update-properties')
     def update_node_properties(self, request, pk=None, node_id=None):
         """Update the properties of a node"""
@@ -1267,6 +1362,36 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     value_id=value_id
                 )
             
+            # Auto-fetch and store ALL P31 values if none were selected
+            has_p31 = any(prop.get('property') == 'P31' for prop in selected_properties if prop)
+            
+            if not has_p31 and node.wikidata_id:
+                try:
+                    from .wikidata import get_wikidata_properties
+                    all_properties = get_wikidata_properties(node.wikidata_id)
+                    
+                    # Find ALL P31 properties
+                    p31_props = [p for p in all_properties if p.get('property_id') == 'P31']
+                    
+                    # Store ALL P31 values
+                    for p31 in p31_props:
+                        value_text, value_id = _normalize_property_value_for_storage(p31.get('value'))
+                        Property.objects.create(
+                            node=node,
+                            property_id='P31',
+                            statement_id=p31.get('statement_id'),
+                            property_label=p31.get('property_label', 'instance of'),
+                            value=p31.get('value'),
+                            value_text=value_text,
+                            value_id=value_id
+                        )
+                        
+                    if p31_props:
+                        print(f"Auto-fetched {len(p31_props)} P31 properties for node {node.id}")
+                        
+                except Exception as e:
+                    # Don't fail node update if P31 fetch fails
+                    print(f"Failed to auto-fetch P31 for {node.wikidata_id}: {e}")
             
             if selected_properties:
                 location_data = extract_location_from_properties(selected_properties)
