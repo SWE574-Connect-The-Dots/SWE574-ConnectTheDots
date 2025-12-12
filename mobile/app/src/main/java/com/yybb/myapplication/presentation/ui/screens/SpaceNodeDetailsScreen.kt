@@ -113,6 +113,7 @@ fun SpaceNodeDetailsScreen(
     val connectionSearchQuery by viewModel.connectionSearchQuery.collectAsState()
     val filteredConnections by viewModel.filteredConnections.collectAsState()
     val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
+    val savedPropertyItems by viewModel.savedPropertyItems.collectAsState()
     val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
     val isWikidataPropertiesLoading by viewModel.isWikidataPropertiesLoading.collectAsState()
     val wikidataPropertiesError by viewModel.wikidataPropertiesError.collectAsState()
@@ -528,19 +529,28 @@ fun SpaceNodeDetailsScreen(
                         }
                     },
                     onPropertyRemove = viewModel::deleteNodeProperty,
+                    onDeletePropertyGroup = viewModel::deletePropertyGroup,
+                    savedPropertyItems = savedPropertyItems,
                     wikidataId = wikidataId,
                     searchQuery = searchQuery,
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onToggleProperty = viewModel::togglePropertySelection,
+                    onToggleSelectAll = viewModel::toggleSelectAllProperties,
+                    onTogglePropertyGroup = viewModel::togglePropertyGroup,
                     onSaveProperties = viewModel::saveSelectedProperties,
                     filteredOptions = filteredProperties,
+                    isSelectAllChecked = viewModel.isSelectAllChecked(),
+                    selectedPropertiesCount = viewModel.getSelectedPropertiesCount(),
+                    groupedProperties = viewModel.getGroupedProperties(if (searchQuery.isBlank()) null else filteredProperties),
+                    propertyItems = viewModel.getPropertyItems(if (searchQuery.isBlank()) null else filteredProperties),
                     isSavingProperties = isUpdatingNodeProperties,
                     isWikidataPropertiesLoading = isWikidataPropertiesLoading,
                     wikidataPropertiesError = wikidataPropertiesError,
                     onNavigateToWebView = onNavigateToWebView,
                     locationName = viewModel.locationName.value,
                     nodeDetails = nodeDetails,
-                    onEditLocationClick = { viewModel.showEditLocationDialog() }
+                    onEditLocationClick = { viewModel.showEditLocationDialog() },
+                    totalPropertiesCount = viewModel.getTotalPropertiesCount()
                 )
 
                 else -> ConnectionsContent(
@@ -580,13 +590,22 @@ private fun DetailsContent(
     onRetryProperties: () -> Unit,
     onPropertyValueClick: (NodeProperty) -> Unit,
     onPropertyRemove: (NodeProperty) -> Unit,
+    onDeletePropertyGroup: (String) -> Unit,
+    savedPropertyItems: List<SpaceNodeDetailsViewModel.SavedPropertyItem>,
     wikidataId: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onToggleProperty: (String) -> Unit,
+    onToggleSelectAll: () -> Unit,
+    onTogglePropertyGroup: (String) -> Unit,
     onSaveProperties: () -> Unit,
     filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>,
     isSavingProperties: Boolean,
+    isSelectAllChecked: Boolean,
+    selectedPropertiesCount: Int,
+    totalPropertiesCount: Int,
+    groupedProperties: List<SpaceNodeDetailsViewModel.PropertyGroup>,
+    propertyItems: List<SpaceNodeDetailsViewModel.PropertyItem>,
     isWikidataPropertiesLoading: Boolean,
     wikidataPropertiesError: String?,
     onNavigateToWebView: (String) -> Unit,
@@ -748,13 +767,75 @@ private fun DetailsContent(
                 }
 
                 else -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        apiNodeProperties.forEach { property ->
-                            NodePropertyDisplayRow(
-                                property = property,
-                                onValueClick = onPropertyValueClick,
-                                onRemoveClick = onPropertyRemove
-                            )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 80.dp, max = 150.dp)
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                items = savedPropertyItems,
+                                key = { item ->
+                                    when (item) {
+                                        is SpaceNodeDetailsViewModel.SavedPropertyItem.Group -> item.group.propertyId
+                                        is SpaceNodeDetailsViewModel.SavedPropertyItem.Single -> item.property.statementId
+                                    }
+                                }
+                            ) { item ->
+                                when (item) {
+                                    is SpaceNodeDetailsViewModel.SavedPropertyItem.Group -> {
+                                        val group = item.group
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            // Group header with delete button
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "${group.propertyLabel} (${group.propertyId})",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                                IconButton(
+                                                    onClick = { onDeletePropertyGroup(group.propertyId) },
+                                                    modifier = Modifier.size(38.dp)
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(id = R.drawable.ic_delete_bin),
+                                                        contentDescription = "Delete all properties in group",
+                                                        modifier = Modifier.size(TAG_ICON_SIZE.dp)
+                                                    )
+                                                }
+                                            }
+                                            // Properties in the group (indented)
+                                            Column(
+                                                modifier = Modifier.padding(start = 16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                group.properties.forEach { property ->
+                                                    NodePropertyDisplayRow(
+                                                        property = property,
+                                                        onValueClick = onPropertyValueClick,
+                                                        onRemoveClick = onPropertyRemove
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    is SpaceNodeDetailsViewModel.SavedPropertyItem.Single -> {
+                                        NodePropertyDisplayRow(
+                                            property = item.property,
+                                            onValueClick = onPropertyValueClick,
+                                            onRemoveClick = onPropertyRemove
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -792,25 +873,22 @@ private fun DetailsContent(
                     onToggleProperty = onToggleProperty,
                     onValueClick = onPropertyValueClick,
                     isLoading = isWikidataPropertiesLoading,
-                    error = wikidataPropertiesError
+                    error = wikidataPropertiesError,
+                    onToggleSelectAll = onToggleSelectAll,
+                    isSelectAllChecked = isSelectAllChecked,
+                    onTogglePropertyGroup = onTogglePropertyGroup,
+                    groupedProperties = groupedProperties,
+                    propertyItems = propertyItems,
+                    searchQuery = searchQuery
                 )
-                Button(
-                    onClick = onSaveProperties,
-                    enabled = !isSavingProperties,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isSavingProperties) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(text = stringResource(id = R.string.save_properties_button))
-                }
+                SavePropertiesButton(
+                    onSaveClick = onSaveProperties,
+                    onToggleSelectAll = onToggleSelectAll,
+                    isSaving = isSavingProperties,
+                    isSelectAllChecked = isSelectAllChecked,
+                    selectedPropertiesCount = selectedPropertiesCount,
+                    totalPropertiesCount = totalPropertiesCount
+                )
             }
         }
     }
@@ -848,12 +926,93 @@ private fun NodePropertyDisplayRow(
 }
 
 @Composable
+private fun SavePropertiesButton(
+    onSaveClick: () -> Unit,
+    onToggleSelectAll: () -> Unit,
+    isSaving: Boolean,
+    isSelectAllChecked: Boolean,
+    selectedPropertiesCount: Int,
+    totalPropertiesCount: Int
+) {
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    
+    Button(
+        onClick = {
+            // Checking if we need confirmation: more than 20 properties and select all is checked
+            if (totalPropertiesCount > 20 && isSelectAllChecked) {
+                showConfirmationDialog = true
+            } else {
+                onSaveClick()
+            }
+        },
+        enabled = !isSaving,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (isSaving) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(text = stringResource(id = R.string.save_properties_button))
+    }
+    
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmationDialog = false },
+            title = { Text(text = stringResource(id = R.string.save_properties_button)) },
+            text = {
+                Text(
+                    text = stringResource(
+                        id = R.string.add_all_properties_confirmation,
+                        selectedPropertiesCount
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmationDialog = false
+                        onSaveClick()
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.yes_button))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmationDialog = false
+                        // Uncheck select all if it's currently checked
+                        if (isSelectAllChecked) {
+                            onToggleSelectAll()
+                        }
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.no_button))
+                }
+            }
+        )
+    }
+}
+
+@Composable
 private fun PropertySelectionList(
     options: List<SpaceNodeDetailsViewModel.PropertyOption>,
     onToggleProperty: (String) -> Unit,
     onValueClick: (NodeProperty) -> Unit,
     isLoading: Boolean = false,
-    error: String? = null
+    error: String? = null,
+    onToggleSelectAll: () -> Unit = {},
+    isSelectAllChecked: Boolean = false,
+    onTogglePropertyGroup: (String) -> Unit = {},
+    groupedProperties: List<SpaceNodeDetailsViewModel.PropertyGroup> = emptyList(),
+    propertyItems: List<SpaceNodeDetailsViewModel.PropertyItem> = emptyList(),
+    searchQuery: String = ""
 ) {
     Box(
         modifier = Modifier
@@ -901,25 +1060,126 @@ private fun PropertySelectionList(
                 }
             }
             else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(options) { option ->
+                val showGrouped = searchQuery.isBlank() && propertyItems.isNotEmpty()
+                
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = option.isChecked,
-                                onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                checked = isSelectAllChecked,
+                                onCheckedChange = { onToggleSelectAll() }
                             )
-                            PropertyDisplayText(
-                                property = option.property,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 8.dp),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                onValueClick = onValueClick
+                            Text(
+                                text = stringResource(id = R.string.add_all_properties),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
                             )
+                        }
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    if (showGrouped) {
+                        // Show grouped and single properties
+                        items(propertyItems) { item ->
+                            when (item) {
+                                is SpaceNodeDetailsViewModel.PropertyItem.Group -> {
+                                    val group = item.group
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // Group header with checkbox
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Start,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Checkbox(
+                                                checked = group.isAllChecked,
+                                                onCheckedChange = { onTogglePropertyGroup(group.propertyId) }
+                                            )
+                                            Text(
+                                                text = "${group.propertyLabel} (${group.propertyId})",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
+                                        // Properties in the group (indented)
+                                        Column(
+                                            modifier = Modifier.padding(start = 40.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            group.properties.forEach { option ->
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.Start,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Checkbox(
+                                                        checked = option.isChecked,
+                                                        onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                                    )
+                                                    PropertyDisplayText(
+                                                        property = option.property,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(start = 8.dp),
+                                                        textStyle = MaterialTheme.typography.bodyMedium,
+                                                        onValueClick = onValueClick
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                is SpaceNodeDetailsViewModel.PropertyItem.Single -> {
+                                    val option = item.option
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            checked = option.isChecked,
+                                            onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                        )
+                                        PropertyDisplayText(
+                                            property = option.property,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 8.dp),
+                                            textStyle = MaterialTheme.typography.bodyMedium,
+                                            onValueClick = onValueClick
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Show flat list when searching (filtered)
+                        items(options) { option ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = option.isChecked,
+                                    onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                )
+                                PropertyDisplayText(
+                                    property = option.property,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 8.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium,
+                                    onValueClick = onValueClick
+                                )
+                            }
                         }
                     }
                 }

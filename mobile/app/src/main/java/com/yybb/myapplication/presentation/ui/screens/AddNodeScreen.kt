@@ -98,6 +98,8 @@ fun AddNodeScreen(
     val propertySearchQuery by viewModel.propertySearchQuery.collectAsState()
     val filteredProperties by viewModel.filteredProperties.collectAsState()
     val selectedProperties by viewModel.selectedProperties.collectAsState()
+    val isSelectAllChecked by viewModel.isSelectAllChecked.collectAsState()
+    val propertyItems by viewModel.propertyItems.collectAsState()
     val availableNodes by viewModel.availableNodes.collectAsState()
     val isLoadingNodes by viewModel.isLoadingNodes.collectAsState()
     val edgeLabelSearchResults by viewModel.edgeLabelSearchResults.collectAsState()
@@ -402,39 +404,166 @@ fun AddNodeScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
+                        val propertiesToShow = if (propertySearchQuery.length > 2) {
+                            filteredProperties
+                        } else {
+                            emptyList()
+                        }
+                        val showGrouped = propertySearchQuery.length <= 2
+                        
                         LazyColumn(
                             modifier = Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(
-                                items = if (propertySearchQuery.length > 2) filteredProperties else entityProperties,
-                                key = { it.statementId }
-                            ) { property ->
+                            item {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(
-                                        checked = selectedProperties.contains(property.statementId),
-                                        onCheckedChange = {
-                                            viewModel.togglePropertySelection(property.statementId)
-                                        }
+                                        checked = isSelectAllChecked,
+                                        onCheckedChange = { viewModel.toggleSelectAllProperties() }
                                     )
-                                    PropertyDisplayTextInAddNode(
-                                        property = property,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(start = 8.dp),
-                                        textStyle = MaterialTheme.typography.bodyMedium,
-                                        onValueClick = { property ->
-                                            // Navigate to WebView with Wikidata URL if entity has an ID
-                                            property.entityId?.let { entityId ->
-                                                val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
-                                                navController.navigate(Screen.WebView.createRoute(wikidataUrl))
+                                    Text(
+                                        text = stringResource(id = R.string.add_all_properties),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                            if (!showGrouped) {
+                                // Show flat list when searching
+                                items(
+                                    items = propertiesToShow,
+                                    key = { it.statementId }
+                                ) { property ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            checked = selectedProperties.contains(property.statementId),
+                                            onCheckedChange = {
+                                                viewModel.togglePropertySelection(property.statementId)
+                                            }
+                                        )
+                                        PropertyDisplayTextInAddNode(
+                                            property = property,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 8.dp),
+                                            textStyle = MaterialTheme.typography.bodyMedium,
+                                            onValueClick = { property ->
+                                                // Navigate to WebView with Wikidata URL if entity has an ID
+                                                property.entityId?.let { entityId ->
+                                                    val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
+                                                    navController.navigate(Screen.WebView.createRoute(wikidataUrl))
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Show grouped and single properties when not searching
+                                items(
+                                    items = propertyItems,
+                                    key = { item ->
+                                        when (item) {
+                                            is AddNodeViewModel.PropertyItem.Group -> item.group.propertyId
+                                            is AddNodeViewModel.PropertyItem.Single -> item.property.statementId
+                                        }
+                                    }
+                                ) { item ->
+                                    when (item) {
+                                        is AddNodeViewModel.PropertyItem.Group -> {
+                                            val group = item.group
+                                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                // Group header with checkbox
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.Start,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Checkbox(
+                                                        checked = group.isAllChecked,
+                                                        onCheckedChange = { viewModel.togglePropertyGroup(group.propertyId) }
+                                                    )
+                                                    Text(
+                                                        text = "${group.propertyLabel} (${group.propertyId})",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        modifier = Modifier.padding(start = 8.dp)
+                                                    )
+                                                }
+                                                // Properties in the group (indented)
+                                                Column(
+                                                    modifier = Modifier.padding(start = 40.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    group.properties.forEach { property ->
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.Start,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Checkbox(
+                                                                checked = selectedProperties.contains(property.statementId),
+                                                                onCheckedChange = {
+                                                                    viewModel.togglePropertySelection(property.statementId)
+                                                                }
+                                                            )
+                                                            PropertyDisplayTextInAddNode(
+                                                                property = property,
+                                                                modifier = Modifier
+                                                                    .weight(1f)
+                                                                    .padding(start = 8.dp),
+                                                                textStyle = MaterialTheme.typography.bodyMedium,
+                                                                onValueClick = { property ->
+                                                                    // Navigate to WebView with Wikidata URL if entity has an ID
+                                                                    property.entityId?.let { entityId ->
+                                                                        val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
+                                                                        navController.navigate(Screen.WebView.createRoute(wikidataUrl))
+                                                                    }
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
-                                    )
+                                        is AddNodeViewModel.PropertyItem.Single -> {
+                                            val property = item.property
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.Start,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Checkbox(
+                                                    checked = selectedProperties.contains(property.statementId),
+                                                    onCheckedChange = {
+                                                        viewModel.togglePropertySelection(property.statementId)
+                                                    }
+                                                )
+                                                PropertyDisplayTextInAddNode(
+                                                    property = property,
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .padding(start = 8.dp),
+                                                    textStyle = MaterialTheme.typography.bodyMedium,
+                                                    onValueClick = { property ->
+                                                        // Navigate to WebView with Wikidata URL if entity has an ID
+                                                        property.entityId?.let { entityId ->
+                                                            val wikidataUrl = "https://www.wikidata.org/wiki/$entityId"
+                                                            navController.navigate(Screen.WebView.createRoute(wikidataUrl))
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
