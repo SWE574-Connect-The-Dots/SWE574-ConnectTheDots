@@ -197,7 +197,10 @@
     "editEdgeLabelDirection": "Edit Edge Label & Direction",
     "updateLabelDirection": "Update Label & Direction",
     "edgeExistsInDirection": "Edge in this direction already exists",
-    "toggleDirection": "Toggle direction"
+    "toggleDirection": "Toggle direction",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
+    "spaceGraphTitle": "Space Graph"
   },
   "activity": {
     "globalTitle": "Latest activity",

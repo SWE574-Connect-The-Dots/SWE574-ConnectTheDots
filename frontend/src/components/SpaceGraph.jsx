@@ -1,16 +1,18 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
-import ReactFlow, { Controls, Background, applyNodeChanges, applyEdgeChanges } from "reactflow";
+import ReactFlow, { Controls, Background, applyNodeChanges, applyEdgeChanges, useReactFlow, ReactFlowProvider } from "reactflow";
 import "reactflow/dist/style.css";
 import CircularNode from "./CircularNode";
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 
 const nodeTypes = {
   circular: CircularNode,
 };
 
-const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick, selectedInstanceTypes }) => {
+const SpaceGraphInner = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick, selectedInstanceTypes, isFullscreen }) => {
   const { t } = useTranslation();
+  const { fitView } = useReactFlow();
+  const prevFullscreenRef = useRef(isFullscreen);
   
   const [localNodes, setLocalNodes] = useState([]);
   const [localEdges, setLocalEdges] = useState([]);
@@ -146,6 +148,19 @@ const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick, se
   const onEdgesChange = useCallback((changes) => {
     setLocalEdges((eds) => applyEdgeChanges(changes, eds));
   }, []);
+
+  useEffect(() => {
+    if (prevFullscreenRef.current !== isFullscreen && localNodes.length > 0) {
+      setTimeout(() => {
+        fitView({ 
+          padding: isFullscreen ? 0.3 : 0.2,
+          duration: 300,
+          includeHiddenNodes: false
+        });
+      }, 150);
+      prevFullscreenRef.current = isFullscreen;
+    }
+  }, [isFullscreen, fitView, localNodes.length]);
   
   if (loading) {
     return (
@@ -197,7 +212,7 @@ const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick, se
         elementsSelectable={true}
         fitView
         fitViewOptions={{
-          padding: 0.2,
+          padding: isFullscreen ? 0.3 : 0.2,
           minZoom: 0.5,
           maxZoom: 1.5,
         }}
@@ -216,14 +231,23 @@ const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick, se
   );
 };
 
-SpaceGraph.propTypes = {
+const SpaceGraph = (props) => {
+  return (
+    <ReactFlowProvider>
+      <SpaceGraphInner {...props} />
+    </ReactFlowProvider>
+  );
+};
+
+SpaceGraphInner.propTypes = {
   nodes: PropTypes.array.isRequired,
   edges: PropTypes.array.isRequired,
   loading: PropTypes.bool.isRequired,
   error: PropTypes.string,
   onNodeClick: PropTypes.func,
   onEdgeClick: PropTypes.func,
-  selectedInstanceTypes: PropTypes.instanceOf(Set)
+  selectedInstanceTypes: PropTypes.instanceOf(Set),
+  isFullscreen: PropTypes.bool,
 };
 
 export default SpaceGraph;

@@ -735,6 +735,44 @@ const propertySelectionStyles = `
 }
 `;
 
+const fullscreenGraphStyles = `
+.graph-container-fullscreen {
+  background: var(--color-gray-200) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.graph-container-fullscreen::backdrop {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.fullscreen-exit-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--color-white);
+  border: 2px solid var(--color-white);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.fullscreen-exit-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+}
+`;
 
 const getPropertyLabelWithId = (prop) => {
   const label =
@@ -1038,6 +1076,9 @@ const SpaceDetails = () => {
   const [showLegend, setShowLegend] = useState(true);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
+  const graphContainerRef = useRef(null);
 
   const {
     nodes,
@@ -1991,6 +2032,44 @@ const SpaceDetails = () => {
     setSelectedEdge(edge);
   }, []);
 
+  const handleFullscreenToggle = useCallback(() => {
+    if (!graphContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      graphContainerRef.current.requestFullscreen().then(() => {
+        setIsGraphFullscreen(true);
+      }).catch(err => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsGraphFullscreen(false);
+      }).catch(err => {
+        console.error("Error attempting to exit fullscreen:", err);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsGraphFullscreen(!!document.fullscreenElement);
+    };
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isGraphFullscreen) {
+        handleFullscreenToggle();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', handleEscKey);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isGraphFullscreen, handleFullscreenToggle]);
+
   const canDeleteSpace = () => {
     const username = localStorage.getItem("username");
     const isStaff =
@@ -2322,6 +2401,7 @@ const SpaceDetails = () => {
       <style>{advancedSearchStyles}</style>
       <style>{nodeListStyles}</style>
       <style>{propertySelectionStyles}</style>
+      <style>{fullscreenGraphStyles}</style>
 
       <div style={{ 
         flex: 1, 
@@ -3236,18 +3316,52 @@ const SpaceDetails = () => {
               >
                 {isRightPanelCollapsed ? "◄" : "►"}
               </button>
-
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <h3 style={{ margin: 0 }}>{t("graph.spaceGraphTitle")}</h3>
+            <button
+              onClick={handleFullscreenToggle}
+              style={{
+                padding: "8px 16px",
+                background: "var(--color-gray-200)",
+                color: "var(--color-text)",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--color-gray-200)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--color-gray-300)"}
+            >
+              <span>⤢</span> {t("graph.fullscreen")}
+            </button>
+          </div>
               {/* Actual Graph with border and styling */}
               <div
+                ref={graphContainerRef}
+                className={isGraphFullscreen ? "graph-container-fullscreen" : ""}
                 style={{
-                  height: "700px",
+                  width: "100%",
+                  height: isGraphFullscreen ? "100vh" : "600px",
                   border: "1px solid #ddd",
                   borderRadius: "8px",
                   overflow: "hidden",
                   background: "#f8f9fa",
+                  position: "relative",
                 }}
               >
-            
+            {isGraphFullscreen && (
+              <button
+                className="fullscreen-exit-btn"
+                onClick={handleFullscreenToggle}
+              >
+                <span>⨯</span> {t("graph.exitFullscreen")}
+              </button>
+            )}
                 <SpaceGraph
                   nodes={nodesWithColors}
                   edges={edges}
@@ -3256,6 +3370,7 @@ const SpaceDetails = () => {
                   onNodeClick={handleNodeClick}
                   onEdgeClick={handleEdgeClick}
                   selectedInstanceTypes={selectedInstanceTypes}
+                  isFullscreen={isGraphFullscreen}
                 />
               </div>
             </div>
@@ -3317,53 +3432,6 @@ const SpaceDetails = () => {
               </div>
             )}
           </div>
-        )}
-
-        {/* Revert Graph Section - Only show if collaborator and not archived */}
-        {isCollaborator && !space.is_archived && (
-          <>
-            <h3>Revert Graph to Previous State</h3>
-            {snapshots.length > 0 ? (
-              <select
-                onChange={(e) => {
-                  const snapshotId = e.target.value;
-                  if (!snapshotId) return;
-
-                  api
-                    .post(
-                      `/spaces/${id}/snapshots/revert/`,
-                      { snapshot_id: snapshotId },
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                          )}`,
-                          "Content-Type": "application/json",
-                        },
-                      }
-                    )
-                    .then(() => {
-                      alert(t("space.graphRevertedSuccessfully"));
-                      window.location.reload();
-                    })
-                    .catch((err) => {
-                      alert(t("space.revertFailed"));
-                      console.error(err);
-                    });
-                }}
-              >
-                <option value="">{t("space.selectSnapshotToRevert")}</option>
-                {snapshots.map((snap) => (
-                  <option key={snap.id} value={snap.id}>
-                    {new Date(snap.created_at).toLocaleString()}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p>{t("space.noSnapshotsAvailable")}</p>
-            )}
-            <hr />
-          </>
         )}
 
         {/* Add Node Section - Only show if collaborator and not archived */}
