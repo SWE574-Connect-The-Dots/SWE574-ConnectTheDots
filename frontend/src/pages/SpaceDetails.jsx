@@ -2367,7 +2367,7 @@ const SpaceDetails = () => {
             <button
               className="summarize-btn"
               onClick={handleAiSummarize}
-              disabled={loadingAiSummary}
+              disabled={loadingAiSummary || space.is_archived}
             >
               <span>✨</span>
               {loadingAiSummary ? 'Generating...' : 'Summarize'}
