@@ -197,7 +197,10 @@
     "editEdgeLabelDirection": "Bağlantı Etiketi ve Yönünü Düzenle",
     "updateLabelDirection": "Etiket ve Yönü Güncelle",
     "edgeExistsInDirection": "Bu yönde bağlantı zaten mevcut",
-    "toggleDirection": "Yönü değiştir"
+    "toggleDirection": "Yönü değiştir",
+    "fullscreen": "Tam Ekran",
+    "exitFullscreen": "Tam Ekrandan Çık",
+    "spaceGraphTitle": "Alan Grafiği"
   },
   "activity": {
     "globalTitle": "Son etkinlikler",
