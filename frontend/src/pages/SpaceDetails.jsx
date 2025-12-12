@@ -956,6 +956,8 @@ const SpaceDetails = () => {
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
+  const [topCollaborators, setTopCollaborators] = useState([]);
+  const [showAllCollaborators, setShowAllCollaborators] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -1138,6 +1140,19 @@ const SpaceDetails = () => {
           : [];
         const validNodes = nodesData.filter((n) => n && n.id && n.label);
         setExistingNodes(validNodes);
+
+        try {
+          const topCollaboratorsResponse = await api.get(`/spaces/${id}/top-collaborators/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setTopCollaborators(topCollaboratorsResponse.data?.top_collaborators || []);
+        } catch (error) {
+          console.error("Error fetching top collaborators:", error);
+          setTopCollaborators([]);
+        }
+
         fetchGraphData();
       } catch (error) {
         console.error("Error fetching space data:", error);
@@ -3662,28 +3677,121 @@ const SpaceDetails = () => {
           {isCollaboratorsOpen && (
             <div style={{ padding: "10px" }}>
               {space.collaborators.length > 0 ? (
-                <ul style={{ listStyleType: "none", padding: 0 }}>
-                  {space.collaborators.map((collaborator, index) => (
-                    <li
-                      key={index}
+                <>
+                  {showAllCollaborators ? (
+                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                      {space.collaborators.map((collaborator, index) => (
+                        <li
+                          key={index}
+                          style={{
+                            padding: "8px",
+                            borderBottom:
+                              index < space.collaborators.length - 1
+                                ? `1px solid var(--color-gray-200)`
+                                : "none",
+                            cursor: "pointer",
+                            color: "var(--color-accent)",
+                            textDecoration: "underline",
+                          }}
+                          onClick={() => navigate(`/profile/${collaborator}`)}
+                        >
+                          {collaborator}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {topCollaborators.length > 0 ? (
+                        topCollaborators.slice(0, 5).map((collaborator, index) => (
+                          <div
+                            key={collaborator.id || index}
+                            style={{
+                              padding: "10px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--color-gray-200)",
+                              cursor: "pointer",
+                              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = "translateY(-2px)";
+                              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                            onClick={() => navigate(`/profile/${collaborator.username}`)}
+                          >
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}>
+                              <div style={{
+                                minWidth: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                                background: index < 3 ? "var(--color-danger)" : "var(--color-gray-400)",
+                                color: "var(--color-white)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "11px",
+                                fontWeight: "bold",
+                              }}>
+                                {index + 1}
+                              </div>
+                              <div style={{
+                                fontSize: "14px",
+                                fontWeight: "600",
+                                color: "var(--color-primary-text)",
+                                flex: 1,
+                              }}>
+                                {collaborator.username}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ 
+                          fontSize: "13px", 
+                          color: "var(--color-secondary-text)",
+                          fontStyle: "italic",
+                          padding: "8px"
+                        }}>
+                          {t("space.noContributionData")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {topCollaborators.length > 0 && (
+                    <button
+                      onClick={() => setShowAllCollaborators(!showAllCollaborators)}
                       style={{
+                        width: "100%",
+                        marginTop: "10px",
                         padding: "8px",
-                        borderBottom:
-                          index < space.collaborators.length - 1
-                            ? `1px solid var(--color-gray-200)`
-                            : "none",
+                        background: "var(--color-bg)",
+                        border: "1px solid var(--color-gray-200)",
+                        borderRadius: "4px",
+                        color: "#0076B5",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         cursor: "pointer",
-                        color: "#1a73e8",
-                        textDecoration: "underline",
+                        transition: "background-color 0.2s ease",
                       }}
-                      onClick={() => navigate(`/profile/${collaborator}`)}
+                      onMouseEnter={(e) => e.target.style.background = "var(--color-white)"} 
+                      onMouseLeave={(e) => e.target.style.background = "var(--color-gray-200)"}
                     >
-                      {collaborator}
-                    </li>
-                  ))}
-                </ul>
+                      {showAllCollaborators ? t("space.showTopContributors") : t("space.seeAllCollaborators")}
+                    </button>
+                  )}
+                </>
               ) : (
-                <p>No collaborators yet</p>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text)", fontStyle: "italic" }}>
+                  {t("space.noCollaboratorsYet")}
+                </p>
               )}
             </div>
           )}

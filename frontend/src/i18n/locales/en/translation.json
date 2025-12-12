@@ -111,7 +111,11 @@
     "connections": "connections",
     "recentlyAdded": "Recently Added",
     "mostConnections": "Most Connections",
-    "nameAZ": "Name (A-Z)"
+    "nameAZ": "Name (A-Z)",
+    "noContributionData": "No contribution data available",
+    "seeAllCollaborators": "See All Collaborators",
+    "showTopContributors": "Show Top Contributors",
+    "noCollaboratorsYet": "No collaborators yet"
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
