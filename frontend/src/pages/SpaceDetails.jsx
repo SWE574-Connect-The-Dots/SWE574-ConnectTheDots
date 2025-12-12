@@ -3690,7 +3690,7 @@ const SpaceDetails = () => {
                                 ? `1px solid var(--color-gray-200)`
                                 : "none",
                             cursor: "pointer",
-                            color: "#1a73e8",
+                            color: "var(--color-accent)",
                             textDecoration: "underline",
                           }}
                           onClick={() => navigate(`/profile/${collaborator}`)}
@@ -3772,8 +3772,8 @@ const SpaceDetails = () => {
                         width: "100%",
                         marginTop: "10px",
                         padding: "8px",
-                        background: "#F5F5F5",
-                        border: "1px solid var(--color-gray-300)",
+                        background: "var(--color-bg)",
+                        border: "1px solid var(--color-gray-200)",
                         borderRadius: "4px",
                         color: "#0076B5",
                         fontSize: "13px",
@@ -3781,8 +3781,8 @@ const SpaceDetails = () => {
                         cursor: "pointer",
                         transition: "background-color 0.2s ease",
                       }}
-                      onMouseEnter={(e) => e.target.style.background = "var(--color-gray-200)"} 
-                      onMouseLeave={(e) => e.target.style.background = "var(--color-gray-100)"}
+                      onMouseEnter={(e) => e.target.style.background = "var(--color-white)"} 
+                      onMouseLeave={(e) => e.target.style.background = "var(--color-gray-200)"}
                     >
                       {showAllCollaborators ? t("space.showTopContributors") : t("space.seeAllCollaborators")}
                     </button>
