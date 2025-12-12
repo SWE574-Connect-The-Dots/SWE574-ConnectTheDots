@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
-import ReactFlow, { Controls, Background, applyNodeChanges } from "reactflow";
+import ReactFlow, { Controls, Background, applyNodeChanges, applyEdgeChanges } from "reactflow";
 import "reactflow/dist/style.css";
 import CircularNode from "./CircularNode";
 import { useMemo, useState, useCallback, useEffect } from "react";
@@ -13,60 +13,30 @@ const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick }) 
   const { t } = useTranslation();
   
   const [localNodes, setLocalNodes] = useState([]);
-  const nodesWithSizes = useMemo(() => {
-    if (!nodes || !edges) return nodes;
-
-    const nodeDegrees = {};
-    const nodeIdSet = new Set();
-    
-    nodes.forEach((node) => {
-      const nodeIdStr = String(node.id);
-      nodeDegrees[nodeIdStr] = 0;
-      nodeIdSet.add(nodeIdStr);
-    });
-    
-    edges.forEach((edge) => {
-      const sourceId = String(edge.source);
-      const targetId = String(edge.target);
-      
-      if (nodeIdSet.has(sourceId)) {
-        nodeDegrees[sourceId]++;
-      }
-      if (nodeIdSet.has(targetId)) {
-        nodeDegrees[targetId]++;
-      }
-    });
-    
-    const baseSize = 60;
-    const sizePerDegree = 8;
-
-    const nodesWithSizes = nodes.map((node) => {
-      const nodeIdStr = String(node.id);
-      const degree = nodeDegrees[nodeIdStr] || 0;
-      const size = baseSize + (degree * sizePerDegree);
-
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          size: Math.round(size),
-          degree: degree,
-        },
-      };
-    });
-
-
-    return nodesWithSizes;
-  }, [nodes, edges]);
+  const [localEdges, setLocalEdges] = useState([]);
+  
+  const processedNodes = useMemo(() => {
+    return nodes || [];
+  }, [nodes]);
   
   useEffect(() => {
-    if (nodesWithSizes && nodesWithSizes.length > 0) {
-      setLocalNodes(nodesWithSizes);
+    if (processedNodes && processedNodes.length > 0) {
+      setLocalNodes(processedNodes);
     }
-  }, [nodesWithSizes]);
+  }, [processedNodes]);
+
+  useEffect(() => {
+    if (edges && edges.length > 0) {
+      setLocalEdges(edges);
+    }
+  }, [edges]);
   
   const onNodesChange = useCallback((changes) => {
     setLocalNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
+
+  const onEdgesChange = useCallback((changes) => {
+    setLocalEdges((eds) => applyEdgeChanges(changes, eds));
   }, []);
   
   if (loading) {
@@ -89,16 +59,29 @@ const SpaceGraph = ({ nodes, edges, loading, error, onNodeClick, onEdgeClick }) 
   return (
     <div className="graph-container" style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow 
-        nodes={localNodes.length > 0 ? localNodes : (nodesWithSizes || [])} 
-        edges={edges || []} 
+        nodes={localNodes} 
+        edges={localEdges} 
         nodeTypes={nodeTypes} 
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
+        fitViewOptions={{
+          padding: 0.2,
+          minZoom: 0.5,
+          maxZoom: 1.5,
+        }}
+        minZoom={0.1}
+        maxZoom={2}
+        defaultEdgeOptions={{
+          type: 'straight',
+        }}
+        connectionLineType="straight"
+        proOptions={{ hideAttribution: true }}
       >
         <Background />
         <Controls />
