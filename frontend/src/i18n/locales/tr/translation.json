@@ -111,7 +111,11 @@
     "connections": "bağlantı",
     "recentlyAdded": "Yen Eklenenler",
     "mostConnections": "En Fazla Bağlantısı Olanlar",
-    "nameAZ": "İsme göre sırala(A-Z)"
+    "nameAZ": "İsme göre sırala(A-Z)",
+    "noContributionData": "Katkı verisi mevcut değil",
+    "seeAllCollaborators": "Tüm Katılımcıları Gör",
+    "showTopContributors": "En Çok Katkı Sağlayanları Göster",
+    "noCollaboratorsYet": "Henüz katılımcı yok"
   },
   "spaceAnalytics": {
     "dashboard": "Alan Analitik Paneli",
