@@ -11,6 +11,9 @@ export default function Reports() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [modalData, setModalData] = useState(null);
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [dateSortOrder, setDateSortOrder] = useState('desc');
+  const [activeSort, setActiveSort] = useState('reportCount');
 
   const fetchReports = useCallback(async () => {
     try {
@@ -198,6 +201,34 @@ export default function Reports() {
     ...new Set(reports.map((report) => report.content_type)),
   ];
 
+  const sortedReports = [...reports].sort((a, b) => {
+    if (activeSort === 'date') {
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
+      if (dateSortOrder === 'asc') {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA;
+      }
+    } else {
+      if (sortOrder === 'asc') {
+        return a.entity_report_count - b.entity_report_count;
+      } else {
+        return b.entity_report_count - a.entity_report_count;
+      }
+    }
+  });
+
+  const handleSortToggle = () => {
+    setActiveSort('reportCount');
+    setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+  };
+
+  const handleDateSortToggle = () => {
+    setActiveSort('date');
+    setDateSortOrder(dateSortOrder === 'desc' ? 'asc' : 'desc');
+  };
+
   const ReportDetailModal = ({ data, onClose }) => {
     if (!data) return null;
 
@@ -329,14 +360,56 @@ export default function Reports() {
               <th style={{ padding: "15px", textAlign: "left" }}>Type</th>
               <th style={{ padding: "15px", textAlign: "left" }}>Label</th>
               <th style={{ padding: "15px", textAlign: "left" }}>Reporter</th>
-              <th style={{ padding: "15px", textAlign: "left" }}>Date</th>
-              <th style={{ padding: "15px", textAlign: "center" }}>Report Count</th>
+              <th style={{ padding: "15px", textAlign: "left", position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>Date</span>
+                  <button
+                    onClick={handleDateSortToggle}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      color: activeSort === 'date' ? "var(--color-accent)" : "var(--color-text-secondary)",
+                    }}
+                    title={dateSortOrder === 'desc' ? 'Sorted: Newest first (click to reverse)' : 'Sorted: Oldest first (click to reverse)'}
+                  >
+                    {dateSortOrder === 'desc' ? '▼' : dateSortOrder === 'asc' ? '▲' : '⇅'}
+                  </button>
+                </div>
+              </th>
+              <th style={{ padding: "15px", textAlign: "center", position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <span>Report Count</span>
+                  <button
+                    onClick={handleSortToggle}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      color: activeSort === 'reportCount' ? "var(--color-accent)" : "var(--color-text-secondary)",
+                    }}
+                    title={sortOrder === 'desc' ? 'Sorted: Highest first (click to reverse)' : 'Sorted: Lowest first (click to reverse)'}
+                  >
+                    {sortOrder === 'desc' ? '▼' : sortOrder === 'asc' ? '▲' : '⇅'}
+                  </button>
+                </div>
+              </th>
               <th style={{ padding: "15px", textAlign: "center" }}>Status</th>
               <th style={{ padding: "15px", textAlign: "center", width: '200px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {reports.map((report, index) => (
+            {sortedReports.map((report, index) => (
                 <tr
                   key={`${report.content_type}-${report._group.content_id}`}
                   style={{
@@ -392,7 +465,7 @@ export default function Reports() {
        >
          <div>
            <span>
-             Showing {reports.length} reports
+             Showing {sortedReports.length} reports
            </span>
          </div>
        </div>
