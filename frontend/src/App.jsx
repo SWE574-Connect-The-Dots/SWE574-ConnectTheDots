@@ -16,6 +16,8 @@ import BackOffice from "./pages/BackOffice";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
 import Header from "./components/Header";
+import AccessDenied from "./components/AccessDenied";
+import LoadingSpinner from "./components/LoadingSpinner";
 import api from "./axiosConfig";
 import { API_ENDPOINTS } from "./constants/config";
 import "./ConnectTheDots.css";
@@ -28,6 +30,7 @@ function App() {
     !!localStorage.getItem("token")
   );
   const [currentUser, setCurrentUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(!!localStorage.getItem("token"));
   // const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -41,11 +44,13 @@ function App() {
 
   const fetchCurrentUser = useCallback(async () => {
     if (isAuthenticated) {
+      setUserLoading(true);
       try {
         const token = localStorage.getItem("token");
         if (!token) {
           console.error("No token found");
           setIsAuthenticated(false);
+          setUserLoading(false);
           return;
         }
 
@@ -60,11 +65,13 @@ function App() {
         const is_superuser =
           user.is_superuser ?? response.data.is_superuser ?? false;
         const can_access_admin_dashboard = response.data.can_access_admin_dashboard ?? false;
+        const user_type = response.data.user_type ?? null;
         const userWithFlags = {
           ...user,
           is_staff,
           is_superuser,
           can_access_admin_dashboard,
+          user_type,
         };
         setCurrentUser(userWithFlags);
         localStorage.setItem("is_staff", String(is_staff));
@@ -75,7 +82,11 @@ function App() {
           localStorage.removeItem("token");
           setIsAuthenticated(false);
         }
+      } finally {
+        setUserLoading(false);
       }
+    } else {
+      setUserLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -158,7 +169,17 @@ function App() {
             <Route
               path="/backoffice/*"
               element={
-                isAuthenticated ? <BackOffice /> : <Navigate to="/login" />
+                isAuthenticated ? (
+                  userLoading ? (
+                    <LoadingSpinner />
+                  ) : currentUser?.can_access_admin_dashboard ? (
+                    <BackOffice currentUser={currentUser} />
+                  ) : (
+                    <AccessDenied />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
               }
             />
             <Route

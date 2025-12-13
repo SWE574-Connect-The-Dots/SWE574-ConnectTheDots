@@ -8,5 +8,6 @@ data class User(
     val dateOfBirth: String?,
     val joinedDate: String,
     val ownedSpaces: List<Space> = emptyList(),
-    val joinedSpaces: List<Space> = emptyList()
+    val joinedSpaces: List<Space> = emptyList(),
+    val locationName: String? = null
 )

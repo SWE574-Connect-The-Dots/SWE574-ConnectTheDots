@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.User
+import com.yybb.myapplication.data.network.dto.CountryPosition
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,14 +26,28 @@ sealed interface EditProfileUiState {
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
     private val repository: ProfileRepository,
+    private val countriesRepository: CountriesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<EditProfileUiState>(EditProfileUiState.Loading)
     val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
+    private val _countries = MutableStateFlow<List<CountryPosition>>(emptyList())
+    val countries: StateFlow<List<CountryPosition>> = _countries
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities
+
+    private val _isLoadingCountries = MutableStateFlow(false)
+    val isLoadingCountries: StateFlow<Boolean> = _isLoadingCountries
+
+    private val _isLoadingCities = MutableStateFlow(false)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities
+
     init {
         getProfile()
+        loadCountries()
     }
 
     private fun getProfile() {
@@ -42,10 +58,49 @@ class EditProfileViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
-
-    fun saveProfile(profession: String, bio: String?) {
+    fun loadCountries() {
         viewModelScope.launch {
-            repository.updateProfile(profession, bio)
+            _isLoadingCountries.value = true
+            countriesRepository.getCountries()
+                .onSuccess { countriesList ->
+                    _countries.value = (countriesList ?: emptyList()).sortedBy { it.name }
+                    _isLoadingCountries.value = false
+                }
+                .onFailure {
+                    _isLoadingCountries.value = false
+                }
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _isLoadingCities.value = true
+            _cities.value = emptyList()
+            countriesRepository.getCities(country)
+                .onSuccess { citiesList ->
+                    _cities.value = citiesList.sorted()
+                    _isLoadingCities.value = false
+                }
+                .onFailure {
+                    _isLoadingCities.value = false
+                }
+        }
+    }
+
+    fun saveProfile(
+        profession: String, 
+        bio: String?,
+        city: String?,
+        country: String?
+    ) {
+        viewModelScope.launch {
+            val locationName = if (city != null && country != null) {
+                "$city, $country"
+            } else {
+                null
+            }
+            
+            repository.updateProfile(profession, bio, city, country, locationName)
                 .onSuccess {
                     _uiState.value = EditProfileUiState.Success(it)
                 }

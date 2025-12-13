@@ -197,6 +197,7 @@ fun ProfileContent(
         ProfileInfo("Profession", user.profession)
         ProfileInfo("Bio", user.bio ?: "-")
         ProfileInfo("Date Of Birth", user.dateOfBirth?.let { formatDisplayDate(it) } ?: "-")
+        ProfileInfo("Location", user.locationName ?: "Location not available for this user")
         ProfileInfo("Joined", formatDisplayDate(user.joinedDate))
 
         Spacer(modifier = Modifier.height(24.dp))

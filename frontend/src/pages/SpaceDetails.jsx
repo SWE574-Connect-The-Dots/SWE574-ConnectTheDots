@@ -14,6 +14,10 @@ import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
+import InstanceTypeFilter from "../components/InstanceTypeFilter";
+import InstanceTypeLegend from "../components/InstanceTypeLegend";
+import { getGroupById } from "../config/instanceTypes";
+import { marked } from "marked";
 
 const infoModalStyles = `
 .info-icon-btn {
@@ -443,6 +447,36 @@ const propertySelectionStyles = `
   margin-top: 4px;
 }
 
+.summarize-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.summarize-btn:hover {
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.summarize-btn:active {
+  transform: translateY(0);
+}
+
+.summarize-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .dropdown-item {
   display: flex;
   align-items: center;
@@ -490,6 +524,44 @@ const propertySelectionStyles = `
 }
 `;
 
+const fullscreenGraphStyles = `
+.graph-container-fullscreen {
+  background: var(--color-gray-200) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.graph-container-fullscreen::backdrop {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.fullscreen-exit-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--color-white);
+  border: 2px solid var(--color-white);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.fullscreen-exit-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+}
+`;
 
 const getPropertyLabelWithId = (prop) => {
   const label =
@@ -714,6 +786,8 @@ const SpaceDetails = () => {
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
+  const [topCollaborators, setTopCollaborators] = useState([]);
+  const [showAllCollaborators, setShowAllCollaborators] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -731,6 +805,12 @@ const SpaceDetails = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // AI Summary states
+  const [aiSummary, setAiSummary] = useState(null);
+  const [showAiSummary, setShowAiSummary] = useState(false);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState(null);
 
   const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
   const [simpleSearchResults, setSimpleSearchResults] = useState(null);
@@ -770,6 +850,15 @@ const SpaceDetails = () => {
   
   // Dropdown state
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  const [instanceTypes, setInstanceTypes] = useState([]);
+  const [selectedInstanceTypes, setSelectedInstanceTypes] = useState(new Set());
+  const [showLegend, setShowLegend] = useState(true);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
+  const graphContainerRef = useRef(null);
 
   const {
     nodes,
@@ -801,6 +890,36 @@ const SpaceDetails = () => {
 
     return degrees;
   }, [nodes, edges]);
+
+  const nodesWithColors = useMemo(() => {
+    if (!nodes) return [];
+    
+    return nodes.map(node => {
+      const instanceType = node.instance_type;
+      let color = 'var(--color-success)';
+      let label = null;
+      let icon = null;
+      
+      if (instanceType && instanceType.group_id) {
+        const group = getGroupById(instanceType.group_id);
+        if (group) {
+          color = group.color;
+          label = group.label;
+          icon = group.icon;
+        }
+      }
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          instanceTypeColor: color,
+          instanceTypeLabel: label,
+          instanceTypeIcon: icon
+        }
+      };
+    });
+  }, [nodes]);
 
   const sortedNodes = useMemo(() => {
     if (!existingNodes) return [];
@@ -881,6 +1000,19 @@ const SpaceDetails = () => {
           : [];
         const validNodes = nodesData.filter((n) => n && n.id && n.label);
         setExistingNodes(validNodes);
+
+        try {
+          const topCollaboratorsResponse = await api.get(`/spaces/${id}/top-collaborators/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setTopCollaborators(topCollaboratorsResponse.data?.top_collaborators || []);
+        } catch (error) {
+          console.error("Error fetching top collaborators:", error);
+          setTopCollaborators([]);
+        }
+
         fetchGraphData();
       } catch (error) {
         console.error("Error fetching space data:", error);
@@ -891,6 +1023,29 @@ const SpaceDetails = () => {
 
     fetchData();
   }, [id, fetchGraphData]);
+
+  useEffect(() => {
+    const fetchInstanceTypes = async () => {
+      try {
+        const response = await api.get(`/spaces/${id}/instance-types/`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        const groups = response.data.instance_groups || [];
+        setInstanceTypes(groups);
+        
+        setSelectedInstanceTypes(new Set());
+      } catch (error) {
+        console.error('Error fetching instance groups:', error);
+      }
+    };
+    
+    if (id) {
+      fetchInstanceTypes();
+    }
+  }, [id]);
 
   // Fetch countries on mount
   useEffect(() => {
@@ -1365,10 +1520,83 @@ const SpaceDetails = () => {
     setSelectedNode(node);
   }, []);
 
+  const handleActivityNodeClick = useCallback((nodeId) => {
+    const node = nodes.find(n => n.id === nodeId.toString());
+    if (node) {
+      setSelectedNode(node);
+    }
+  }, [nodes]);
+
+  useEffect(() => {
+    const nodeIdFromQuery = new URLSearchParams(location.search).get("nodeId");
+    if (!nodeIdFromQuery) return;
+    if (!nodes || nodes.length === 0) return;
+
+    const node = nodes.find((n) => n.id === nodeIdFromQuery.toString());
+    if (!node) return;
+
+    setSelectedNode(node);
+
+    const params = new URLSearchParams(location.search);
+    params.delete("nodeId");
+    const newSearch = params.toString();
+    navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ""}`, { replace: true });
+  }, [location.pathname, location.search, navigate, nodes]);
+
   const handleReportSpace = () => {
     setShowReportModal(true);
   };
 
+  const handleAiSummarize = async () => {
+    setLoadingAiSummary(true);
+    setAiSummaryError(null);
+    setShowAiSummary(true);
+    
+    try {
+      const response = await api.post(
+        `/spaces/${id}/summarize/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setAiSummary(response.data);
+    } catch (error) {
+      console.error("Error generating AI summary:", error);
+      setAiSummaryError(error.response?.data?.error || "Failed to generate AI summary");
+    } finally {
+      setLoadingAiSummary(false);
+    }
+  };
+
+  const handleAddCriteria = () => {
+    const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
+    setSearchCriteria([
+      ...searchCriteria,
+      { id: newId, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+  };
+
+  const handleRemoveCriteria = (id) => {
+    if (searchCriteria.length > 1) {
+      setSearchCriteria(searchCriteria.filter(c => c.id !== id));
+    }
+  };
+
+  const handleCriteriaChange = (id, field, value) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const handleToggleLogicalOp = (id) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, logicalOp: c.logicalOp === 'AND' ? 'OR' : 'AND' } : c
+    ));
+  };
   const handleSimpleSearch = async () => {
     if (!simpleSearchQuery.trim()) {
       setSimpleSearchResults(null);
@@ -1511,6 +1739,44 @@ const SpaceDetails = () => {
     setSelectedEdge(edge);
   }, []);
 
+  const handleFullscreenToggle = useCallback(() => {
+    if (!graphContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      graphContainerRef.current.requestFullscreen().then(() => {
+        setIsGraphFullscreen(true);
+      }).catch(err => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsGraphFullscreen(false);
+      }).catch(err => {
+        console.error("Error attempting to exit fullscreen:", err);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsGraphFullscreen(!!document.fullscreenElement);
+    };
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isGraphFullscreen) {
+        handleFullscreenToggle();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', handleEscKey);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isGraphFullscreen, handleFullscreenToggle]);
+
   const canDeleteSpace = () => {
     const username = localStorage.getItem("username");
     const isStaff =
@@ -1585,6 +1851,7 @@ const SpaceDetails = () => {
     }, [showDropdown]);
 
     return (
+      
       <div className="space-actions-dropdown" ref={dropdownRef}>
         <button
           className="dropdown-toggle"
@@ -1607,6 +1874,8 @@ const SpaceDetails = () => {
             >
               Show Space Map
             </button>
+
+            
             
             <button
               className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
@@ -1817,19 +2086,24 @@ const SpaceDetails = () => {
       style={{
         width: "100%",
         margin: "0 auto",
-        padding: "20px 20px 20px 60px",
+        padding: "10px",
         display: "flex",
         overflowX: "hidden",
         boxSizing: "border-box",
-        maxWidth: "100vw",
+        maxWidth: "100%",
       }}
     >
       {/* Inject CSS for property selection */}
       <style>{infoModalStyles}</style>
       <style>{nodeListStyles}</style>
       <style>{propertySelectionStyles}</style>
+      <style>{fullscreenGraphStyles}</style>
 
-      <div style={{ flex: 1, marginRight: "20px" }}>
+      <div style={{ 
+        flex: 1, 
+        marginRight: isRightPanelCollapsed ? "30px" : "10px",
+        transition: "all 0.3s ease"
+      }}>
         <div
           style={{
             display: "flex",
@@ -1864,8 +2138,19 @@ const SpaceDetails = () => {
             >
               ℹ︎
             </button>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="summarize-btn"
+              onClick={handleAiSummarize}
+              disabled={loadingAiSummary || space.is_archived}
+            >
+              <span>✨</span>
+              {loadingAiSummary ? 'Generating...' : 'Summarize'}
+            </button>
             <SpaceActionsDropdown />
           </div>
+        </div>
         </div>
         <p>{space.description}</p>
         
@@ -2707,27 +2992,177 @@ const SpaceDetails = () => {
         {/* Search Results Section */}
 
 
-        {/* Graph Visualization */}
+        {/* Graph Visualization with Filter */}
         <div style={{ marginBottom: "30px" }}>
           <h3>Space Graph</h3>
-          <div
-            style={{
-              width: "100%",
-              height: "600px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              overflow: "hidden",
-              background: "#f8f9fa",
-            }}
-          >
-            <SpaceGraph
-              nodes={nodes}
-              edges={edges}
-              loading={graphLoading}
-              error={graphError}
-              onNodeClick={handleNodeClick}
-              onEdgeClick={handleEdgeClick}
-            />
+          <div style={{ 
+            display: "flex", 
+            gap: isLeftPanelCollapsed ? "0" : "12px", 
+            alignItems: "flex-start",
+            marginLeft: isLeftPanelCollapsed ? "30px" : "0",
+            transition: "all 0.3s ease"
+          }}>
+            {/* Left side: Filter and Legend (Collapsible) */}
+            {!isLeftPanelCollapsed && (
+              <div style={{ width: "240px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <InstanceTypeFilter
+                  instanceTypes={instanceTypes}
+                  selectedTypes={selectedInstanceTypes}
+                  onToggleType={(typeId) => {
+                    const newSet = new Set(selectedInstanceTypes);
+                    if (newSet.has(typeId)) {
+                      newSet.delete(typeId);
+                    } else {
+                      newSet.add(typeId);
+                    }
+                    setSelectedInstanceTypes(newSet);
+                  }}
+                  onSelectAll={() => {
+                    setSelectedInstanceTypes(new Set(instanceTypes.map(t => t.group_id)));
+                  }}
+                  onDeselectAll={() => {
+                    setSelectedInstanceTypes(new Set());
+                  }}
+                />
+                
+                <InstanceTypeLegend
+                  visibleTypes={instanceTypes}
+                  isVisible={showLegend}
+                  onToggle={() => setShowLegend(!showLegend)}
+                />
+              </div>
+            )}
+
+            {/* Graph Container with both toggle buttons */}
+            <div
+              style={{
+                flex: 1,
+                position: "relative"
+              }}
+            >
+              {/* Left Panel Toggle Button */}
+              <button
+                onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  left: isLeftPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isLeftPanelCollapsed ? t("graph.showFilters") : t("graph.hideFilters")}
+              >
+                {isLeftPanelCollapsed ? "►" : "◄"}
+              </button>
+
+              {/* Right Panel Toggle Button */}
+              <button
+                onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  right: isRightPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isRightPanelCollapsed ? t("graph.showSidebar") : t("graph.hideSidebar")}
+              >
+                {isRightPanelCollapsed ? "◄" : "►"}
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <h3 style={{ margin: 0 }}>{t("graph.spaceGraphTitle")}</h3>
+            <button
+              onClick={handleFullscreenToggle}
+              style={{
+                padding: "8px 16px",
+                background: "var(--color-gray-200)",
+                color: "var(--color-text)",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--color-gray-200)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--color-gray-300)"}
+            >
+              <span>⤢</span> {t("graph.fullscreen")}
+            </button>
+          </div>
+              {/* Actual Graph with border and styling */}
+              <div
+                ref={graphContainerRef}
+                className={isGraphFullscreen ? "graph-container-fullscreen" : ""}
+                style={{
+                  width: "100%",
+                  height: isGraphFullscreen ? "100vh" : "600px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  background: "#f8f9fa",
+                  position: "relative",
+                }}
+              >
+            {isGraphFullscreen && (
+              <button
+                className="fullscreen-exit-btn"
+                onClick={handleFullscreenToggle}
+              >
+                <span>⨯</span> {t("graph.exitFullscreen")}
+              </button>
+            )}
+                <SpaceGraph
+                  nodes={nodesWithColors}
+                  edges={edges}
+                  loading={graphLoading}
+                  error={graphError}
+                  onNodeClick={handleNodeClick}
+                  onEdgeClick={handleEdgeClick}
+                  selectedInstanceTypes={selectedInstanceTypes}
+                  isFullscreen={isGraphFullscreen}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2786,53 +3221,6 @@ const SpaceDetails = () => {
               </div>
             )}
           </div>
-        )}
-
-        {/* Revert Graph Section - Only show if collaborator and not archived */}
-        {isCollaborator && !space.is_archived && (
-          <>
-            <h3>Revert Graph to Previous State</h3>
-            {snapshots.length > 0 ? (
-              <select
-                onChange={(e) => {
-                  const snapshotId = e.target.value;
-                  if (!snapshotId) return;
-
-                  api
-                    .post(
-                      `/spaces/${id}/snapshots/revert/`,
-                      { snapshot_id: snapshotId },
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                          )}`,
-                          "Content-Type": "application/json",
-                        },
-                      }
-                    )
-                    .then(() => {
-                      alert(t("space.graphRevertedSuccessfully"));
-                      window.location.reload();
-                    })
-                    .catch((err) => {
-                      alert(t("space.revertFailed"));
-                      console.error(err);
-                    });
-                }}
-              >
-                <option value="">{t("space.selectSnapshotToRevert")}</option>
-                {snapshots.map((snap) => (
-                  <option key={snap.id} value={snap.id}>
-                    {new Date(snap.created_at).toLocaleString()}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p>{t("space.noSnapshotsAvailable")}</p>
-            )}
-            <hr />
-          </>
         )}
 
         {/* Add Node Section - Only show if collaborator and not archived */}
@@ -3287,16 +3675,18 @@ const SpaceDetails = () => {
         )}
       </div>
 
-      {/* Collaborators sidebar */}
-      <div
-        style={{
-          width: "260px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <ActivityStream spaceId={id} dense />
+      {/* Right sidebar (Collapsible) */}
+      {!isRightPanelCollapsed && (
+        <div
+          style={{
+            width: "260px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            transition: "all 0.3s ease"
+          }}
+        >
+          <ActivityStream spaceId={id} dense onNodeClick={handleActivityNodeClick} />
 
         <div
           style={{
@@ -3327,28 +3717,121 @@ const SpaceDetails = () => {
           {isCollaboratorsOpen && (
             <div style={{ padding: "10px" }}>
               {space.collaborators.length > 0 ? (
-                <ul style={{ listStyleType: "none", padding: 0 }}>
-                  {space.collaborators.map((collaborator, index) => (
-                    <li
-                      key={index}
+                <>
+                  {showAllCollaborators ? (
+                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                      {space.collaborators.map((collaborator, index) => (
+                        <li
+                          key={index}
+                          style={{
+                            padding: "8px",
+                            borderBottom:
+                              index < space.collaborators.length - 1
+                                ? `1px solid var(--color-gray-200)`
+                                : "none",
+                            cursor: "pointer",
+                            color: "var(--color-accent)",
+                            textDecoration: "underline",
+                          }}
+                          onClick={() => navigate(`/profile/${collaborator}`)}
+                        >
+                          {collaborator}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {topCollaborators.length > 0 ? (
+                        topCollaborators.slice(0, 5).map((collaborator, index) => (
+                          <div
+                            key={collaborator.id || index}
+                            style={{
+                              padding: "10px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--color-gray-200)",
+                              cursor: "pointer",
+                              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = "translateY(-2px)";
+                              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                            onClick={() => navigate(`/profile/${collaborator.username}`)}
+                          >
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}>
+                              <div style={{
+                                minWidth: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                                background: index < 3 ? "var(--color-danger)" : "var(--color-gray-400)",
+                                color: "var(--color-white)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "11px",
+                                fontWeight: "bold",
+                              }}>
+                                {index + 1}
+                              </div>
+                              <div style={{
+                                fontSize: "14px",
+                                fontWeight: "600",
+                                color: "var(--color-primary-text)",
+                                flex: 1,
+                              }}>
+                                {collaborator.username}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ 
+                          fontSize: "13px", 
+                          color: "var(--color-secondary-text)",
+                          fontStyle: "italic",
+                          padding: "8px"
+                        }}>
+                          {t("space.noContributionData")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {topCollaborators.length > 0 && (
+                    <button
+                      onClick={() => setShowAllCollaborators(!showAllCollaborators)}
                       style={{
+                        width: "100%",
+                        marginTop: "10px",
                         padding: "8px",
-                        borderBottom:
-                          index < space.collaborators.length - 1
-                            ? `1px solid var(--color-gray-200)`
-                            : "none",
+                        background: "var(--color-bg)",
+                        border: "1px solid var(--color-gray-200)",
+                        borderRadius: "4px",
+                        color: "#0076B5",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         cursor: "pointer",
-                        color: "#1a73e8",
-                        textDecoration: "underline",
+                        transition: "background-color 0.2s ease",
                       }}
-                      onClick={() => navigate(`/profile/${collaborator}`)}
+                      onMouseEnter={(e) => e.target.style.background = "var(--color-white)"} 
+                      onMouseLeave={(e) => e.target.style.background = "var(--color-gray-200)"}
                     >
-                      {collaborator}
-                    </li>
-                  ))}
-                </ul>
+                      {showAllCollaborators ? t("space.showTopContributors") : t("space.seeAllCollaborators")}
+                    </button>
+                  )}
+                </>
               ) : (
-                <p>No collaborators yet</p>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text)", fontStyle: "italic" }}>
+                  {t("space.noCollaboratorsYet")}
+                </p>
               )}
             </div>
           )}
@@ -3356,7 +3839,8 @@ const SpaceDetails = () => {
 
         {/* Add discussions component */}
         <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} isArchived={space.is_archived} />
-      </div>
+        </div>
+      )}
 
       {/* Node detail modal */}
       {selectedNode && isCollaborator && (
@@ -3405,6 +3889,239 @@ const SpaceDetails = () => {
 
       {/* Info Modal */}
       <InfoModal />
+      {/* AI Summary Modal */}
+      {showAiSummary && (
+        <div 
+          className="modal-backdrop" 
+          onClick={() => setShowAiSummary(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="ai-summary-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                fontSize: '24px',
+                color: '#1B1F3B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span>✨</span>
+                AI Summary
+              </h2>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingAiSummary && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#666'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #f3f3f3',
+                  borderTop: '4px solid #2D6A4F',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 20px'
+                }}></div>
+                <p style={{ margin: 0, fontSize: '16px' }}>
+                  Generating AI summary...
+                </p>
+                <style>
+                  {`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            {aiSummaryError && !loadingAiSummary && (
+              <div style={{
+                padding: '20px',
+                backgroundColor: '#fee',
+                borderRadius: '8px',
+                color: '#c33',
+                marginBottom: '20px'
+              }}>
+                <p style={{ margin: 0, fontWeight: '600' }}>Error</p>
+                <p style={{ margin: '8px 0 0 0' }}>{aiSummaryError}</p>
+              </div>
+            )}
+
+            {aiSummary && !loadingAiSummary && !aiSummaryError && (
+              <div>
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  gap: '20px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Nodes
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.node_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Edges
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.edge_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Discussions
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.discussion_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Collaborators
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.collaborator_count || 0}
+                    </div>
+                  </div>
+                </div>
+
+                <div 
+                  className="ai-summary-content"
+                  style={{
+                    fontSize: '15px',
+                    lineHeight: '1.7',
+                    color: '#333'
+                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: marked.parse(aiSummary.summary || '') 
+                  }}
+                />
+                
+                <style>
+                  {`
+                    .ai-summary-content h3 {
+                      color: #1B1F3B;
+                      font-size: 18px;
+                      font-weight: 600;
+                      margin: 20px 0 10px 0;
+                      border-bottom: 2px solid #2D6A4F;
+                      padding-bottom: 5px;
+                    }
+                    
+                    .ai-summary-content h3:first-child {
+                      margin-top: 0;
+                    }
+                    
+                    .ai-summary-content strong {
+                      color: #2D6A4F;
+                      font-weight: 600;
+                    }
+                    
+                    .ai-summary-content p {
+                      margin: 12px 0;
+                    }
+                    
+                    .ai-summary-content ul {
+                      margin: 10px 0;
+                      padding-left: 25px;
+                    }
+                    
+                    .ai-summary-content li {
+                      margin: 6px 0;
+                    }
+                    
+                    .ai-summary-content code {
+                      background-color: #f5f5f5;
+                      padding: 2px 6px;
+                      border-radius: 3px;
+                      font-family: monospace;
+                      font-size: 14px;
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            <div style={{ marginTop: '30px', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#2D6A4F',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

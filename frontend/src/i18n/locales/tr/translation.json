@@ -20,6 +20,7 @@
     "next": "İleri",
     "yes": "Evet",
     "no": "Hayır",
+    "ok": "Tamam",
     "processing": "İşleniyor...",
     "searching": "Aranıyor...",
     "report": "Raporla",
@@ -110,7 +111,11 @@
     "connections": "bağlantı",
     "recentlyAdded": "Yen Eklenenler",
     "mostConnections": "En Fazla Bağlantısı Olanlar",
-    "nameAZ": "İsme göre sırala(A-Z)"
+    "nameAZ": "İsme göre sırala(A-Z)",
+    "noContributionData": "Katkı verisi mevcut değil",
+    "seeAllCollaborators": "Tüm Katılımcıları Gör",
+    "showTopContributors": "En Çok Katkı Sağlayanları Göster",
+    "noCollaboratorsYet": "Henüz katılımcı yok"
   },
   "spaceAnalytics": {
     "dashboard": "Alan Analitik Paneli",
@@ -164,6 +169,10 @@
     "nodeDetails": "Düğüm Detayları",
     "edgeDetails": "Bağlantı Detayları",
     "connectedNodes": "Bağlı Düğümler",
+    "showFilters": "Filtreleri Göster",
+    "hideFilters": "Filtreleri Gizle",
+    "showSidebar": "Kenar Çubuğunu Göster",
+    "hideSidebar": "Kenar Çubuğunu Gizle",
     "source": "Kaynak",
     "target": "Hedef",
     "wikidataProperty": "Wikidata Özelliği",
@@ -188,7 +197,10 @@
     "editEdgeLabelDirection": "Bağlantı Etiketi ve Yönünü Düzenle",
     "updateLabelDirection": "Etiket ve Yönü Güncelle",
     "edgeExistsInDirection": "Bu yönde bağlantı zaten mevcut",
-    "toggleDirection": "Yönü değiştir"
+    "toggleDirection": "Yönü değiştir",
+    "fullscreen": "Tam Ekran",
+    "exitFullscreen": "Tam Ekrandan Çık",
+    "spaceGraphTitle": "Alan Grafiği"
   },
   "activity": {
     "globalTitle": "Son etkinlikler",
@@ -269,6 +281,30 @@
     "of": "/",
     "usersCount": "kullanıcı"
   },
+  "instanceTypes": {
+    "title": "Örnek Türleri",
+    "filterByType": "Türe Göre Filtrele",
+    "selectAll": "Tümünü Seç",
+    "deselectAll": "Tümünü Kaldır",
+    "legend": "Renk Açıklaması",
+    "showLegend": "Açıklamayı Göster",
+    "hideLegend": "Açıklamayı Gizle",
+    "noInstanceType": "Örnek türü yok",
+    "otherTypes": "Diğer türler",
+    "filtering": "Gösteriliyor",
+    "groups": {
+      "HUMAN": "İnsan",
+      "CITY": "Şehir",
+      "COUNTRY": "Ülke",
+      "SETTLEMENT": "Yerleşim",
+      "ORGANIZATION": "Organizasyon",
+      "GEOGRAPHIC_FEATURE": "Coğrafi Özellik",
+      "SPECIES": "Tür",
+      "WORK": "Eser",
+      "BUILDING": "Bina",
+      "ADMINISTRATIVE": "İdari Bölüm"
+    }
+  },
   "errors": {
     "failedToLoadProfile": "Profil verileri yüklenemedi",
     "failedToUpdateProfile": "Profil verileri güncellenemedi",
@@ -289,7 +325,9 @@
     "unauthorized": "Bu işlemi gerçekleştirmek için yetkiniz yok.",
     "notFound": "İstenen kaynak bulunamadı.",
     "validationError": "Lütfen bilgilerinizi kontrol edip tekrar deneyin.",
-    "failedToLoadActivity": "Etkinlik akışı yüklenemedi."
+    "failedToLoadActivity": "Etkinlik akışı yüklenemedi.",
+    "accessDenied": "Erişim Engellendi",
+    "accessDeniedMessage": "Backoffice kontrol paneline erişim yetkiniz bulunmamaktadır. Bu alan yalnızca yöneticiler, moderatörler ve alan oluşturanlar için kullanılabilir."
   },
   "messages": {
     "saveSuccess": "Değişiklikler başarıyla kaydedildi.",

@@ -5,7 +5,12 @@ import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.SpaceNode
 import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.data.network.dto.AddNodeResponse
+import com.yybb.myapplication.data.network.dto.CountryPosition
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
+import com.yybb.myapplication.data.network.dto.NodeLocationData
+import com.yybb.myapplication.data.network.dto.NominatimCoordinates
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationResponse
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import com.yybb.myapplication.data.repository.SpaceNodesRepository
 import junit.framework.TestCase.assertEquals
@@ -34,6 +39,7 @@ class AddNodeViewModelTest {
     private lateinit var viewModel: AddNodeViewModel
     private lateinit var mockNodeDetailsRepository: SpaceNodeDetailsRepository
     private lateinit var mockNodesRepository: SpaceNodesRepository
+    private lateinit var mockCountriesRepository: CountriesRepository
     private lateinit var savedStateHandle: SavedStateHandle
 
     private val spaceId = "space123"
@@ -43,12 +49,12 @@ class AddNodeViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockNodeDetailsRepository = mock()
         mockNodesRepository = mock()
+        mockCountriesRepository = mock()
         savedStateHandle = SavedStateHandle(mapOf("spaceId" to spaceId))
     }
 
     @Test
     fun `initialization should load space nodes`() = runTest {
-        // Given
         val mockNodes = listOf(
             SpaceNode(1, "Node 1", null, null, null, null, null, null, null, null, 0),
             SpaceNode(2, "Node 2", null, null, null, null, null, null, null, null, 0)
@@ -56,18 +62,15 @@ class AddNodeViewModelTest {
         whenever(mockNodesRepository.getSpaceNodes(spaceId))
             .thenReturn(Result.success(mockNodes))
 
-        // When
-        viewModel = AddNodeViewModel(mockNodeDetailsRepository, mockNodesRepository, savedStateHandle)
+        viewModel = AddNodeViewModel(mockNodeDetailsRepository, mockNodesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isLoadingNodes.value)
         assertEquals(2, viewModel.availableNodes.value.size)
     }
 
     @Test
     fun `searchWikidataEntities should search entities successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "test entity"
         val mockResults = listOf(
@@ -77,11 +80,9 @@ class AddNodeViewModelTest {
         whenever(mockNodeDetailsRepository.searchWikidataEntities(query))
             .thenReturn(Result.success(mockResults))
 
-        // When
         viewModel.searchWikidataEntities(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isSearchingWikidata.value)
         assertEquals(2, viewModel.wikidataSearchResults.value.size)
         assertNull(viewModel.wikidataSearchError.value)
@@ -89,18 +90,15 @@ class AddNodeViewModelTest {
 
     @Test
     fun `searchWikidataEntities should handle error on search failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "test entity"
         val errorMessage = "Search failed"
         whenever(mockNodeDetailsRepository.searchWikidataEntities(query))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        // When
         viewModel.searchWikidataEntities(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isSearchingWikidata.value)
         assertTrue(viewModel.wikidataSearchResults.value.isEmpty())
         assertEquals(errorMessage, viewModel.wikidataSearchError.value)
@@ -108,7 +106,6 @@ class AddNodeViewModelTest {
 
     @Test
     fun `selectEntity should set selected entity and load properties`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val mockProperties = listOf(
@@ -117,11 +114,9 @@ class AddNodeViewModelTest {
         whenever(mockNodeDetailsRepository.getWikidataEntityProperties("Q1"))
             .thenReturn(Result.success(mockProperties))
 
-        // When
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // Then
         assertEquals(entity, viewModel.selectedEntity.value)
         assertTrue(viewModel.wikidataSearchResults.value.isEmpty())
         assertEquals(1, viewModel.entityProperties.value.size)
@@ -130,18 +125,15 @@ class AddNodeViewModelTest {
 
     @Test
     fun `selectEntity should handle error on properties load failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val errorMessage = "Properties load failed"
         whenever(mockNodeDetailsRepository.getWikidataEntityProperties("Q1"))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        // When
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // Then
         assertEquals(entity, viewModel.selectedEntity.value)
         assertTrue(viewModel.entityProperties.value.isEmpty())
         assertEquals(errorMessage, viewModel.propertiesError.value)
@@ -149,21 +141,17 @@ class AddNodeViewModelTest {
 
     @Test
     fun `updatePropertySearchQuery should update search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "test query"
 
-        // When
         viewModel.updatePropertySearchQuery(query)
         advanceUntilIdle()
 
-        // Then
         assertEquals(query, viewModel.propertySearchQuery.value)
     }
 
     @Test
     fun `togglePropertySelection should add property to selected`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -173,17 +161,14 @@ class AddNodeViewModelTest {
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // When
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // Then
         assertTrue(viewModel.selectedProperties.value.contains("prop1"))
     }
 
     @Test
     fun `togglePropertySelection should remove property from selected when already selected`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -195,17 +180,14 @@ class AddNodeViewModelTest {
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // When
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.selectedProperties.value.contains("prop1"))
     }
 
     @Test
     fun `searchEdgeLabelOptions should search with query length bigger than 2`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "test"
         val mockResults = listOf(
@@ -214,40 +196,32 @@ class AddNodeViewModelTest {
         whenever(mockNodeDetailsRepository.searchWikidataProperties(query))
             .thenReturn(Result.success(mockResults))
 
-        // When
         viewModel.searchEdgeLabelOptions(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertEquals(1, viewModel.edgeLabelSearchResults.value.size)
     }
 
     @Test
     fun `searchEdgeLabelOptions should not search with query length less than or equal 2`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "te"
 
-        // When
         viewModel.searchEdgeLabelOptions(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertTrue(viewModel.edgeLabelSearchResults.value.isEmpty())
     }
 
     @Test
     fun `resetEdgeLabelSearch should clear search results`() = runTest {
-        // Given
         setupViewModelWithMocks()
 
-        // When
         viewModel.resetEdgeLabelSearch()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertTrue(viewModel.edgeLabelSearchResults.value.isEmpty())
         assertNull(viewModel.edgeLabelSearchError.value)
@@ -255,21 +229,17 @@ class AddNodeViewModelTest {
 
     @Test
     fun `createNode should fail when no entity is selected`() = runTest {
-        // Given
         setupViewModelWithMocks()
 
-        // When
         viewModel.createNode(null, "", true, null)
         advanceUntilIdle()
 
-        // Then
         assertNotNull(viewModel.createNodeError.value)
         assertTrue(viewModel.createNodeError.value!!.contains("select an entity"))
     }
 
     @Test
     fun `createNode should fail when relatedNodeId is provided but edgeLabel is blank`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -279,18 +249,15 @@ class AddNodeViewModelTest {
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // When
         viewModel.createNode("node123", "", true, null)
         advanceUntilIdle()
 
-        // Then
         assertNotNull(viewModel.createNodeError.value)
         assertTrue(viewModel.createNodeError.value!!.contains("edge label"))
     }
 
     @Test
     fun `createNode should create node successfully without connection`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -309,11 +276,9 @@ class AddNodeViewModelTest {
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // When
         viewModel.createNode(null, "", true, null)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isCreatingNode.value)
         assertNotNull(viewModel.createNodeSuccess.value)
         assertEquals("Node created successfully", viewModel.createNodeSuccess.value)
@@ -321,7 +286,6 @@ class AddNodeViewModelTest {
 
     @Test
     fun `createNode should create node with connection successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val edgeProperty = WikidataProperty("P1", "Property 1", "Description 1", "url1")
@@ -341,11 +305,9 @@ class AddNodeViewModelTest {
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // When
         viewModel.createNode("node123", "connected to", true, edgeProperty)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isCreatingNode.value)
         assertNotNull(viewModel.createNodeSuccess.value)
         verify(mockNodeDetailsRepository).addNode(eq(spaceId), any())
@@ -353,7 +315,6 @@ class AddNodeViewModelTest {
 
     @Test
     fun `createNode should handle error on node creation failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -366,48 +327,39 @@ class AddNodeViewModelTest {
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // When
         viewModel.createNode(null, "", true, null)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isCreatingNode.value)
         assertEquals(errorMessage, viewModel.createNodeError.value)
     }
 
     @Test
     fun `clearWikidataSearchError should clear error`() = runTest {
-        // Given
         setupViewModelWithMocks()
         viewModel.searchWikidataEntities("test")
         advanceUntilIdle()
 
-        // When
         viewModel.clearWikidataSearchError()
         advanceUntilIdle()
 
-        // Then
         assertNull(viewModel.wikidataSearchError.value)
     }
 
     @Test
     fun `clearCreateNodeError should clear error`() = runTest {
-        // Given
         setupViewModelWithMocks()
         viewModel.createNode(null, "", true, null)
         advanceUntilIdle()
 
-        // When
         viewModel.clearCreateNodeError()
         advanceUntilIdle()
 
-        // Then
         assertNull(viewModel.createNodeError.value)
     }
 
     @Test
     fun `clearCreateNodeSuccess should clear success message`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
@@ -426,17 +378,14 @@ class AddNodeViewModelTest {
         viewModel.createNode(null, "", true, null)
         advanceUntilIdle()
 
-        // When
         viewModel.clearCreateNodeSuccess()
         advanceUntilIdle()
 
-        // Then
         assertNull(viewModel.createNodeSuccess.value)
     }
 
     @Test
     fun `filteredProperties should filter by search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
         val property1 = createMockNodeProperty("prop1", "Test Property", "Value 1")
@@ -447,11 +396,9 @@ class AddNodeViewModelTest {
         viewModel.selectEntity(entity)
         advanceUntilIdle()
 
-        // When
         viewModel.updatePropertySearchQuery("Test")
         advanceUntilIdle()
 
-        // Then
         val filtered = viewModel.filteredProperties.value
         assertTrue(filtered.all { 
             it.propertyLabel.contains("Test", ignoreCase = true) || 
@@ -459,11 +406,248 @@ class AddNodeViewModelTest {
         })
     }
 
+    @Test
+    fun `loadCountries should load countries successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCountries = listOf(
+            CountryPosition("United States", "US", -95.7129, 37.0902),
+            CountryPosition("Turkey", "TR", 35.2433, 38.9637)
+        )
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.success(mockCountries))
+
+        viewModel.loadCountries()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCountries.value)
+        assertEquals(2, viewModel.countries.value.size)
+        assertEquals("Turkey", viewModel.countries.value[0].name) // Sorted by name
+        assertEquals("United States", viewModel.countries.value[1].name)
+    }
+
+    @Test
+    fun `loadCountries should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.failure(Exception("Failed to load countries")))
+
+        viewModel.loadCountries()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCountries.value)
+        assertTrue(viewModel.countries.value.isEmpty())
+    }
+
+    @Test
+    fun `loadCities should load cities successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCities = listOf("Istanbul", "Ankara", "Izmir")
+        whenever(mockCountriesRepository.getCities("Turkey"))
+            .thenReturn(Result.success(mockCities))
+
+        viewModel.loadCities("Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCities.value)
+        assertEquals(3, viewModel.cities.value.size)
+        assertEquals("Ankara", viewModel.cities.value[0]) // Sorted
+        assertEquals("Istanbul", viewModel.cities.value[1])
+        assertEquals("Izmir", viewModel.cities.value[2])
+    }
+
+    @Test
+    fun `loadCities should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockCountriesRepository.getCities("Turkey"))
+            .thenReturn(Result.failure(Exception("Failed to load cities")))
+
+        viewModel.loadCities("Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCities.value)
+        assertTrue(viewModel.cities.value.isEmpty())
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should get coordinates successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCoordinates = NominatimCoordinates(
+            displayName = "Istanbul, Turkey",
+            latitude = 41.0082,
+            longitude = 28.9784
+        )
+        whenever(mockNodeDetailsRepository.getCoordinatesFromAddress("Istanbul, Turkey"))
+            .thenReturn(Result.success(mockCoordinates))
+
+        viewModel.getCoordinatesFromAddress("Istanbul", "Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGettingCoordinates.value)
+        assertNotNull(viewModel.coordinatesResult.value)
+        assertEquals(41.0082, viewModel.coordinatesResult.value!!.latitude)
+        assertEquals(28.9784, viewModel.coordinatesResult.value!!.longitude)
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should return null when city or country is null`() = runTest {
+        setupViewModelWithMocks()
+
+        viewModel.getCoordinatesFromAddress(null, "Turkey")
+        advanceUntilIdle()
+
+        assertNull(viewModel.coordinatesResult.value)
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockNodeDetailsRepository.getCoordinatesFromAddress("Istanbul, Turkey"))
+            .thenReturn(Result.failure(Exception("Failed to get coordinates")))
+
+        viewModel.getCoordinatesFromAddress("Istanbul", "Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGettingCoordinates.value)
+        assertNull(viewModel.coordinatesResult.value)
+    }
+
+    @Test
+    fun `saveLocationData should save location data successfully`() = runTest {
+        setupViewModelWithMocks()
+
+        viewModel.saveLocationData(
+            country = "Turkey",
+            city = "Istanbul",
+            locationName = "Taksim Square",
+            latitude = 41.0370,
+            longitude = 28.9850
+        )
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.locationData.value)
+        assertEquals("Turkey", viewModel.locationData.value!!.country)
+        assertEquals("Istanbul", viewModel.locationData.value!!.city)
+        assertEquals("Taksim Square", viewModel.locationData.value!!.locationName)
+        assertEquals(41.0370, viewModel.locationData.value!!.latitude)
+        assertEquals(28.9850, viewModel.locationData.value!!.longitude)
+        assertFalse(viewModel.showLocationDialog.value)
+    }
+
+    @Test
+    fun `saveLocationData should filter blank location name`() = runTest {
+        setupViewModelWithMocks()
+
+        viewModel.saveLocationData(
+            country = "Turkey",
+            city = "Istanbul",
+            locationName = "   ",
+            latitude = null,
+            longitude = null
+        )
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.locationData.value)
+        assertNull(viewModel.locationData.value!!.locationName)
+    }
+
+    @Test
+    fun `createNode should include location data in request`() = runTest {
+        setupViewModelWithMocks()
+        val entity = WikidataProperty("Q1", "Entity 1", "Description 1", "url1")
+        val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
+        val addNodeResponse = AddNodeResponse("Node created successfully")
+        val snapshotResponse = CreateSnapshotResponse(1, "2024-01-01")
+        val updateLocationResponse = UpdateNodeLocationResponse(
+            "Location updated",
+            NodeLocationData(
+                country = "Turkey",
+                city = "Istanbul",
+                district = null,
+                street = null,
+                latitude = 41.0370,
+                longitude = 28.9850,
+                locationName = "Taksim Square"
+            )
+        )
+
+        whenever(mockNodeDetailsRepository.getWikidataEntityProperties("Q1"))
+            .thenReturn(Result.success(listOf(property)))
+        whenever(mockNodeDetailsRepository.addNode(eq(spaceId), any()))
+            .thenReturn(Result.success(addNodeResponse))
+        whenever(mockNodeDetailsRepository.createSnapshot(spaceId))
+            .thenReturn(Result.success(snapshotResponse))
+        whenever(mockNodeDetailsRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(listOf(
+                SpaceNode(1, "Entity 1", "Q1", null, null, null, null, null, null, null, 0)
+            )))
+        whenever(mockNodeDetailsRepository.updateNodeLocation(
+            eq(spaceId),
+            eq("1"),
+            eq("Turkey"),
+            eq("Istanbul"),
+            eq("Taksim Square"),
+            eq(41.0370),
+            eq(28.9850)
+        )).thenReturn(Result.success(updateLocationResponse))
+
+        viewModel.selectEntity(entity)
+        advanceUntilIdle()
+
+        viewModel.saveLocationData(
+            country = "Turkey",
+            city = "Istanbul",
+            locationName = "Taksim Square",
+            latitude = 41.0370,
+            longitude = 28.9850
+        )
+        advanceUntilIdle()
+
+        viewModel.createNode(null, "", true, null)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isCreatingNode.value)
+        assertNotNull(viewModel.createNodeSuccess.value)
+        verify(mockNodeDetailsRepository).addNode(eq(spaceId), any())
+        verify(mockNodeDetailsRepository).updateNodeLocation(
+            eq(spaceId),
+            eq("1"),
+            eq("Turkey"),
+            eq("Istanbul"),
+            eq("Taksim Square"),
+            eq(41.0370),
+            eq(28.9850)
+        )
+    }
+
+    @Test
+    fun `showLocationDialog should set showLocationDialog to true`() = runTest {
+        setupViewModelWithMocks()
+
+        viewModel.showLocationDialog()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.showLocationDialog.value)
+    }
+
+    @Test
+    fun `hideLocationDialog should set showLocationDialog to false`() = runTest {
+        setupViewModelWithMocks()
+        viewModel.showLocationDialog()
+        advanceUntilIdle()
+
+        viewModel.hideLocationDialog()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.showLocationDialog.value)
+    }
+
     // Helper functions
     private suspend fun setupViewModelWithMocks() {
         whenever(mockNodesRepository.getSpaceNodes(spaceId))
             .thenReturn(Result.success(emptyList()))
-        viewModel = AddNodeViewModel(mockNodeDetailsRepository, mockNodesRepository, savedStateHandle)
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.success(emptyList()))
+        viewModel = AddNodeViewModel(mockNodeDetailsRepository, mockNodesRepository, mockCountriesRepository, savedStateHandle)
     }
 
     private fun createMockNodeProperty(

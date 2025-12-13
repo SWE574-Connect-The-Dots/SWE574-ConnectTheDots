@@ -29,3 +29,4 @@ tomlkit==0.13.2
 urllib3==2.3.0
 unittest-xml-reporting
 neo4j>=5.15.0
+google-generativeai==0.8.3

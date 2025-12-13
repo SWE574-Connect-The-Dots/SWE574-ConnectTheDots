@@ -175,8 +175,8 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             EditProfileScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
-                onSave = { profession, bio ->
-                    viewModel.saveProfile(profession, bio)
+                onSave = { profession, bio, city, country ->
+                    viewModel.saveProfile(profession, bio, city, country)
                     navController.popBackStack()
                 }
             )

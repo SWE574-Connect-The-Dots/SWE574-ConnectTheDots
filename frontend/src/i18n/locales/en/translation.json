@@ -20,6 +20,7 @@
     "next": "Next",
     "yes": "Yes",
     "no": "No",
+    "ok": "OK",
     "processing": "Processing...",
     "searching": "Searching...",
     "report": "Report",
@@ -110,7 +111,11 @@
     "connections": "connections",
     "recentlyAdded": "Recently Added",
     "mostConnections": "Most Connections",
-    "nameAZ": "Name (A-Z)"
+    "nameAZ": "Name (A-Z)",
+    "noContributionData": "No contribution data available",
+    "seeAllCollaborators": "See All Collaborators",
+    "showTopContributors": "Show Top Contributors",
+    "noCollaboratorsYet": "No collaborators yet"
   },
   "spaceAnalytics": {
     "dashboard": "Space Analytics Dashboard",
@@ -164,6 +169,10 @@
     "nodeDetails": "Node Details",
     "edgeDetails": "Edge Details",
     "connectedNodes": "Connected Nodes",
+    "showFilters": "Show Filters",
+    "hideFilters": "Hide Filters",
+    "showSidebar": "Show Sidebar",
+    "hideSidebar": "Hide Sidebar",
     "source": "Source",
     "target": "Target",
     "wikidataProperty": "Wikidata Property",
@@ -188,7 +197,10 @@
     "editEdgeLabelDirection": "Edit Edge Label & Direction",
     "updateLabelDirection": "Update Label & Direction",
     "edgeExistsInDirection": "Edge in this direction already exists",
-    "toggleDirection": "Toggle direction"
+    "toggleDirection": "Toggle direction",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
+    "spaceGraphTitle": "Space Graph"
   },
   "activity": {
     "globalTitle": "Latest activity",
@@ -269,6 +281,30 @@
     "of": "of",
     "usersCount": "users"
   },
+  "instanceTypes": {
+    "title": "Instance Types",
+    "filterByType": "Filter by Type",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "legend": "Color Legend",
+    "showLegend": "Show Legend",
+    "hideLegend": "Hide Legend",
+    "noInstanceType": "No instance type",
+    "otherTypes": "Other types",
+    "filtering": "Showing",
+    "groups": {
+      "HUMAN": "Human",
+      "CITY": "City",
+      "COUNTRY": "Country",
+      "SETTLEMENT": "Settlement",
+      "ORGANIZATION": "Organization",
+      "GEOGRAPHIC_FEATURE": "Geographic Feature",
+      "SPECIES": "Species",
+      "WORK": "Work",
+      "BUILDING": "Building",
+      "ADMINISTRATIVE": "Administrative Division"
+    }
+  },
   "errors": {
     "failedToLoadProfile": "Failed to load profile data",
     "failedToUpdateProfile": "Failed to update profile data",
@@ -289,7 +325,9 @@
     "unauthorized": "You are not authorized to perform this action.",
     "notFound": "The requested resource was not found.",
     "validationError": "Please check your input and try again.",
-    "failedToLoadActivity": "Failed to load activity stream."
+    "failedToLoadActivity": "Failed to load activity stream.",
+    "accessDenied": "Access Denied",
+    "accessDeniedMessage": "You don't have permission to access the Backoffice dashboard. This area is only available to administrators, moderators, and space creators."
   },
   "messages": {
     "saveSuccess": "Changes saved successfully.",

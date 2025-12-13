@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,10 +20,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -71,15 +76,60 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var profession by remember { mutableStateOf("") }
     var dateOfBirth by remember { mutableStateOf("") }
-    var agreeToShareLocation by remember { mutableStateOf(false) }
+    var selectedCountry by remember { mutableStateOf<String?>(null) }
+    var selectedCity by remember { mutableStateOf<String?>(null) }
+    var countrySearchQuery by remember { mutableStateOf("") }
+    var citySearchQuery by remember { mutableStateOf("") }
     var isDatePickerOpen by remember { mutableStateOf(false) }
+    var isCountryDropdownExpanded by remember { mutableStateOf(false) }
+    var isCityDropdownExpanded by remember { mutableStateOf(false) }
 
     val state by viewModel.viewState.collectAsState()
+    val countries by viewModel.countries.collectAsState()
+    val cities by viewModel.cities.collectAsState()
+    val isLoadingCountries by viewModel.isLoadingCountries.collectAsState()
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
 
     viewModel.eventFlow.CollectAsEffect { event ->
         if (event is AuthEvent.NavigateToLogin) {
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.AuthGraph.route) { inclusive = true }
+            }
+        }
+    }
+
+    // Load cities when country is selected
+    androidx.compose.runtime.LaunchedEffect(selectedCountry) {
+        if (selectedCountry != null) {
+            selectedCity = null // Reset city when country changes
+            citySearchQuery = "" // Reset city search
+            viewModel.loadCities(selectedCountry!!)
+        } else {
+            selectedCity = null
+            citySearchQuery = ""
+        }
+    }
+
+    // Filter countries based on search query - optimized with remember
+    val filteredCountries = remember(countries, countrySearchQuery) {
+        val query = countrySearchQuery.trim()
+        if (query.isEmpty()) {
+            countries
+        } else {
+            countries.filter { country ->
+                country.name.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    // Filter cities based on search query - optimized with remember
+    val filteredCities = remember(cities, citySearchQuery) {
+        val query = citySearchQuery.trim()
+        if (query.isEmpty()) {
+            cities
+        } else {
+            cities.filter { city ->
+                city.contains(query, ignoreCase = true)
             }
         }
     }
@@ -99,6 +149,44 @@ fun RegisterScreen(
         )
     }
 
+    // 🔹 Show loading dialog when fetching countries
+    if (isLoadingCountries) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Loading Countries") },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Please wait while we load the countries...")
+                }
+            },
+            confirmButton = { }
+        )
+    }
+
+    // 🔹 Show loading dialog when fetching cities
+    if (isLoadingCities && selectedCountry != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Loading Cities") },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Please wait while we load cities for $selectedCountry...")
+                }
+            },
+            confirmButton = { }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -114,6 +202,8 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Disable form while loading countries initially
+            val isFormEnabled = !isLoadingCountries
             Text(
                 text = stringResource(id = R.string.headline),
                 fontSize = 30.sp,
@@ -128,6 +218,7 @@ fun RegisterScreen(
                 "example@gmail.com",
                 isEmail = true,
                 isProfession = false,
+                enabled = isFormEnabled
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -137,7 +228,8 @@ fun RegisterScreen(
                 { username = it },
                 "johnDoe",
                 isEmail = false,
-                isProfession = false
+                isProfession = false,
+                enabled = isFormEnabled
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -147,7 +239,8 @@ fun RegisterScreen(
                 { password = it },
                 "********",
                 isEmail = false,
-                isProfession = false
+                isProfession = false,
+                enabled = isFormEnabled
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -159,7 +252,8 @@ fun RegisterScreen(
                 },
                 "Teacher",
                 isEmail = false,
-                isProfession = true
+                isProfession = true,
+                enabled = isFormEnabled
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -174,7 +268,7 @@ fun RegisterScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight()
-                        .clickable { isDatePickerOpen = true }
+                        .clickable(enabled = isFormEnabled) { isDatePickerOpen = true }
                 ) {
                     OutlinedTextField(
                         value = dateOfBirth,
@@ -187,7 +281,7 @@ fun RegisterScreen(
                                 painter = painterResource(id = R.drawable.calendar),
                                 contentDescription = "Select Date",
                                 modifier = Modifier
-                                    .clickable { isDatePickerOpen = true }
+                                    .clickable(enabled = isFormEnabled) { isDatePickerOpen = true }
                             )
                         },
                         enabled = false
@@ -216,21 +310,171 @@ fun RegisterScreen(
                 )
             }
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Checkbox(
-                    checked = agreeToShareLocation,
-                    onCheckedChange = { agreeToShareLocation = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Color.Black,
-                        uncheckedColor = Color.Gray
-                    )
-                )
+            // Country Dropdown
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = stringResource(id = R.string.location_consent_text),
-                    color = Color.Red,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 24.dp)
+                    text = "Country",
+                    fontSize = 14.sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
+                val countryFocusRequester = remember { FocusRequester() }
+                ExposedDropdownMenuBox(
+                    expanded = isCountryDropdownExpanded,
+                    onExpandedChange = { expanded ->
+                        isCountryDropdownExpanded = expanded
+                    }
+                ) {
+                    OutlinedTextField(
+                        value = countrySearchQuery,
+                        onValueChange = { query ->
+                            countrySearchQuery = query
+                            // Always keep dropdown open while typing
+                            isCountryDropdownExpanded = true
+                        },
+                        placeholder = { Text("Search or Select Country") },
+                        trailingIcon = {
+                            if (isLoadingCountries) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isCountryDropdownExpanded
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                            .focusRequester(countryFocusRequester),
+                        enabled = !isLoadingCountries
+                    )
+                    // Keep focus when typing or when dropdown opens
+                    LaunchedEffect(isCountryDropdownExpanded, countrySearchQuery) {
+                        if (isCountryDropdownExpanded) {
+                            countryFocusRequester.requestFocus()
+                        }
+                    }
+                    ExposedDropdownMenu(
+                        expanded = isCountryDropdownExpanded && !isLoadingCountries,
+                        onDismissRequest = { 
+                            isCountryDropdownExpanded = false
+                            // Don't reset search query - let user keep their search
+                        },
+                        modifier = Modifier.heightIn(max = 300.dp)
+                    ) {
+                        if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No countries found") },
+                                onClick = { }
+                            )
+                        } else {
+                            // Limit items for better performance, show first 100 matches
+                            val displayCountries = filteredCountries.take(100)
+                            displayCountries.forEach { country ->
+                                DropdownMenuItem(
+                                    text = { Text(country.name) },
+                                    onClick = {
+                                        selectedCountry = country.name
+                                        countrySearchQuery = country.name
+                                        isCountryDropdownExpanded = false
+                                    }
+                                )
+                            }
+                            if (filteredCountries.size > 100) {
+                                DropdownMenuItem(
+                                    text = { Text("... and ${filteredCountries.size - 100} more. Refine your search.") },
+                                    onClick = { }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // City Dropdown (only visible when country is selected)
+            if (selectedCountry != null) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "City",
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    val cityFocusRequester = remember { FocusRequester() }
+                    ExposedDropdownMenuBox(
+                        expanded = isCityDropdownExpanded,
+                        onExpandedChange = { expanded ->
+                            isCityDropdownExpanded = expanded
+                        }
+                    ) {
+                        OutlinedTextField(
+                            value = citySearchQuery,
+                            onValueChange = { query ->
+                                citySearchQuery = query
+                                // Always keep dropdown open while typing
+                                isCityDropdownExpanded = true
+                            },
+                            placeholder = { Text("Search or Select City") },
+                            trailingIcon = {
+                                if (isLoadingCities) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                } else {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = isCityDropdownExpanded
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                                .focusRequester(cityFocusRequester),
+                            enabled = !isLoadingCities
+                        )
+                        // Keep focus when typing or when dropdown opens
+                        LaunchedEffect(isCityDropdownExpanded, citySearchQuery) {
+                            if (isCityDropdownExpanded) {
+                                cityFocusRequester.requestFocus()
+                            }
+                        }
+                        ExposedDropdownMenu(
+                            expanded = isCityDropdownExpanded && !isLoadingCities,
+                            onDismissRequest = { 
+                                isCityDropdownExpanded = false
+                                // Don't reset search query - let user keep their search
+                            },
+                            modifier = Modifier.heightIn(max = 300.dp)
+                        ) {
+                            if (filteredCities.isEmpty() && citySearchQuery.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No cities found") },
+                                    onClick = { }
+                                )
+                            } else {
+                                // Limit items for better performance, show first 100 matches
+                                val displayCities = filteredCities.take(100)
+                                displayCities.forEach { city ->
+                                    DropdownMenuItem(
+                                        text = { Text(city) },
+                                        onClick = {
+                                            selectedCity = city
+                                            citySearchQuery = city
+                                            isCityDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                                if (filteredCities.size > 100) {
+                                    DropdownMenuItem(
+                                        text = { Text("... and ${filteredCities.size - 100} more. Refine your search.") },
+                                        onClick = { }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -243,13 +487,15 @@ fun RegisterScreen(
                         password,
                         profession,
                         dateOfBirth,
-                        agreeToShareLocation
+                        selectedCountry,
+                        selectedCity
                     )
                 },
                 modifier = Modifier
                     .width(200.dp)
                     .height(50.dp),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = isFormEnabled
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -273,7 +519,21 @@ fun RegisterScreen(
         }
 
         if (state is ViewState.Loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Registering...") },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Please wait while we register your account")
+                    }
+                },
+                confirmButton = { }
+            )
         }
     }
 }
@@ -285,7 +545,8 @@ private fun InputField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     isEmail: Boolean,
-    isProfession: Boolean
+    isProfession: Boolean,
+    enabled: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -308,6 +569,7 @@ private fun InputField(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(),
+            enabled = enabled
         )
     }
 }

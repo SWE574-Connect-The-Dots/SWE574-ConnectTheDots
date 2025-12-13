@@ -15,6 +15,7 @@ import com.yybb.myapplication.data.model.toSpaceEdge
 import com.yybb.myapplication.data.model.toSpaceNode
 import com.yybb.myapplication.data.network.dto.toWikidataProperty
 import com.yybb.myapplication.data.network.ApiService
+import com.yybb.myapplication.data.network.NominatimApiService
 import com.yybb.myapplication.data.network.dto.AddEdgeRequest
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
 import com.yybb.myapplication.data.network.dto.AddNodeRequest
@@ -22,8 +23,11 @@ import com.yybb.myapplication.data.network.dto.AddNodeResponse
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
 import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
 import com.yybb.myapplication.data.network.dto.DeleteEdgeResponse
+import com.yybb.myapplication.data.network.dto.NominatimCoordinates
 import com.yybb.myapplication.data.network.dto.UpdateEdgeRequest
 import com.yybb.myapplication.data.network.dto.UpdateEdgeResponse
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationRequest
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationResponse
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertiesRequest
 import com.yybb.myapplication.data.network.dto.UpdateNodePropertyItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +39,7 @@ import javax.inject.Inject
 class SpaceNodeDetailsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
+    private val nominatimApiService: NominatimApiService,
     private val sessionManager: SessionManager
 ) {
 
@@ -542,6 +547,96 @@ class SpaceNodeDetailsRepository @Inject constructor(
                             "${context.getString(R.string.delete_edge_service_error)}: ${
                                 response.errorBody()?.string()
                             }"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getCoordinatesFromAddress(query: String): Result<NominatimCoordinates> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = nominatimApiService.search(
+                    query = query,
+                    format = "json",
+                    addressdetails = 1,
+                    limit = 3,
+                    acceptLanguage = "en"
+                )
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.isNotEmpty()) {
+                        val firstResult = body[0]
+                        val lat = firstResult.lat.toDoubleOrNull()
+                        val lon = firstResult.lon.toDoubleOrNull()
+                        if (lat != null && lon != null) {
+                            Result.success(
+                                NominatimCoordinates(
+                                    displayName = firstResult.displayName,
+                                    latitude = lat,
+                                    longitude = lon
+                                )
+                            )
+                        } else {
+                            Result.failure(Exception("Invalid coordinates in response"))
+                        }
+                    } else {
+                        Result.failure(Exception("No results found"))
+                    }
+                } else {
+                    Result.failure(
+                        Exception("Failed to get coordinates: ${response.errorBody()?.string()}")
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateNodeLocation(
+        spaceId: String,
+        nodeId: String,
+        country: String?,
+        city: String?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ): Result<UpdateNodeLocationResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = sessionManager.authToken.first()
+                if (token == null) {
+                    throw Exception("Not authenticated")
+                }
+
+                val request = UpdateNodeLocationRequest(
+                    country = country,
+                    city = city,
+                    district = null,
+                    street = null,
+                    latitude = latitude,
+                    longitude = longitude,
+                    locationName = locationName
+                )
+
+                val response = apiService.updateNodeLocation(spaceId, nodeId, request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Result.success(body)
+                    } else {
+                        Result.failure(
+                            Exception("Failed to update location: Empty response")
+                        )
+                    }
+                } else {
+                    Result.failure(
+                        Exception(
+                            "Failed to update location: ${response.errorBody()?.string()}"
                         )
                     )
                 }

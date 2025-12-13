@@ -159,6 +159,10 @@ class Node(models.Model):
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
+    
+    def get_connection_count(self):
+        """Get the total number of connections (incoming + outgoing edges) for this node"""
+        return self.source_edges.count() + self.target_edges.count()
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)

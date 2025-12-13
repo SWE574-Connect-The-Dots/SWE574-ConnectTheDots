@@ -5,8 +5,13 @@ import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.SpaceEdge
 import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.data.network.dto.AddEdgeResponse
+import com.yybb.myapplication.data.network.dto.CountryPosition
 import com.yybb.myapplication.data.network.dto.CreateSnapshotResponse
 import com.yybb.myapplication.data.network.dto.DeleteNodeResponse
+import com.yybb.myapplication.data.network.dto.NodeLocationData
+import com.yybb.myapplication.data.network.dto.NominatimCoordinates
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationResponse
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
@@ -35,6 +40,7 @@ class SpaceNodeDetailsViewModelTest {
     private lateinit var viewModel: SpaceNodeDetailsViewModel
     private lateinit var mockRepository: SpaceNodeDetailsRepository
     private lateinit var mockSpacesRepository: com.yybb.myapplication.data.repository.SpacesRepository
+    private lateinit var mockCountriesRepository: CountriesRepository
     private lateinit var savedStateHandle: SavedStateHandle
 
     private val spaceId = "space123"
@@ -47,6 +53,7 @@ class SpaceNodeDetailsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockRepository = mock()
         mockSpacesRepository = mock()
+        mockCountriesRepository = mock()
         savedStateHandle = SavedStateHandle(
             mapOf(
                 "spaceId" to spaceId,
@@ -59,7 +66,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `initialization with blank node label should set critical error`() = runTest {
-        // Given
         val handleWithoutLabel = SavedStateHandle(
             mapOf(
                 "spaceId" to spaceId,
@@ -67,106 +73,88 @@ class SpaceNodeDetailsViewModelTest {
             )
         )
 
-        // When
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, handleWithoutLabel)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, handleWithoutLabel)
         advanceUntilIdle()
 
-        // Then
         assertNotNull(viewModel.criticalError.value)
         assertTrue(viewModel.criticalError.value!!.contains("Node name is required"))
     }
 
     @Test
     fun `clearCriticalError should reset critical error`() = runTest {
-        // Given
         val handleWithoutLabel = SavedStateHandle(
             mapOf(
                 "spaceId" to spaceId,
                 "nodeId" to nodeId
             )
         )
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, handleWithoutLabel)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, handleWithoutLabel)
         advanceUntilIdle()
 
-        // When
         viewModel.clearCriticalError()
 
-        // Then
         assertNull(viewModel.criticalError.value)
     }
 
     @Test
     fun `updateSearchQuery should update search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         initializeViewModel()
         val query = "test query"
 
-        // When
         viewModel.updateSearchQuery(query)
         advanceUntilIdle()
 
-        // Then
         assertEquals(query, viewModel.searchQuery.value)
     }
 
     @Test
     fun `updateConnectionSearchQuery should update connection search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         initializeViewModel()
         val query = "connection query"
 
-        // When
         viewModel.updateConnectionSearchQuery(query)
         advanceUntilIdle()
 
-        // Then
         assertEquals(query, viewModel.connectionSearchQuery.value)
     }
 
     @Test
     fun `resetConnectionSearchQuery should clear connection search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         initializeViewModel()
         viewModel.updateConnectionSearchQuery("test")
         advanceUntilIdle()
 
-        // When
         viewModel.resetConnectionSearchQuery()
         advanceUntilIdle()
 
-        // Then
         assertTrue(viewModel.connectionSearchQuery.value.isBlank())
     }
 
     @Test
     fun `togglePropertySelection should toggle property checked state`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
             .thenReturn(Result.success(listOf(property)))
         whenever(mockRepository.getWikidataEntityProperties(wikidataId))
             .thenReturn(Result.success(listOf(property)))
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
         val initialChecked = viewModel.propertyOptions.value.firstOrNull()?.isChecked ?: false
 
-        // When
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // Then
         val afterToggle = viewModel.propertyOptions.value.firstOrNull()?.isChecked ?: false
         assertTrue(initialChecked != afterToggle)
     }
 
     @Test
     fun `saveSelectedProperties should update node properties successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
@@ -176,17 +164,15 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.updateNodeProperties(eq(spaceId), eq(nodeId), any()))
             .thenReturn(Result.success(Unit))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // When
         viewModel.saveSelectedProperties()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isUpdatingNodeProperties.value)
         assertNull(viewModel.nodePropertiesError.value)
         verify(mockRepository).updateNodeProperties(eq(spaceId), eq(nodeId), any())
@@ -194,7 +180,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `saveSelectedProperties should handle error on update failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         val errorMessage = "Update failed"
@@ -205,24 +190,21 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.updateNodeProperties(eq(spaceId), eq(nodeId), any()))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
         viewModel.togglePropertySelection("prop1")
         advanceUntilIdle()
 
-        // When
         viewModel.saveSelectedProperties()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isUpdatingNodeProperties.value)
         assertEquals(errorMessage, viewModel.nodePropertiesError.value)
     }
 
     @Test
     fun `retryNodeProperties should refetch node and wikidata properties`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
@@ -230,24 +212,21 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.getWikidataEntityProperties(wikidataId))
             .thenReturn(Result.success(listOf(property)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
         // Clear invocations from initialization
         clearInvocations(mockRepository)
 
-        // When
         viewModel.retryNodeProperties()
         advanceUntilIdle()
 
-        // Then
         verify(mockRepository).getNodeProperties(spaceId, nodeId)
         verify(mockRepository).getWikidataEntityProperties(wikidataId)
     }
 
     @Test
     fun `deleteNodeProperty should delete property successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
@@ -259,14 +238,12 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.getNodeProperties(spaceId, nodeId))
             .thenReturn(Result.success(emptyList()))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
-        // When
         viewModel.deleteNodeProperty(property)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isDeletingNodeProperty.value)
         assertNotNull(viewModel.nodePropertyDeletionMessage.value)
         assertNull(viewModel.nodePropertyDeletionError.value)
@@ -274,7 +251,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `deleteNodeProperty should handle error on deletion failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property = createMockNodeProperty("prop1", "Property 1", "Value 1")
         val errorMessage = "Deletion failed"
@@ -285,21 +261,18 @@ class SpaceNodeDetailsViewModelTest {
         whenever(mockRepository.deleteNodeProperty(spaceId, nodeId, "prop1"))
             .thenReturn(Result.failure(Exception(errorMessage)))
 
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
         advanceUntilIdle()
 
-        // When
         viewModel.deleteNodeProperty(property)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isDeletingNodeProperty.value)
         assertEquals(errorMessage, viewModel.nodePropertyDeletionError.value)
     }
 
     @Test
     fun `searchEdgeLabelOptions should search with query length bigger than or equal to 3`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val query = "test"
         val mockResults = listOf(
@@ -309,42 +282,34 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(mockResults))
         initializeViewModel()
 
-        // When
         viewModel.searchEdgeLabelOptions(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertTrue(viewModel.edgeLabelSearchResults.value.isNotEmpty())
     }
 
     @Test
     fun `searchEdgeLabelOptions should not search with query length less than 3`() = runTest {
-        // Given
         setupViewModelWithMocks()
         initializeViewModel()
         val query = "te"
 
-        // When
         viewModel.searchEdgeLabelOptions(query)
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertTrue(viewModel.edgeLabelSearchResults.value.isEmpty())
     }
 
     @Test
     fun `resetEdgeLabelSearch should clear search results`() = runTest {
-        // Given
         setupViewModelWithMocks()
         initializeViewModel()
 
-        // When
         viewModel.resetEdgeLabelSearch()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isEdgeLabelSearching.value)
         assertTrue(viewModel.edgeLabelSearchResults.value.isEmpty())
         assertNull(viewModel.edgeLabelSearchError.value)
@@ -352,7 +317,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `addEdge should create edge successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val nodeOption = SpaceNodeDetailsViewModel.NodeOption("node789", "Connected Node")
         val addEdgeResponse = AddEdgeResponse("Edge created", 1)
@@ -369,11 +333,9 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(mockEdges))
         initializeViewModel()
 
-        // When
         viewModel.addEdge(nodeOption, true, "New Edge", "")
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isCreatingEdge.value)
         assertNotNull(viewModel.edgeCreationSuccess.value)
         assertEquals(1, viewModel.edgeCreationSuccess.value!!.edgeId)
@@ -381,7 +343,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `addEdge should handle error on edge creation failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val nodeOption = SpaceNodeDetailsViewModel.NodeOption("node789", "Connected Node")
         val errorMessage = "Edge creation failed"
@@ -389,18 +350,15 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.failure(Exception(errorMessage)))
         initializeViewModel()
 
-        // When
         viewModel.addEdge(nodeOption, true, "New Edge", "")
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isCreatingEdge.value)
         assertEquals(errorMessage, viewModel.edgeCreationError.value)
     }
 
     @Test
     fun `deleteNode should delete node successfully`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val deleteResponse = DeleteNodeResponse("Node deleted")
         val snapshotResponse = CreateSnapshotResponse(1, "2024-01-01")
@@ -411,11 +369,9 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(snapshotResponse))
         initializeViewModel()
 
-        // When
         viewModel.deleteNode()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isDeletingNode.value)
         assertTrue(viewModel.deleteNodeSuccess.value)
         assertNull(viewModel.deleteNodeError.value)
@@ -423,18 +379,15 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `deleteNode should handle error on deletion failure`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val errorMessage = "Node deletion failed"
         whenever(mockRepository.deleteNode(spaceId, nodeId))
             .thenReturn(Result.failure(Exception(errorMessage)))
         initializeViewModel()
 
-        // When
         viewModel.deleteNode()
         advanceUntilIdle()
 
-        // Then
         assertFalse(viewModel.isDeletingNode.value)
         assertEquals(errorMessage, viewModel.deleteNodeError.value)
         assertFalse(viewModel.deleteNodeSuccess.value)
@@ -442,7 +395,6 @@ class SpaceNodeDetailsViewModelTest {
 
     @Test
     fun `refreshNodeConnections should refetch node connections`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val mockEdges = listOf(
             SpaceEdge(1, 456, 1, "Edge 1", null)
@@ -451,17 +403,14 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(mockEdges))
         initializeViewModel()
 
-        // When
         viewModel.refreshNodeConnections()
         advanceUntilIdle()
 
-        // Then
         verify(mockRepository).getSpaceEdges(spaceId)
     }
 
     @Test
     fun `filteredConnections should filter by search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val mockEdges = listOf(
             SpaceEdge(1, 456, 1, "Test Edge", null),
@@ -471,18 +420,15 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(mockEdges))
         initializeViewModel()
 
-        // When
         viewModel.updateConnectionSearchQuery("Test")
         advanceUntilIdle()
 
-        // Then
         val filtered = viewModel.filteredConnections.value
         assertTrue(filtered.all { it.label.contains("Test", ignoreCase = true) })
     }
 
     @Test
     fun `filteredOptions should filter properties by search query`() = runTest {
-        // Given
         setupViewModelWithMocks()
         val property1 = createMockNodeProperty("prop1", "Test Property", "Value 1")
         val property2 = createMockNodeProperty("prop2", "Other Property", "Value 2")
@@ -492,11 +438,9 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(listOf(property1, property2)))
         initializeViewModel()
 
-        // When
         viewModel.updateSearchQuery("Test")
         advanceUntilIdle()
 
-        // Then
         val filtered = viewModel.filteredOptions.value
         assertTrue(filtered.all { it.property.display.contains("Test", ignoreCase = true) })
     }
@@ -511,10 +455,12 @@ class SpaceNodeDetailsViewModelTest {
             .thenReturn(Result.success(emptyList()))
         whenever(mockRepository.getSpaceEdges(spaceId))
             .thenReturn(Result.success(emptyList()))
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.success(emptyList()))
     }
 
     private suspend fun initializeViewModel() {
-        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, savedStateHandle)
+        viewModel = SpaceNodeDetailsViewModel(mockRepository, mockSpacesRepository, mockCountriesRepository, savedStateHandle)
     }
 
     private fun createMockNodeProperty(
@@ -578,7 +524,7 @@ class SpaceNodeDetailsViewModelTest {
             contentId = 456,
             reason = "INAPPROPRIATE",
             status = "OPEN",
-            space = null,
+            space = 0,
             reporter = 1,
             reporterUsername = "testuser",
             createdAt = "2024-01-01T00:00:00Z",
@@ -608,7 +554,7 @@ class SpaceNodeDetailsViewModelTest {
             contentId = 456,
             reason = "INAPPROPRIATE",
             status = "OPEN",
-            space = null,
+            space = 0,
             reporter = 1,
             reporterUsername = "testuser",
             createdAt = "2024-01-01T00:00:00Z",
@@ -628,5 +574,206 @@ class SpaceNodeDetailsViewModelTest {
         assertTrue(viewModel.reportSubmitSuccess.value)
         viewModel.resetReportSubmitSuccess()
         assertFalse(viewModel.reportSubmitSuccess.value)
+    }
+
+    @Test
+    fun `loadCountries should load countries successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCountries = listOf(
+            CountryPosition("United States", "US", -95.7129, 37.0902),
+            CountryPosition("Turkey", "TR", 35.2433, 38.9637)
+        )
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.success(mockCountries))
+        initializeViewModel()
+
+        viewModel.loadCountries()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCountries.value)
+        assertEquals(2, viewModel.countries.value.size)
+        assertEquals("Turkey", viewModel.countries.value[0].name) // Sorted by name
+        assertEquals("United States", viewModel.countries.value[1].name)
+    }
+
+    @Test
+    fun `loadCountries should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockCountriesRepository.getCountries())
+            .thenReturn(Result.failure(Exception("Failed to load countries")))
+        initializeViewModel()
+
+        viewModel.loadCountries()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCountries.value)
+        assertTrue(viewModel.countries.value.isEmpty())
+    }
+
+    @Test
+    fun `loadCities should load cities successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCities = listOf("Istanbul", "Ankara", "Izmir")
+        whenever(mockCountriesRepository.getCities("Turkey"))
+            .thenReturn(Result.success(mockCities))
+        initializeViewModel()
+
+        viewModel.loadCities("Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCities.value)
+        assertEquals(3, viewModel.cities.value.size)
+        assertEquals("Ankara", viewModel.cities.value[0]) // Sorted
+        assertEquals("Istanbul", viewModel.cities.value[1])
+        assertEquals("Izmir", viewModel.cities.value[2])
+    }
+
+    @Test
+    fun `loadCities should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockCountriesRepository.getCities("Turkey"))
+            .thenReturn(Result.failure(Exception("Failed to load cities")))
+        initializeViewModel()
+
+        viewModel.loadCities("Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLoadingCities.value)
+        assertTrue(viewModel.cities.value.isEmpty())
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should get coordinates successfully`() = runTest {
+        setupViewModelWithMocks()
+        val mockCoordinates = NominatimCoordinates(
+            displayName = "Istanbul, Turkey",
+            latitude = 41.0082,
+            longitude = 28.9784
+        )
+        whenever(mockRepository.getCoordinatesFromAddress("Istanbul, Turkey"))
+            .thenReturn(Result.success(mockCoordinates))
+        initializeViewModel()
+
+        viewModel.getCoordinatesFromAddress("Istanbul", "Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGettingCoordinates.value)
+        assertNotNull(viewModel.coordinatesResult.value)
+        assertEquals(41.0082, viewModel.coordinatesResult.value!!.latitude)
+        assertEquals(28.9784, viewModel.coordinatesResult.value!!.longitude)
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should return null when city or country is null`() = runTest {
+        setupViewModelWithMocks()
+        initializeViewModel()
+
+        viewModel.getCoordinatesFromAddress(null, "Turkey")
+        advanceUntilIdle()
+
+        assertNull(viewModel.coordinatesResult.value)
+    }
+
+    @Test
+    fun `getCoordinatesFromAddress should handle error on failure`() = runTest {
+        setupViewModelWithMocks()
+        whenever(mockRepository.getCoordinatesFromAddress("Istanbul, Turkey"))
+            .thenReturn(Result.failure(Exception("Failed to get coordinates")))
+        initializeViewModel()
+
+        viewModel.getCoordinatesFromAddress("Istanbul", "Turkey")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGettingCoordinates.value)
+        assertNull(viewModel.coordinatesResult.value)
+        assertNotNull(viewModel.locationUpdateError.value)
+    }
+
+    @Test
+    fun `updateNodeLocation should update location successfully`() = runTest {
+        setupViewModelWithMocks()
+        val updateLocationResponse = UpdateNodeLocationResponse(
+            "Location updated successfully",
+            NodeLocationData(
+                country = "Turkey",
+                city = "Istanbul",
+                district = null,
+                street = null,
+                latitude = 41.0082,
+                longitude = 28.9784,
+                locationName = "Taksim Square"
+            )
+        )
+        val snapshotResponse = CreateSnapshotResponse(1, "2024-01-01")
+        val mockNodes = listOf(
+            com.yybb.myapplication.data.model.SpaceNode(
+                456, "Test Node", "Q123", "Turkey", "Istanbul", null, null, "41.0082", "28.9784", "Taksim Square", 0
+            )
+        )
+
+        whenever(mockRepository.updateNodeLocation(
+            eq(spaceId),
+            eq(nodeId),
+            eq("Turkey"),
+            eq("Istanbul"),
+            eq("Taksim Square"),
+            eq(41.0082),
+            eq(28.9784)
+        )).thenReturn(Result.success(updateLocationResponse))
+        whenever(mockRepository.createSnapshot(spaceId))
+            .thenReturn(Result.success(snapshotResponse))
+        whenever(mockRepository.getSpaceNodes(spaceId))
+            .thenReturn(Result.success(mockNodes))
+        initializeViewModel()
+
+        viewModel.updateNodeLocation(
+            country = "Turkey",
+            city = "Istanbul",
+            locationName = "Taksim Square",
+            latitude = 41.0082,
+            longitude = 28.9784
+        )
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isUpdatingLocation.value)
+        assertNull(viewModel.locationUpdateError.value)
+        assertFalse(viewModel.showEditLocationDialog.value)
+        verify(mockRepository).updateNodeLocation(
+            eq(spaceId),
+            eq(nodeId),
+            eq("Turkey"),
+            eq("Istanbul"),
+            eq("Taksim Square"),
+            eq(41.0082),
+            eq(28.9784)
+        )
+    }
+
+    @Test
+    fun `updateNodeLocation should handle error on update failure`() = runTest {
+        setupViewModelWithMocks()
+        val errorMessage = "Failed to update location"
+        whenever(mockRepository.updateNodeLocation(
+            eq(spaceId),
+            eq(nodeId),
+            any(),
+            any(),
+            any(),
+            any(),
+            any()
+        )).thenReturn(Result.failure(Exception(errorMessage)))
+        initializeViewModel()
+
+        viewModel.updateNodeLocation(
+            country = "Turkey",
+            city = "Istanbul",
+            locationName = "Taksim Square",
+            latitude = 41.0082,
+            longitude = 28.9784
+        )
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isUpdatingLocation.value)
+        assertEquals(errorMessage, viewModel.locationUpdateError.value)
     }
 }
