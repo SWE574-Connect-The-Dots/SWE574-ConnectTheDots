@@ -2190,9 +2190,6 @@ const SpaceDetails = () => {
             >
               Show Space Map
             </button>
-
-            
-            
             <button
               className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
               onClick={() => {
@@ -2428,7 +2425,7 @@ const SpaceDetails = () => {
 
       <div style={{ 
         flex: 1, 
-        marginRight: isRightPanelCollapsed ? "30px" : "10px",
+        marginRight: isRightPanelCollapsed ? "30px" : "20px",
         transition: "all 0.3s ease"
       }}>
         <div
@@ -2484,30 +2481,8 @@ const SpaceDetails = () => {
         {/* Location Section */}
         <div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-            <h4 style={{ margin: 0 }}>Location:</h4>
-            {canEditSpaceLocation() && !isEditingLocation && (
-              <button
-                onClick={() => setIsEditingLocation(true)}
-                style={{
-                  background: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s',
-                }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#0056b3'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#007bff'}
-              >
-                Edit Location
-              </button>
-            )}
-          </div>
-          
-          {!isEditingLocation ? (
-            // Display current location
+            <h4 style={{ margin: 0 }}>{t("spaceAnalytics.location")}:</h4>
+            {!isEditingLocation ? (
             <div style={{ 
               padding: "10px", 
               backgroundColor: "#f8f9fa", 
@@ -2520,7 +2495,7 @@ const SpaceDetails = () => {
                   .filter(Boolean)
                   .join(', ')
               ) : (
-                "Location not specified"
+                t("spaceAnalytics.locationNotSpecified")
               )}
             </div>
           ) : (
@@ -2534,7 +2509,7 @@ const SpaceDetails = () => {
               {/* Country */}
               <div style={{ marginBottom: "10px" }}>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                  Country:
+                  {t("spaceAnalytics.country")}:
                 </label>
                 <select 
                   value={space.country} 
@@ -2547,7 +2522,7 @@ const SpaceDetails = () => {
                   }}
                   required
                 >
-                  <option value="">-- Select Country --</option>
+                  <option value="">{t("spaceAnalytics.selectCountry")}</option>
                   {countries.map((c) => (
                     <option key={c.name} value={c.name}>
                       {c.name}
@@ -2560,7 +2535,7 @@ const SpaceDetails = () => {
               {space.country && (
                 <div style={{ marginBottom: "10px" }}>
                   <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                    City:
+                    {t("spaceAnalytics.city")}:
                   </label>
                   <select 
                     value={space.city} 
@@ -2574,7 +2549,7 @@ const SpaceDetails = () => {
                     }}
                     required
                   >
-                    <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
+                    <option value="">{loadingCities ? t("spaceAnalytics.loadingCities") : t("spaceAnalytics.selectCity")}</option>
                     {cities.map((city) => (
                       <option key={city} value={city}>
                         {city}
@@ -2593,7 +2568,7 @@ const SpaceDetails = () => {
               {space.city && (
                 <div style={{ marginBottom: "10px" }}>
                   <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                    District (optional):
+                    {t("spaceAnalytics.district")}:
                   </label>
                   <select 
                     value={space.district} 
@@ -2606,7 +2581,7 @@ const SpaceDetails = () => {
                       borderRadius: "4px"
                     }}
                   >
-                    <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
+                    <option value="">{loadingDistricts ? t("spaceAnalytics.loadingDistricts") : t("spaceAnalytics.selectDistrict")}</option>
                     {districts.map((d) => (
                       <option key={d} value={d}>
                         {d}
@@ -2625,7 +2600,7 @@ const SpaceDetails = () => {
               {space.district && (
                 <div style={{ marginBottom: "15px" }}>
                   <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                    Street (optional):
+                    {t("spaceAnalytics.street")}:
                   </label>
                   <select 
                     value={space.street} 
@@ -2638,7 +2613,7 @@ const SpaceDetails = () => {
                       borderRadius: "4px"
                     }}
                   >
-                    <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
+                    <option value="">{loadingStreets ? t("spaceAnalytics.loadingStreets") : t("spaceAnalytics.selectStreet")}</option>
                     {streets.map((s) => (
                       <option key={s} value={s}>
                         {s}
@@ -2686,6 +2661,19 @@ const SpaceDetails = () => {
               </div>
             </div>
           )}
+            {canEditSpaceLocation() && !isEditingLocation && (
+              <button
+                onClick={() => setIsEditingLocation(true)}
+                style={{
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                }}
+              >
+                Edit Location
+              </button>
+            )}
+          </div>
         </div>
 
         <div style={{ marginTop: "10px", marginBottom: "20px" }}>
@@ -3578,7 +3566,7 @@ const SpaceDetails = () => {
                 {/* Location Section for New Node */}
                 <div style={{ marginTop: "20px", padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
-                    <h5 style={{ margin: 0 }}>Location (Optional):</h5>
+                    <h5 style={{ margin: 0 }}>{t("spaceAnalytics.location")} ({t("common.optional")}):</h5>
                     <button
                       type="button"
                       onClick={() => setShowLocationSection(!showLocationSection)}
@@ -3601,7 +3589,7 @@ const SpaceDetails = () => {
                       {/* Country */}
                       <div>
                         <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
-                          Country:
+                          {t("spaceAnalytics.country")}:
                         </label>
                         <select 
                           value={newNodeLocation.country} 
@@ -3614,7 +3602,7 @@ const SpaceDetails = () => {
                             fontSize: "13px"
                           }}
                         >
-                          <option value="">-- Select Country --</option>
+                          <option value="">{t("spaceAnalytics.selectCountry")}</option>
                           {countries.map((c) => (
                             <option key={c.name} value={c.name}>
                               {c.name}
@@ -3627,7 +3615,7 @@ const SpaceDetails = () => {
                       {newNodeLocation.country && (
                         <div>
                           <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
-                            City:
+                            {t("spaceAnalytics.city")}:
                           </label>
                           <select 
                             value={newNodeLocation.city} 
@@ -3641,7 +3629,7 @@ const SpaceDetails = () => {
                               fontSize: "13px"
                             }}
                           >
-                            <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
+                            <option value="">{loadingCities ? t("spaceAnalytics.loadingCities") : t("spaceAnalytics.selectCity")}</option>
                             {cities.map((c) => (
                               <option key={c} value={c}>
                                 {c}
@@ -3660,7 +3648,7 @@ const SpaceDetails = () => {
                       {newNodeLocation.city && (
                         <div>
                           <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
-                            District (optional):
+                            {t("spaceAnalytics.district")}:
                           </label>
                           <select 
                             value={newNodeLocation.district} 
@@ -3674,7 +3662,7 @@ const SpaceDetails = () => {
                               fontSize: "13px"
                             }}
                           >
-                            <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
+                            <option value="">{loadingDistricts ? t("spaceAnalytics.loadingDistricts") : t("spaceAnalytics.selectDistrict")}</option>
                             {districts.map((d) => (
                               <option key={d} value={d}>
                                 {d}
@@ -3693,7 +3681,7 @@ const SpaceDetails = () => {
                       {newNodeLocation.district && (
                         <div>
                           <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
-                            Street (optional):
+                            {t("spaceAnalytics.street")}:
                           </label>
                           <select 
                             value={newNodeLocation.street} 
@@ -3707,7 +3695,7 @@ const SpaceDetails = () => {
                               fontSize: "13px"
                             }}
                           >
-                            <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
+                            <option value="">{loadingStreets ? t("spaceAnalytics.loadingStreets") : t("spaceAnalytics.selectStreet")}</option>
                             {streets.map((s) => (
                               <option key={s} value={s}>
                                 {s}
@@ -3913,7 +3901,7 @@ const SpaceDetails = () => {
       {!isRightPanelCollapsed && (
         <div
           style={{
-            width: "260px",
+            width: "20%",
             display: "flex",
             flexDirection: "column",
             gap: "16px",
@@ -4108,7 +4096,7 @@ const SpaceDetails = () => {
         isOpen={showSpaceMap}
         onClose={() => setShowSpaceMap(false)}
         spaceId={id}
-        spaceTitle={space.title}
+        spaceTitle={space.title || "Space"}
       />
 
       {/* Report Modal */}

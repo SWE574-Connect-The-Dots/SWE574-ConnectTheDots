@@ -13,7 +13,6 @@
 
 .activity-stream--dense {
   padding: 10px;
-  max-width: 260px;
 }
 
 .activity-stream__header {
@@ -132,4 +131,3 @@
   font-weight: 600;
   color: var(--color-text-secondary);
 }
-
