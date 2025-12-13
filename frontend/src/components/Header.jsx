@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "../contexts/TranslationContext";
+import AppLogo from "../assets/AppLogo.png";
 import "./Header.css";
 
 const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
@@ -45,7 +46,19 @@ const Header = ({ isAuthenticated, currentUser, setIsAuthenticated }) => {
   return (
     <header className="header">
       <div className="logo-container">
-        <Link to="/">
+        <Link to="/" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.2rem'
+        }}>
+          <img 
+            src={AppLogo} 
+            alt="App Logo" 
+            style={{
+              width: '36px',
+              height: '36px'
+            }}
+          />
           <div className="app-name">{t("app.name")}</div>
         </Link>
       </div>

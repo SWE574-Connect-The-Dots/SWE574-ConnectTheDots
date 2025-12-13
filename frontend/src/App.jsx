@@ -3,6 +3,7 @@ import {
   Route,
   Routes,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { TranslationProvider } from "./contexts/TranslationContext";
@@ -25,13 +26,16 @@ import "leaflet/dist/leaflet.css";
 import MapView from "./pages/MapView";
 
 
-function App() {
+function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem("token")
   );
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(!!localStorage.getItem("token"));
+  const location = useLocation();
   // const [isAdmin, setIsAdmin] = useState(false);
+
+  const showHeader = !['/login', '/register'].includes(location.pathname);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -102,16 +106,16 @@ function App() {
   }, [fetchCurrentUser]);
 
   return (
-    <TranslationProvider>
-      <Router>
-        <div className="connect-dots-container">
+      <div className="connect-dots-container">
+        {showHeader && (
           <Header
             isAuthenticated={isAuthenticated}
             currentUser={currentUser}
             setIsAuthenticated={setIsAuthenticated}
           />
+        )}
 
-          <main className="main-content">
+        <main className="main-content">
             <Routes>
             <Route
               path="/"
@@ -189,6 +193,14 @@ function App() {
           </Routes>
         </main>
       </div>
+  );
+}
+
+function App() {
+  return (
+    <TranslationProvider>
+      <Router>
+        <AppContent />
       </Router>
     </TranslationProvider>
   );

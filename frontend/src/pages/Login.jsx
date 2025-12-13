@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import { API_ENDPOINTS } from "../constants/config";
+import logo from "../assets/logo.png";
 
 function Login({ setIsAuthenticated }) {
   const { t } = useTranslation();
@@ -45,7 +46,6 @@ function Login({ setIsAuthenticated }) {
         localStorage.setItem("is_staff", String(is_staff));
         localStorage.setItem("is_superuser", String(is_superuser));
       } catch (profileErr) {
-        // fallback: clear admin flags if profile fetch fails
         localStorage.setItem("is_staff", "false");
         localStorage.setItem("is_superuser", "false");
       }
@@ -59,8 +59,57 @@ function Login({ setIsAuthenticated }) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>{t("auth.login")}</h2>
+    <div className="login-container" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'linear-gradient(290deg, #E3F2FD 0%, var(--color-bg) 50%,var(--color-accent) 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'auto'
+    }}>
+      <form onSubmit={handleSubmit} style={{ 
+        maxWidth: '20%', 
+        margin: '2rem auto',
+        padding: '2rem',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'var(--color-white)',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1rem',
+          paddingBottom: '1.5rem',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+          marginBottom: '0.5rem'
+        }}>
+          <img 
+            src={logo} 
+            alt="Logo" 
+            style={{
+              width: '200px',
+              height: 'auto',
+              display: 'block'
+            }}
+          />
+          
+          <h2 style={{ 
+            textAlign: 'center',
+            margin: '0',
+            fontSize: '1.75rem',
+            fontWeight: '500'
+          }}>
+            {t("auth.login")}
+          </h2>
+        </div>
+      
       <input
         type="text"
         name="username"
@@ -77,9 +126,49 @@ function Login({ setIsAuthenticated }) {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button type="submit">{t("auth.login")}</button>
-      <p>{message}</p>
+      
+      <button 
+        type="submit"
+        style={{
+          padding: '0.75rem',
+          fontSize: '1rem',
+          marginTop: '0.5rem'
+        }}
+      >
+        {t("auth.login")}
+      </button>
+      
+      {message && (
+        <p style={{ 
+          textAlign: 'center',
+          margin: '0',
+          marginTop: '-0.5rem'
+        }}>
+          {message}
+        </p>
+      )}
+      
+      <div style={{
+        textAlign: 'center',
+        paddingTop: '1rem',
+        borderTop: '1px solid rgba(0, 0, 0, 0.1)'
+      }}>
+        <p style={{ margin: '0', fontSize: '0.95rem' }}>
+          Don't have an account?{' '}
+          <Link 
+            to="/register" 
+            style={{
+              color: 'var(--color-primary, #007bff)',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Register here
+          </Link>
+        </p>
+      </div>
     </form>
+    </div>
   );
 }
 

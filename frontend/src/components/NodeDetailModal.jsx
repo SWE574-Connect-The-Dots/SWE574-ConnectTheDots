@@ -461,10 +461,7 @@ const NodeDetailModal = ({
         );
         setNodeProperties(response.data);
 
-        // Extract location from current node properties
-        console.log('Node properties for location extraction:', response.data);
         const extractedLocation = extractLocationFromNodeProperties(response.data);
-        console.log('Extracted location:', extractedLocation);
         if (extractedLocation && Object.values(extractedLocation).some(val => val)) {
           setNodeLocation(prev => ({
             ...prev,
@@ -567,7 +564,9 @@ const NodeDetailModal = ({
         ]);
         setAllNodes(nodesRes.data);
         setAllEdges(edgesRes.data);
-      } catch (err) {}
+      } catch (err) {
+        console.error("Failed to fetch nodes and edges", err);
+      }
     };
     fetchNodesAndEdges();
   }, [spaceId, node.id]);
@@ -1324,59 +1323,15 @@ const NodeDetailModal = ({
             {/* Location Section */}
             <div className="location-section" style={{ 
               marginBottom: "20px", 
-              padding: "15px", 
               backgroundColor: "var(--color-bg-secondary)", 
               borderRadius: "8px" 
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                <h4 style={{ margin: 0, color: "var(--color-text)" }}>Location:</h4>
-                {hasLocationChanged() && (
-                  <span style={{
-                    backgroundColor: "var(--color-danger)",
-                    color: "var(--color-white)",
-                    fontSize: '11px',
-                    padding: '2px 6px',
-                    borderRadius: '10px',
-                    fontWeight: 'bold'
-                  }}>
-                    Unsaved Changes
-                  </span>
-                )}
-                {!isEditingLocation && canEditNodeLocation() && (
-                  <button
-                    onClick={() => setIsEditingLocation(true)}
-                    style={{
-                      background: "var(--color-accent)",
-                      color: "var(--color-white)",
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = "var(--color-accent-hover)"}
-                    onMouseOut={(e) => e.currentTarget.style.background = "var(--color-accent)"}
-                  >
-                    Edit Location
-                  </button>
-                )}
-                {!isEditingLocation && !canEditNodeLocation() && (
-                  <small style={{ color: "var(--color-text-secondary)", fontSize: '11px', fontStyle: 'italic' }}>
-                    Only space members can edit location
-                  </small>
-                )}
-              </div>
-              
-              {!isEditingLocation ? (
-                // Display current location
+                <h4 style={{ margin: 0, color: "var(--color-text)" }}>{t("spaceAnalytics.location")}:</h4>
+                {!isEditingLocation ? (
                 <div style={{ 
-                  padding: "10px", 
                   backgroundColor: "var(--color-white)", 
-                  borderRadius: "4px",
-                  border: "1px solid var(--color-border-2)",
                   fontSize: "14px",
-                  color: "var(--color-text-secondary)"
                 }}>
                   {nodeLocation.country || nodeLocation.city || nodeLocation.district || nodeLocation.street || nodeLocation.location_name || (nodeLocation.latitude && nodeLocation.longitude) ? (
                     <div>
@@ -1403,7 +1358,6 @@ const NodeDetailModal = ({
                   )}
                 </div>
               ) : (
-                // Edit location form
                 <div style={{ 
                   padding: "15px", 
                   backgroundColor: "var(--color-white)", 
@@ -1413,7 +1367,7 @@ const NodeDetailModal = ({
                   {/* Country */}
                   <div style={{ marginBottom: "10px" }}>
                     <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                      Country:
+                      {t("spaceAnalytics.country")}:
                     </label>
                     <select 
                       value={nodeLocation.country} 
@@ -1428,7 +1382,7 @@ const NodeDetailModal = ({
                         color: "var(--color-text)"
                       }}
                     >
-                      <option value="">-- Select Country --</option>
+                      <option value="">{t("spaceAnalytics.selectCountry")}</option>
                       {countries.map((c) => (
                         <option key={c.name} value={c.name}>
                           {c.name}
@@ -1441,7 +1395,7 @@ const NodeDetailModal = ({
                   {nodeLocation.country && (
                     <div style={{ marginBottom: "10px" }}>
                       <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                        City:
+                        {t("spaceAnalytics.city")}:
                       </label>
                       <select 
                         value={nodeLocation.city} 
@@ -1457,7 +1411,7 @@ const NodeDetailModal = ({
                           color: "var(--color-text)"
                         }}
                       >
-                        <option value="">{loadingCities ? "Loading cities..." : "-- Select City --"}</option>
+                        <option value="">{loadingCities ? t("spaceAnalytics.loadingCities") : t("spaceAnalytics.selectCity")}</option>
                         {cities.map((city) => (
                           <option key={city} value={city}>
                             {city}
@@ -1476,7 +1430,7 @@ const NodeDetailModal = ({
                   {nodeLocation.city && (
                     <div style={{ marginBottom: "10px" }}>
                       <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                        District (optional):
+                        {t("spaceAnalytics.district")}:
                       </label>
                       <select 
                         value={nodeLocation.district} 
@@ -1492,7 +1446,7 @@ const NodeDetailModal = ({
                           color: "var(--color-text)"
                         }}
                       >
-                        <option value="">{loadingDistricts ? "Loading districts..." : "-- Select District --"}</option>
+                        <option value="">{loadingDistricts ? t("spaceAnalytics.loadingDistricts") : t("spaceAnalytics.selectDistrict")}</option>
                         {districts.map((d) => (
                           <option key={d} value={d}>
                             {d}
@@ -1511,7 +1465,7 @@ const NodeDetailModal = ({
                   {nodeLocation.district && (
                     <div style={{ marginBottom: "15px" }}>
                       <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                        Street (optional):
+                        {t("spaceAnalytics.street")}:
                       </label>
                       <select 
                         value={nodeLocation.street} 
@@ -1527,7 +1481,7 @@ const NodeDetailModal = ({
                           color: "var(--color-text)"
                         }}
                       >
-                        <option value="">{loadingStreets ? "Loading streets..." : "-- Select Street --"}</option>
+                        <option value="">{loadingStreets ? t("spaceAnalytics.loadingStreets") : t("spaceAnalytics.selectStreet")}</option>
                         {streets.map((s) => (
                           <option key={s} value={s}>
                             {s}
@@ -1572,7 +1526,7 @@ const NodeDetailModal = ({
                   {/* Manual Location Name */}
                   <div style={{ marginBottom: "15px" }}>
                     <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                      Location Name (optional):
+                      {t("spaceAnalytics.locationName")}:
                     </label>
                     <input 
                       type="text"
@@ -1595,7 +1549,7 @@ const NodeDetailModal = ({
                   <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                        Latitude:
+                        {t("spaceAnalytics.latitude")}:
                       </label>
                       <input 
                         type="number"
@@ -1616,7 +1570,7 @@ const NodeDetailModal = ({
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px", color: "var(--color-text)" }}>
-                        Longitude:
+                        {t("spaceAnalytics.longitude")}:
                       </label>
                       <input 
                         type="number"
@@ -1729,6 +1683,43 @@ const NodeDetailModal = ({
                   </div>
                 </div>
               )}
+                {hasLocationChanged() && (
+                  <span style={{
+                    backgroundColor: "var(--color-danger)",
+                    color: "var(--color-white)",
+                    fontSize: '11px',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 'bold'
+                  }}>
+                    Unsaved Changes
+                  </span>
+                )}
+                {!isEditingLocation && canEditNodeLocation() && (
+                  <button
+                    onClick={() => setIsEditingLocation(true)}
+                    style={{
+                      background: "var(--color-accent)",
+                      color: "var(--color-white)",
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = "var(--color-accent-hover)"}
+                    onMouseOut={(e) => e.currentTarget.style.background = "var(--color-accent)"}
+                  >
+                    Edit Location
+                  </button>
+                )}
+                {!isEditingLocation && !canEditNodeLocation() && (
+                  <small style={{ color: "var(--color-text-secondary)", fontSize: '11px', fontStyle: 'italic' }}>
+                    Only space members can edit location
+                  </small>
+                )}
+              </div>
             </div>
 
             <div className="properties-section">
