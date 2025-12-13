@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
@@ -34,6 +35,30 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val property: NodeProperty,
         val isChecked: Boolean
     )
+
+    data class PropertyGroup(
+        val propertyId: String,
+        val propertyLabel: String,
+        val properties: List<PropertyOption>,
+        val isAllChecked: Boolean,
+        val hasSavedProperties: Boolean
+    )
+
+    sealed class PropertyItem {
+        data class Group(val group: PropertyGroup) : PropertyItem()
+        data class Single(val option: PropertyOption) : PropertyItem()
+    }
+
+    data class SavedPropertyGroup(
+        val propertyId: String,
+        val propertyLabel: String,
+        val properties: List<NodeProperty>
+    )
+
+    sealed class SavedPropertyItem {
+        data class Group(val group: SavedPropertyGroup) : SavedPropertyItem()
+        data class Single(val property: NodeProperty) : SavedPropertyItem()
+    }
 
     data class NodeOption(
         val id: String,
@@ -263,6 +288,28 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
+    fun toggleSelectAllProperties() {
+        val allChecked = _propertyOptions.value.all { it.isChecked }
+        val existingPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        
+        _propertyOptions.update { options ->
+            if (allChecked) {
+                // Uncheck all, but keep the ones already added to the node
+                options.map { option ->
+                    option.copy(isChecked = existingPropertyIds.contains(option.property.statementId))
+                }
+            } else {
+                // Check all
+                options.map { option -> option.copy(isChecked = true) }
+            }
+        }
+    }
+
+    fun isSelectAllChecked(): Boolean {
+        val options = _propertyOptions.value
+        return options.isNotEmpty() && options.all { it.isChecked }
+    }
+
     fun saveSelectedProperties() {
         val selected = _propertyOptions.value
             .filter { it.isChecked }
@@ -287,6 +334,102 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             }
 
             _isUpdatingNodeProperties.value = false
+        }
+    }
+
+    fun getSelectedPropertiesCount(): Int {
+        return _propertyOptions.value.count { it.isChecked }
+    }
+
+    fun getTotalPropertiesCount(): Int {
+        return _propertyOptions.value.size
+    }
+
+    fun getGroupedProperties(filteredOptions: List<PropertyOption>? = null): List<PropertyGroup> {
+        val options = filteredOptions ?: _propertyOptions.value
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        
+        return options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 } // Only groups with more than one property
+            .map { (propertyId, groupOptions) ->
+                val firstProperty = groupOptions.first().property
+                val allChecked = groupOptions.all { it.isChecked }
+                val hasSaved = groupOptions.any { it.property.statementId in savedPropertyIds }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupOptions,
+                    isAllChecked = allChecked,
+                    hasSavedProperties = hasSaved
+                )
+            }
+            .sortedBy { it.propertyLabel }
+    }
+
+    fun getPropertyItems(filteredOptions: List<PropertyOption>? = null): List<PropertyItem> {
+        val options = filteredOptions ?: _propertyOptions.value
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        val groupedPropertyIds = options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 }
+            .keys
+            .toSet()
+        
+        val items = mutableListOf<PropertyItem>()
+        
+        // Add groups for properties with multiple items
+        options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 }
+            .map { (propertyId, groupOptions) ->
+                val firstProperty = groupOptions.first().property
+                val allChecked = groupOptions.all { it.isChecked }
+                val hasSaved = groupOptions.any { it.property.statementId in savedPropertyIds }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupOptions,
+                    isAllChecked = allChecked,
+                    hasSavedProperties = hasSaved
+                )
+            }
+            .sortedBy { it.propertyLabel }
+            .forEach { group ->
+                items.add(PropertyItem.Group(group))
+            }
+        
+        // Add single properties (not in any group)
+        options
+            .filter { it.property.propertyId !in groupedPropertyIds }
+            .sortedBy { it.property.propertyLabel }
+            .forEach { option ->
+                items.add(PropertyItem.Single(option))
+            }
+        
+        return items
+    }
+
+    fun togglePropertyGroup(propertyId: String) {
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        val groupProperties = _propertyOptions.value.filter { it.property.propertyId == propertyId }
+        val allChecked = groupProperties.all { it.isChecked }
+        
+        _propertyOptions.update { options ->
+            options.map { option ->
+                if (option.property.propertyId == propertyId) {
+                    // Don't uncheck if it's already saved to the node
+                    if (allChecked && option.property.statementId in savedPropertyIds) {
+                        option // Keep checked if it's saved
+                    } else {
+                        option.copy(isChecked = !allChecked)
+                    }
+                } else {
+                    option
+                }
+            }
         }
     }
 
@@ -383,6 +526,91 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             _isDeletingNodeProperty.value = false
         }
     }
+
+    fun deletePropertyGroup(propertyId: String) {
+        val propertiesToDelete = _apiNodeProperties.value.filter { it.propertyId == propertyId }
+        if (propertiesToDelete.isEmpty()) return
+
+        viewModelScope.launch {
+            if (_isDeletingNodeProperty.value) return@launch
+
+            _isDeletingNodeProperty.value = true
+            _nodePropertyDeletionMessage.value = null
+            _nodePropertyDeletionError.value = null
+
+            // Delete all properties in the group sequentially
+            var allSuccess = true
+            var lastError: String? = null
+
+            for (property in propertiesToDelete) {
+                val deleteResult =
+                    spaceNodeDetailsRepository.deleteNodeProperty(spaceId, nodeId, property.statementId)
+                deleteResult.onFailure { throwable ->
+                    allSuccess = false
+                    lastError = throwable.message
+                }
+            }
+
+            if (allSuccess) {
+                val refreshResult = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
+                refreshResult.onSuccess { properties ->
+                    _apiNodeProperties.value = properties
+                    syncPropertyOptionsWithSelectedProperties()
+                    val firstProperty = propertiesToDelete.first()
+                    _nodePropertyDeletionMessage.value = "${firstProperty.propertyLabel} (${propertiesToDelete.size} properties)"
+                }.onFailure { throwable ->
+                    _nodePropertyDeletionError.value = throwable.message
+                }
+            } else {
+                _nodePropertyDeletionError.value = lastError ?: "Failed to delete some properties"
+            }
+
+            _isDeletingNodeProperty.value = false
+        }
+    }
+
+    val savedPropertyItems: StateFlow<List<SavedPropertyItem>> = _apiNodeProperties
+        .map { properties ->
+            val groupedPropertyIds = properties
+                .groupBy { it.propertyId }
+                .filter { it.value.size > 1 }
+                .keys
+                .toSet()
+            
+            val items = mutableListOf<SavedPropertyItem>()
+            
+            // Add groups for properties with multiple items
+            properties
+                .groupBy { it.propertyId }
+                .filter { it.value.size > 1 }
+                .map { (propertyId, groupProperties) ->
+                    val firstProperty = groupProperties.first()
+                    SavedPropertyGroup(
+                        propertyId = propertyId,
+                        propertyLabel = firstProperty.propertyLabel,
+                        properties = groupProperties
+                    )
+                }
+                .sortedBy { it.propertyLabel }
+                .forEach { group ->
+                    items.add(SavedPropertyItem.Group(group))
+                }
+            
+            // Add single properties (not in any group)
+            properties
+                .filter { it.propertyId !in groupedPropertyIds }
+                .sortedBy { it.propertyLabel }
+                .forEach { property ->
+                    items.add(SavedPropertyItem.Single(property))
+                }
+            
+            items
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     private fun fetchAvailableConnectionNodes() {
         viewModelScope.launch {

@@ -100,6 +100,8 @@
     <string name="node_properties_instruction">Click on a property to select/deselect it</string>
     <string name="search_property_hint">Search property</string>
     <string name="save_properties_button">Save Properties</string>
+    <string name="add_all_properties">Add all properties</string>
+    <string name="add_all_properties_confirmation">Are you want to add all %1$d of the properties to the node?</string>
     <string name="details_tab_label">Details</string>
     <string name="connections_tab_label">Connections</string>
     <string name="delete_node_title">Delete Node</string>

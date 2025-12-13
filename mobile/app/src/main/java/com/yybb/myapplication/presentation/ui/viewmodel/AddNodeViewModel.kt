@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -71,6 +73,64 @@ class AddNodeViewModel @Inject constructor(
 
     private val _filteredProperties = MutableStateFlow<List<NodeProperty>>(emptyList())
     val filteredProperties: StateFlow<List<NodeProperty>> = _filteredProperties.asStateFlow()
+
+    val isSelectAllChecked: StateFlow<Boolean> = combine(
+        _selectedProperties,
+        _entityProperties
+    ) { selected, properties ->
+        properties.isNotEmpty() && properties.all { it.statementId in selected }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false
+    )
+
+    val propertyItems: StateFlow<List<PropertyItem>> = combine(
+        _selectedProperties,
+        _entityProperties
+    ) { selected, properties ->
+        val groupedPropertyIds = properties
+            .groupBy { it.propertyId }
+            .filter { it.value.size > 1 }
+            .keys
+            .toSet()
+        
+        val items = mutableListOf<PropertyItem>()
+        
+        // Add groups for properties with multiple items
+        properties
+            .groupBy { it.propertyId }
+            .filter { it.value.size > 1 }
+            .map { (propertyId, groupProperties) ->
+                val firstProperty = groupProperties.first()
+                val allChecked = groupProperties.all { it.statementId in selected }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupProperties,
+                    isAllChecked = allChecked
+                )
+            }
+            .sortedBy { it.propertyLabel }
+            .forEach { group ->
+                items.add(PropertyItem.Group(group))
+            }
+        
+        // Add single properties (not in any group)
+        properties
+            .filter { it.propertyId !in groupedPropertyIds }
+            .sortedBy { it.propertyLabel }
+            .forEach { property ->
+                items.add(PropertyItem.Single(property))
+            }
+        
+        items
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList()
+    )
 
     // Space nodes for connection
     private val _availableNodes = MutableStateFlow<List<SpaceNode>>(emptyList())
@@ -184,6 +244,65 @@ class AddNodeViewModel @Inject constructor(
             _selectedProperties.value - statementId
         } else {
             _selectedProperties.value + statementId
+        }
+    }
+
+    fun toggleSelectAllProperties() {
+        val allChecked = _entityProperties.value.isNotEmpty() && 
+            _entityProperties.value.all { it.statementId in _selectedProperties.value }
+        
+        _selectedProperties.value = if (allChecked) {
+            // Uncheck all
+            emptySet()
+        } else {
+            // Check all available properties
+            _entityProperties.value.map { it.statementId }.toSet()
+        }
+    }
+
+    data class PropertyGroup(
+        val propertyId: String,
+        val propertyLabel: String,
+        val properties: List<NodeProperty>,
+        val isAllChecked: Boolean
+    )
+
+    sealed class PropertyItem {
+        data class Group(val group: PropertyGroup) : PropertyItem()
+        data class Single(val property: NodeProperty) : PropertyItem()
+    }
+
+    fun getGroupedProperties(): List<PropertyGroup> {
+        val properties = _entityProperties.value
+        
+        return properties
+            .groupBy { it.propertyId }
+            .filter { it.value.size > 1 } // Only groups with more than one property
+            .map { (propertyId, groupProperties) ->
+                val firstProperty = groupProperties.first()
+                val allChecked = groupProperties.all { it.statementId in _selectedProperties.value }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupProperties,
+                    isAllChecked = allChecked
+                )
+            }
+            .sortedBy { it.propertyLabel }
+    }
+
+
+    fun togglePropertyGroup(propertyId: String) {
+        val groupProperties = _entityProperties.value.filter { it.propertyId == propertyId }
+        val allChecked = groupProperties.all { it.statementId in _selectedProperties.value }
+        
+        _selectedProperties.value = if (allChecked) {
+            // Uncheck all properties in this group
+            _selectedProperties.value - groupProperties.map { it.statementId }.toSet()
+        } else {
+            // Check all properties in this group
+            _selectedProperties.value + groupProperties.map { it.statementId }.toSet()
         }
     }
 

@@ -36,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -696,16 +697,21 @@ private fun AddSpaceLocationDialog(
     }
 
     AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
+        modifier = Modifier
+            .fillMaxWidth(0.95f)
+            .imePadding(),
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = true
+        ),
         confirmButton = {},
         title = null,
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 200.dp, max = 400.dp),
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -849,8 +855,7 @@ private fun AddSpaceLocationDialog(
                             }
                             ExposedDropdownMenu(
                                 expanded = isCityDropdownExpanded && !isLoadingCities,
-                                onDismissRequest = { isCityDropdownExpanded = false },
-                                modifier = Modifier.heightIn(max = 200.dp)
+                                onDismissRequest = { isCityDropdownExpanded = false }
                             ) {
                                 if (filteredCities.isEmpty() && citySearchQuery.isNotEmpty()) {
                                     DropdownMenuItem(
