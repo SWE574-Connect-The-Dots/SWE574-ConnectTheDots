@@ -134,7 +134,11 @@ class Property(models.Model):
     node = models.ForeignKey('Node', on_delete=models.CASCADE, related_name='node_properties')
     property_id = models.CharField(max_length=255)
     statement_id = models.CharField(max_length=255, null=True, default=None)
-    
+    property_label = models.CharField(max_length=255, blank=True, null=True)
+    value = models.JSONField(null=True, blank=True)
+    value_text = models.TextField(null=True, blank=True)
+    value_id = models.CharField(max_length=255, null=True, blank=True)
+
     class Meta:
         unique_together = ('node', 'statement_id')
     
@@ -151,9 +155,14 @@ class Node(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     location_name = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     report_count = models.IntegerField(default=0)
     is_reported = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
+    
+    def get_connection_count(self):
+        """Get the total number of connections (incoming + outgoing edges) for this node"""
+        return self.source_edges.count() + self.target_edges.count()
 
 class Edge(models.Model):
     source = models.ForeignKey(Node, related_name='source_edges', on_delete=models.CASCADE)
@@ -161,6 +170,18 @@ class Edge(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     relation_property = models.CharField(max_length=255)
     wikidata_property_id = models.CharField(max_length=50, blank=True, null=True)
+
+class EdgeProperty(models.Model):
+    edge = models.ForeignKey(Edge, on_delete=models.CASCADE, related_name='edge_properties')
+    property_id = models.CharField(max_length=255)
+    statement_id = models.CharField(max_length=255, null=True, default=None)
+    property_label = models.CharField(max_length=255, blank=True, null=True)
+    value = models.JSONField(null=True, blank=True)
+    value_text = models.TextField(null=True, blank=True)
+    value_id = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('edge', 'statement_id')
     
 class GraphSnapshot(models.Model):
     space_id = models.IntegerField()

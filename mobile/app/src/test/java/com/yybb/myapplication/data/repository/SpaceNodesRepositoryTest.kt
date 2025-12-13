@@ -41,18 +41,15 @@ class SpaceNodesRepositoryTest {
 
     @Test
     fun `getSpaceNodes should return nodes on success`() = runTest {
-        // Given
         val mockResponse = listOf(
-            SpaceNodeResponse(1, "Node 1", null, null, null, null, null, null, null, null),
-            SpaceNodeResponse(2, "Node 2", null, null, null, null, null, null, null, null)
+            SpaceNodeResponse(1, "Node 1", null, null, null, null, null, null, null, null, null),
+            SpaceNodeResponse(2, "Node 2", null, null, null, null, null, null, null, null, null)
         )
         val response = Response.success(mockResponse)
         whenever(mockApiService.getSpaceNodes(spaceId)).thenReturn(response)
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isSuccess)
         assertEquals(2, result.getOrNull()!!.size)
         assertEquals("Node 1", result.getOrNull()!![0].label)
@@ -62,65 +59,52 @@ class SpaceNodesRepositoryTest {
 
     @Test
     fun `getSpaceNodes should return error on failure`() = runTest {
-        // Given
         val response = Response.error<List<SpaceNodeResponse>>(
             500,
             "Error".toResponseBody()
         )
         whenever(mockApiService.getSpaceNodes(spaceId)).thenReturn(response)
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()!!.message!!.contains("Error loading nodes"))
     }
 
     @Test
     fun `getSpaceNodes should return error when not authenticated`() = runTest {
-        // Given
         whenever(mockSessionManager.authToken).thenReturn(flowOf(null))
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()!!.message!!.contains("Not authenticated"))
     }
 
     @Test
     fun `getSpaceNodes should return error on null response body`() = runTest {
-        // Given
         val response = Response.success<List<SpaceNodeResponse>>(null)
         whenever(mockApiService.getSpaceNodes(spaceId)).thenReturn(response)
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()!!.message!!.contains("Error loading nodes"))
     }
 
     @Test
     fun `getSpaceNodes should handle exception`() = runTest {
-        // Given
         val exception = RuntimeException("Network error")
         whenever(mockApiService.getSpaceNodes(spaceId)).thenThrow(exception)
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isFailure)
         assertEquals("Network error", result.exceptionOrNull()!!.message)
     }
 
     @Test
     fun `getSpaceNodes should return nodes with all fields populated`() = runTest {
-        // Given
         val mockResponse = listOf(
             SpaceNodeResponse(
                 id = 1,
@@ -132,16 +116,15 @@ class SpaceNodesRepositoryTest {
                 street = "Street",
                 latitude = "40.7128",
                 longitude = "-74.0060",
-                locationName = "Location Name"
+                locationName = "Location Name",
+                createdAt = null
             )
         )
         val response = Response.success(mockResponse)
         whenever(mockApiService.getSpaceNodes(spaceId)).thenReturn(response)
 
-        // When
         val result = repository.getSpaceNodes(spaceId)
 
-        // Then
         assertTrue(result.isSuccess)
         val node = result.getOrNull()!![0]
         assertEquals(1, node.id)

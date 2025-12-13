@@ -101,3 +101,35 @@
   text-transform: lowercase;
 }
 
+.activity-stream__clickable {
+  cursor: pointer;
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.activity-stream__clickable:hover {
+  text-decoration: underline;
+  color: var(--color-accent-hover);
+  background-color: var(--color-accent-hover-bg, rgba(0, 118, 181, 0.08));
+}
+
+.activity-stream__clickable:active {
+  background-color: var(--color-accent-active-bg, rgba(0, 118, 181, 0.15));
+}
+
+.activity-stream__clickable:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.activity-stream__deleted-ref {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+

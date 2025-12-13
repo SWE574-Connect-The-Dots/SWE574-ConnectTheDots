@@ -36,7 +36,8 @@ data class SpaceListItem(
     val creatorUsername: String,
     val collaboratorsCount: Int,
     val tags: List<SpaceTag>,
-    val isJoined: Boolean
+    val isJoined: Boolean,
+    val isArchived: Boolean = false
 ) {
     fun getFormattedDate(): String {
         return try {
@@ -234,7 +235,8 @@ class SpacesViewModel @Inject constructor(
                     wikidataLabel = it.wikidataLabel
                 )
             },
-            isJoined = isJoined
+            isJoined = isJoined,
+            isArchived = this.isArchived
         )
     }
 }

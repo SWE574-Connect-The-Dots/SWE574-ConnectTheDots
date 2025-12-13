@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Space, Tag, Property, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
+from .models import Space, Tag, Property, EdgeProperty, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
 from .serializers import (RegisterSerializer, SpaceSerializer, TagSerializer, 
                           UserSerializer, ProfileSerializer, DiscussionSerializer, 
@@ -25,6 +25,8 @@ from .permissions import IsCollaboratorOrReadOnly, IsProfileOwner, IsAdmin, IsAd
 from .reporting import REASON_CODES, REASONS_VERSION
 from django.core.cache import cache
 from django.http import JsonResponse
+from django.db.models import Count
+import google.generativeai as genai
 
 def _recompute_entity_reports(content_type, content_id):
     """Recalculate report_count and is_reported based on OPEN reports only."""
@@ -62,6 +64,21 @@ def _recompute_entity_reports(content_type, content_id):
             obj.save(update_fields=['report_count', 'is_reported'])
         except Profile.DoesNotExist:
             pass
+
+
+def _normalize_property_value_for_storage(raw_value):
+    """
+    Convert property value payload to text/id for storage and search.
+    """
+    if raw_value is None:
+        return None, None
+    if isinstance(raw_value, dict):
+        value_id = raw_value.get('id') or raw_value.get('value')
+        text = raw_value.get('text') or raw_value.get('label') or value_id
+        if text is None and value_id is None:
+            text = str(raw_value)
+        return text, value_id
+    return str(raw_value), None
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -239,7 +256,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'trending', 'new', 'top_scored', 'collaborators', 'top_collaborators', 
-                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties']:
+                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties', 'summarize_space']:
             permission_classes = [permissions.IsAuthenticated]
         elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion',
                              'react_discussion', 'add_node', 'delete_node', 'update_node_properties', 'delete_node_property',
@@ -537,6 +554,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         new_node = Node.objects.create(
             label=wikidata_entity['label'],
             wikidata_id=wikidata_entity['id'],
+            description=wikidata_entity.get('description', ''),
             created_by=request.user,
             space = space
         )
@@ -553,11 +571,47 @@ class SpaceViewSet(viewsets.ModelViewSet):
             pass
         
         for prop in selected_properties:
+            value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
             Property.objects.create(
                 node=new_node, 
-                property_id=prop['property'],
-                statement_id=prop['statement_id']
+                property_id=prop.get('property'),
+                statement_id=prop.get('statement_id'),
+                property_label=prop.get('property_label'),
+                value=prop.get('value'),
+                value_text=value_text,
+                value_id=value_id
             )
+        
+        # Auto-fetch and store ALL P31 values if none were selected
+        has_p31 = any(prop.get('property') == 'P31' for prop in selected_properties)
+        
+        if not has_p31 and wikidata_entity and wikidata_entity.get('id'):
+            try:
+                from .wikidata import get_wikidata_properties
+                all_properties = get_wikidata_properties(wikidata_entity.get('id'))
+                
+                # Find ALL P31 properties (note: key is 'property', not 'property_id')
+                p31_props = [p for p in all_properties if p.get('property') == 'P31']
+                
+                # Store ALL P31 values
+                for p31 in p31_props:
+                    value_text, value_id = _normalize_property_value_for_storage(p31.get('value'))
+                    Property.objects.create(
+                        node=new_node,
+                        property_id='P31',
+                        statement_id=p31.get('statement_id'),
+                        property_label=p31.get('property_label', 'instance of'),
+                        value=p31.get('value'),
+                        value_text=value_text,
+                        value_id=value_id
+                    )
+                    
+                if p31_props:
+                    print(f"Auto-fetched {len(p31_props)} P31 properties for node {new_node.id}")
+                    
+            except Exception as e:
+                # Don't fail node creation if P31 fetch fails
+                print(f"Failed to auto-fetch P31 for {wikidata_entity.get('id')}: {e}")
         
         # Extract location information from selected properties if they exist
         if selected_properties:
@@ -625,25 +679,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='nodes')
     def nodes(self, request, pk=None):
         nodes = Node.objects.filter(space_id=pk, is_archived=False)
-        data = []
-        for node in nodes:
-            node_data = {
-                'id': node.id, 
-                'label': node.label, 
-                'wikidata_id': node.wikidata_id,
-                'country': node.country,
-                'city': node.city,
-                'district': node.district,
-                'street': node.street,
-                'latitude': node.latitude,
-                'longitude': node.longitude,
-                'location_name': node.location_name,
-                'created_at': node.created_at,
-                'created_by': node.created_by.id if node.created_by else None,
-                'created_by_username': node.created_by.username if node.created_by else None
-            }
-            data.append(node_data)
-        return Response(data)
+        serializer = NodeSerializer(nodes, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'], url_path='edges')
     def edges(self, request, pk=None):
@@ -653,21 +690,258 @@ class SpaceViewSet(viewsets.ModelViewSet):
         edges = Edge.objects.filter(
             source_id__in=space_nodes,
             target_id__in=space_nodes
-        )
+        ).prefetch_related('edge_properties')
         
-        data = [
-            {
+        data = []
+        for edge in edges:
+            props = [
+                {
+                    'statement_id': ep.statement_id,
+                    'property_id': ep.property_id,
+                    'property_label': ep.property_label or ep.property_id,
+                    'value': ep.value,
+                    'value_text': ep.value_text,
+                    'value_id': ep.value_id
+                }
+                for ep in edge.edge_properties.all()
+            ]
+            data.append({
                 'id': edge.id,
                 'source': edge.source.id,
                 'target': edge.target.id,
                 'label': edge.relation_property,
                 'wikidata_property_id': edge.wikidata_property_id,
-                'created_at': edge.created_at
-            } 
-            for edge in edges
-        ]
+                'created_at': edge.created_at,
+                'properties': props
+            })
         
         return Response(data)
+
+    @action(detail=True, methods=['get'], url_path='search/text')
+    def search_text(self, request, pk=None):
+        """Text search on node labels/wikidata ids and edge relation labels within a space."""
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return Response({'nodes': [], 'edges': []})
+
+        nodes = Node.objects.filter(
+            space_id=pk,
+            is_archived=False
+        ).filter(
+            Q(label__icontains=query) | Q(wikidata_id__icontains=query)
+        )
+
+        edges = Edge.objects.filter(
+            source__space_id=pk,
+            relation_property__icontains=query
+        ).prefetch_related('edge_properties')
+
+        node_data = [
+            {
+                'id': n.id,
+                'label': n.label,
+                'wikidata_id': n.wikidata_id,
+                'created_at': n.created_at,
+                'created_by': n.created_by.id if n.created_by else None,
+                'created_by_username': n.created_by.username if n.created_by else None
+            }
+            for n in nodes
+        ]
+
+        edge_data = []
+        for edge in edges:
+            edge_data.append({
+                'id': edge.id,
+                'source': edge.source_id,
+                'target': edge.target_id,
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id,
+                'properties': [
+                    {
+                        'statement_id': ep.statement_id,
+                        'property_id': ep.property_id,
+                        'property_label': ep.property_label or ep.property_id,
+                        'value': ep.value,
+                        'value_text': ep.value_text,
+                        'value_id': ep.value_id
+                    } for ep in edge.edge_properties.all()
+                ]
+            })
+
+        return Response({'nodes': node_data, 'edges': edge_data})
+
+    @action(detail=True, methods=['get'], url_path='search/properties')
+    def search_properties(self, request, pk=None):
+        """List available properties (from nodes and edges) within a space with counts."""
+        space = self.get_object()
+        node_props = (
+            Property.objects
+            .filter(node__space=space)
+            .values('property_id', 'property_label')
+            .annotate(count=Count('id'))
+        )
+        edge_props = (
+            EdgeProperty.objects
+            .filter(edge__source__space=space)
+            .values('property_id', 'property_label')
+            .annotate(count=Count('id'))
+        )
+
+        results = []
+        for item in node_props:
+            results.append({
+                'property_id': item['property_id'],
+                'property_label': item['property_label'] or item['property_id'],
+                'count': item['count'],
+                'source': 'node'
+            })
+        for item in edge_props:
+            results.append({
+                'property_id': item['property_id'],
+                'property_label': item['property_label'] or item['property_id'],
+                'count': item['count'],
+                'source': 'edge'
+            })
+        return Response(results)
+
+    @action(detail=True, methods=['get'], url_path='search/properties/(?P<property_id>[^/.]+)/values')
+    def search_property_values(self, request, pk=None, property_id=None):
+        """List available values for a given property within a space."""
+        space = self.get_object()
+        query = request.query_params.get('q', '').strip()
+
+        def _values_qs(model_cls, rel_field):
+            qs = model_cls.objects.filter(**{f"{rel_field}__space": space, "property_id": property_id})
+            if query:
+                qs = qs.filter(Q(value_text__icontains=query) | Q(property_label__icontains=query))
+            return qs
+
+        node_values = (
+            _values_qs(Property, 'node')
+            .values('value_id', 'value_text')
+            .annotate(count=Count('id'))
+        )
+        edge_values = (
+            _values_qs(EdgeProperty, 'edge__source')
+            .values('value_id', 'value_text')
+            .annotate(count=Count('id'))
+        )
+
+        results = []
+        for item in node_values:
+            results.append({
+                'value_id': item['value_id'],
+                'value_text': item['value_text'],
+                'count': item['count'],
+                'source': 'node'
+            })
+        for item in edge_values:
+            results.append({
+                'value_id': item['value_id'],
+                'value_text': item['value_text'],
+                'count': item['count'],
+                'source': 'edge'
+            })
+        return Response(results)
+
+    def _apply_rule_to_queryset(self, qs, rule):
+        property_id = rule.get('property_id') or rule.get('property')
+        value_id = rule.get('value_id')
+        value_text = rule.get('value_text') or rule.get('value')
+
+        q_obj = Q(property_id=property_id)
+        if value_id:
+            q_obj &= (Q(value_id=value_id) | Q(value__id=value_id))
+        if value_text:
+            q_obj &= Q(value_text__icontains=value_text)
+        return qs.filter(q_obj)
+
+    @action(detail=True, methods=['post'], url_path='search/query')
+    def search_query(self, request, pk=None):
+        space = self.get_object()
+        rules = request.data.get('rules', [])
+        legacy_logic = request.data.get('logic')
+        
+        if not rules:
+            return Response({'nodes': [], 'edges': []})
+
+        node_results = []
+        base_node_qs = Property.objects.filter(node__space=space)
+        for i, rule in enumerate(rules):
+            qs = self._apply_rule_to_queryset(base_node_qs, rule)
+            ids = set(qs.values_list('node_id', flat=True))
+            if ids:
+                node_results.append((ids, i))
+
+        edge_results = []
+        base_edge_qs = EdgeProperty.objects.filter(edge__source__space=space)
+        for i, rule in enumerate(rules):
+            qs = self._apply_rule_to_queryset(base_edge_qs, rule)
+            ids = set(qs.values_list('edge_id', flat=True))
+            if ids:
+                edge_results.append((ids, i))
+
+        def combine_results_sequential(results, rules, legacy_logic):
+            if not results:
+                return set()
+            if len(results) == 1:
+                return results[0][0]
+            
+            use_sequential = any('operator' in rule for rule in rules)
+            
+            if use_sequential:
+                result = results[0][0]
+                for i in range(1, len(results)):
+                    current_set, current_rule_idx = results[i]
+                    prev_rule_idx = results[i-1][1]
+                    
+                    operator = (rules[prev_rule_idx].get('operator') or 'AND').upper()
+                    if operator not in ['AND', 'OR']:
+                        operator = 'AND'
+                    
+                    if operator == 'AND':
+                        result = result & current_set
+                    else:
+                        result = result | current_set
+                return result
+            else:
+                logic = (legacy_logic or 'AND').upper()
+                if logic not in ['AND', 'OR']:
+                    logic = 'AND'
+                
+                result = results[0][0]
+                for s, _ in results[1:]:
+                    result = result & s if logic == 'AND' else result | s
+                return result
+
+        matching_node_ids = combine_results_sequential(node_results, rules, legacy_logic)
+        matching_edge_ids = combine_results_sequential(edge_results, rules, legacy_logic)
+
+        nodes = Node.objects.filter(id__in=matching_node_ids, space=space)
+        edges = Edge.objects.filter(id__in=matching_edge_ids, source__space=space).prefetch_related('edge_properties')
+
+        node_data = NodeSerializer(nodes, many=True).data
+        edge_data = []
+        for edge in edges:
+            edge_data.append({
+                'id': edge.id,
+                'source': edge.source_id,
+                'target': edge.target_id,
+                'label': edge.relation_property,
+                'wikidata_property_id': edge.wikidata_property_id,
+                'properties': [
+                    {
+                        'statement_id': ep.statement_id,
+                        'property_id': ep.property_id,
+                        'property_label': ep.property_label or ep.property_id,
+                        'value': ep.value,
+                        'value_text': ep.value_text,
+                        'value_id': ep.value_id
+                    } for ep in edge.edge_properties.all()
+                ]
+            })
+
+        return Response({'nodes': node_data, 'edges': edge_data})
     
     @action(detail=True, methods=['get'], url_path='collaborators')
     def collaborators(self, request, pk=None):
@@ -972,6 +1246,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
+            deleted_node_label = node.label
             Edge.objects.filter(source=node).delete()
             Edge.objects.filter(target=node).delete()
             Property.objects.filter(node=node).delete()
@@ -983,14 +1258,78 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     type='Delete',
                     object=f'Node:{deleted_node_id}',
                     target=f'Space:{space.id}',
-                    summary=f"{request.user.username} deleted a node",
-                    payload={'node_id': deleted_node_id, 'space_id': space.id}
+                    summary=f"{request.user.username} deleted node '{deleted_node_label}'",
+                    payload={'node_id': deleted_node_id, 'node_label': deleted_node_label, 'space_id': space.id}
                 )
             except Exception:
                 pass
             return Response({'message': 'Node successfully deleted'}, status=200)
         except Node.DoesNotExist:
             return Response({'error': 'Node not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+    
+    @action(detail=True, methods=['get'], url_path='instance-types')
+    def get_instance_types(self, request, pk=None):
+        """
+        Get instance type GROUPS for nodes in this space.
+        
+        Returns groups (not individual types) with counts.
+        
+        Returns:
+            {
+                'instance_groups': [
+                    {'group_id': 'CITY', 'group_label': 'City', 'count': 10},
+                    {'group_id': 'HUMAN', 'group_label': 'Human', 'count': 5},
+                    ...
+                ],
+                'nodes_by_group': {
+                    'CITY': [1, 2, 3, ...],
+                    'HUMAN': [4, 5, ...],
+                    ...
+                }
+            }
+        """
+        try:
+            space = self.get_object()
+            
+            # Get all nodes with their instance types
+            from .serializers import NodeSerializer
+            nodes = space.node_set.all()
+            
+            # Count nodes per group
+            group_counts = {}
+            nodes_by_group = {}
+            
+            for node in nodes:
+                serializer = NodeSerializer(node)
+                instance_type = serializer.data.get('instance_type')
+                
+                if instance_type and instance_type.get('group_id'):
+                    group_id = instance_type['group_id']
+                    
+                    if group_id not in group_counts:
+                        group_counts[group_id] = {
+                            'group_id': group_id,
+                            'group_label': instance_type['group_label'],
+                            'count': 0
+                        }
+                        nodes_by_group[group_id] = []
+                    
+                    group_counts[group_id]['count'] += 1
+                    nodes_by_group[group_id].append(node.id)
+            
+            # Sort by count
+            instance_groups = sorted(
+                group_counts.values(),
+                key=lambda x: x['count'],
+                reverse=True
+            )
+            
+            return Response({
+                'instance_groups': instance_groups,
+                'nodes_by_group': nodes_by_group
+            })
         except Exception as e:
             return Response({'error': str(e)}, status=500)
     
@@ -1013,12 +1352,47 @@ class SpaceViewSet(viewsets.ModelViewSet):
             for prop in selected_properties:
                 if not prop:
                     continue
+                value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
                 Property.objects.create(
                     node=node,
-                    property_id=prop['property'],
-                    statement_id=prop['statement_id']
+                    property_id=prop.get('property'),
+                    statement_id=prop.get('statement_id'),
+                    property_label=prop.get('property_label'),
+                    value=prop.get('value'),
+                    value_text=value_text,
+                    value_id=value_id
                 )
             
+            # Auto-fetch and store ALL P31 values if none were selected
+            has_p31 = any(prop.get('property') == 'P31' for prop in selected_properties if prop)
+            
+            if not has_p31 and node.wikidata_id:
+                try:
+                    from .wikidata import get_wikidata_properties
+                    all_properties = get_wikidata_properties(node.wikidata_id)
+                    
+                    # Find ALL P31 properties
+                    p31_props = [p for p in all_properties if p.get('property_id') == 'P31']
+                    
+                    # Store ALL P31 values
+                    for p31 in p31_props:
+                        value_text, value_id = _normalize_property_value_for_storage(p31.get('value'))
+                        Property.objects.create(
+                            node=node,
+                            property_id='P31',
+                            statement_id=p31.get('statement_id'),
+                            property_label=p31.get('property_label', 'instance of'),
+                            value=p31.get('value'),
+                            value_text=value_text,
+                            value_id=value_id
+                        )
+                        
+                    if p31_props:
+                        print(f"Auto-fetched {len(p31_props)} P31 properties for node {node.id}")
+                        
+                except Exception as e:
+                    # Don't fail node update if P31 fetch fails
+                    print(f"Failed to auto-fetch P31 for {node.wikidata_id}: {e}")
             
             if selected_properties:
                 location_data = extract_location_from_properties(selected_properties)
@@ -1155,6 +1529,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             new_source_id = request.data.get('source_id')
             new_target_id = request.data.get('target_id')
             wikidata_property_id = request.data.get('wikidata_property_id', None)
+            edge_properties = request.data.get('edge_properties', None)
 
             if new_source_id and new_target_id:
                 if (str(edge.source.id) != str(new_source_id)) or (str(edge.target.id) != str(new_target_id)):
@@ -1169,6 +1544,22 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
             edge.wikidata_property_id = wikidata_property_id
             edge.save()
+
+            if edge_properties is not None:
+                EdgeProperty.objects.filter(edge=edge).delete()
+                for prop in edge_properties:
+                    if not prop:
+                        continue
+                    value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
+                    EdgeProperty.objects.create(
+                        edge=edge,
+                        property_id=prop.get('property'),
+                        statement_id=prop.get('statement_id'),
+                        property_label=prop.get('property_label'),
+                        value=prop.get('value'),
+                        value_text=value_text,
+                        value_id=value_id
+                    )
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1233,6 +1624,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         target_id = request.data.get('target_id')
         label = request.data.get('label', '').strip()
         wikidata_property_id = request.data.get('wikidata_property_id', None)
+        edge_properties = request.data.get('edge_properties', [])
         if not source_id or not target_id or not label:
             return Response({'error': 'source_id, target_id, and label are required'}, status=400)
         try:
@@ -1246,6 +1638,17 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 relation_property=label,
                 wikidata_property_id=wikidata_property_id
             )
+            for prop in edge_properties:
+                value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
+                EdgeProperty.objects.create(
+                    edge=edge,
+                    property_id=prop.get('property'),
+                    statement_id=prop.get('statement_id'),
+                    property_label=prop.get('property_label'),
+                    value=prop.get('value'),
+                    value_text=value_text,
+                    value_id=value_id
+                )
             try:
                 edge_summary = self._format_edge_summary(
                     request.user.username,
@@ -1306,6 +1709,221 @@ class SpaceViewSet(viewsets.ModelViewSet):
     
         return response
 
+    @action(detail=True, methods=['post'], url_path='summarize')
+    def summarize_space(self, request, pk=None):
+        import os
+        
+        try:
+            space = self.get_object()
+            
+            nodes = Node.objects.filter(space=space, is_archived=False)
+            edges = Edge.objects.filter(source__space=space, source__is_archived=False, target__is_archived=False)
+            discussions = Discussion.objects.filter(space=space).order_by('-created_at')[:10]  # Latest 10 discussions
+            
+            nodes_with_connections = nodes.annotate(
+                outgoing_count=Count('source_edges', distinct=True),
+                incoming_count=Count('target_edges', distinct=True)
+            )
+            
+            total_nodes = nodes_with_connections.count()
+            
+            if total_nodes > 0:
+                nodes_sorted_by_connections = sorted(
+                    nodes_with_connections,
+                    key=lambda n: n.outgoing_count + n.incoming_count,
+                    reverse=True
+                )
+            else:
+                nodes_sorted_by_connections = []
+            
+            space_data = {
+                'title': space.title,
+                'description': space.description or 'No description',
+                'creator': space.creator.username,
+                'collaborators': [user.username for user in space.collaborators.all()],
+                'tags': [tag.name for tag in space.tags.all()],
+                'location': {
+                    'country': space.country or 'Not specified',
+                    'city': space.city or 'Not specified',
+                }
+            }
+            
+            # nodes with connection counts
+            nodes_data = []
+            for node in nodes_with_connections[:30]:
+                try:
+                    node_info = {
+                        'label': node.label or 'Unlabeled',
+                        'wikidata_id': node.wikidata_id or 'N/A',
+                        'connections': node.outgoing_count + node.incoming_count,
+                        'properties': []
+                    }
+                    for prop in node.node_properties.all()[:5]:
+                        node_info['properties'].append({
+                            'property': prop.property_label or prop.property_id or 'Unknown',
+                            'value': prop.value_text or prop.value_id or 'N/A'
+                        })
+                    nodes_data.append(node_info)
+                except Exception as node_error:
+                    continue
+            
+            # edges
+            edges_data = []
+            
+            top_node_ids = {node.id for node in nodes_sorted_by_connections[:30]}
+            filtered_edges = [
+                e for e in edges 
+                if e.source_id in top_node_ids and e.target_id in top_node_ids
+            ]
+            
+            if len(filtered_edges) < 30:
+                remaining_edges = [e for e in edges if e not in filtered_edges]
+                filtered_edges.extend(remaining_edges[:30 - len(filtered_edges)])
+            
+            for edge in filtered_edges[:30]:
+                try:
+                    edge_info = {
+                        'source': edge.source.label if (edge.source and edge.source.label) else 'Unknown',
+                        'target': edge.target.label if (edge.target and edge.target.label) else 'Unknown',
+                        'relation': edge.relation_property or 'connected to'
+                    }
+                    edges_data.append(edge_info)
+                except Exception as edge_error:
+                    continue
+            
+            # COMMENTS
+            discussions_data = []
+            for discussion in discussions:
+                try:
+                    discussions_data.append({
+                        'user': discussion.user.username,
+                        'text': (discussion.text[:200] if discussion.text else 'No text'),
+                        'created_at': discussion.created_at.strftime('%Y-%m-%d')
+                    })
+                except Exception as disc_error:
+                    continue
+            
+            # NODE with connection counts
+            nodes_text = []
+            for n in nodes_data:  # Use all 30 sorted nodes
+                try:
+                    connection_info = f"[{n['connections']} connections]"
+                    if n['properties']:
+                        props_text = ', '.join([f"{p['property']}: {p['value']}" for p in n['properties']])
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: {props_text}")
+                    else:
+                        nodes_text.append(f"- {n['label']} ({n['wikidata_id']}) {connection_info}: No properties")
+                except Exception as e:
+                    continue
+            nodes_section = '\n'.join(nodes_text) if nodes_text else 'No nodes yet'
+            
+            # EDGE
+            edges_text = []
+            for e in edges_data[:20]:
+                try:
+                    edges_text.append(f"- {e['source']} → [{e['relation']}] → {e['target']}")
+                except Exception as e_error:
+                    continue
+            edges_section = '\n'.join(edges_text) if edges_text else 'No edges yet'
+            
+            discussions_text = []
+            for d in discussions_data[:5]:
+                try:
+                    discussions_text.append(f"- {d['user']} ({d['created_at']}): {d['text']}")
+                except Exception as d_error:
+                    continue
+            discussions_section = '\n'.join(discussions_text) if discussions_text else 'No discussions yet'
+            
+            ##### PROMPT #######
+            prompt = f"""Analyze and summarize the following knowledge graph space:
+
+**Space Information:**
+- Title: {space_data['title']}
+- Description: {space_data['description']}
+- Creator: {space_data['creator']}
+- Collaborators: {', '.join(space_data['collaborators']) if space_data['collaborators'] else 'None'}
+- Tags: {', '.join(space_data['tags']) if space_data['tags'] else 'None'}
+- Location: {space_data['location']['city']}, {space_data['location']['country']}
+
+**Graph Structure:**
+- Total Nodes: {nodes.count()}
+- Total Edges: {edges.count()}
+
+**Sample Nodes (top 30 by connections):**
+{nodes_section}
+
+**Sample Connections:**
+{edges_section}
+
+**Recent Discussions:**
+{discussions_section}
+
+Please provide a comprehensive summary using markdown formatting:
+- Use **bold** for important concepts, entities, and key insights
+- Use ### for section headings
+- Use bullet points (-) for lists
+- Keep it organized and easy to scan
+- Make it engaging and informative
+
+Include these sections:
+### Overview
+Briefly describe the main theme and purpose of this knowledge graph (2-3 sentences with key terms in **bold**)
+
+### Key Entities & Relationships
+List the most important entities and their connections using **bold** for entity names
+
+### Insights & Patterns
+Highlight interesting patterns or notable findings with **bold** emphasis on key points
+
+### Activity & Collaboration
+Describe the collaboration level and discussion activity with important metrics in **bold**
+
+Keep the summary concise (2-3 paragraphs total) but well-formatted for easy reading."""
+
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                return Response({
+                    'error': 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable.'
+                }, status=500)
+            
+            genai.configure(api_key=api_key)
+            
+            model_name = 'gemini-2.5-flash'
+            model_used = model_name
+            
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                summary = response.text
+            except Exception as flash_error:
+                error_str = str(flash_error).lower()
+                if 'quota' in error_str or 'resource' in error_str or '429' in error_str:
+                    model_name = 'gemini-2.5-flash-lite'
+                    model_used = model_name
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        response = model.generate_content(prompt)
+                        summary = response.text
+                    except Exception as lite_error:
+                        raise Exception(f"Both models failed. Flash error: {flash_error}, Lite error: {lite_error}")
+                else:
+                    raise flash_error
+            
+            return Response({
+                'summary': summary,
+                'model_used': model_used,
+                'metadata': {
+                    'node_count': nodes.count(),
+                    'edge_count': edges.count(),
+                    'discussion_count': discussions.count(),
+                    'collaborator_count': space.collaborators.count()
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate summary: {str(e)}'
+            }, status=500)
 
     @action(detail=False, methods=['get'], url_path='top-scored', permission_classes=[IsAuthenticated])
     def top_scored(self, request):
@@ -1605,7 +2223,6 @@ class ReportViewSet(viewsets.ModelViewSet):
             pass
 
     def partial_update(self, request, *args, **kwargs):
-        # Get report directly from database to check permissions before filtering
         pk = kwargs.get('pk')
         try:
             report = Report.objects.get(pk=pk)

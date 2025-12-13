@@ -35,6 +35,8 @@ import com.yybb.myapplication.data.network.dto.WikidataPropertyDto
 import com.yybb.myapplication.data.network.dto.ReportResponse
 import com.yybb.myapplication.data.network.dto.SubmitReportRequest
 import com.yybb.myapplication.data.network.dto.SubmitReportResponse
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationRequest
+import com.yybb.myapplication.data.network.dto.UpdateNodeLocationResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -114,6 +116,13 @@ interface ApiService {
         @Path("nodeId") nodeId: String,
     ): Response<List<NodePropertyResponse>>
 
+    @PUT("api/spaces/{id}/nodes/{nodeId}/update-location/")
+    suspend fun updateNodeLocation(
+        @Path("id") id: String,
+        @Path("nodeId") nodeId: String,
+        @Body request: UpdateNodeLocationRequest
+    ): Response<UpdateNodeLocationResponse>
+
     @GET("api/spaces/wikidata-entity-properties/{propertyId}/")
     suspend fun getWikidataPropertiesNode(@Path("propertyId") propertyId: String): Response<List<NodeWikidataPropertyResponse>>
 
@@ -185,4 +194,10 @@ interface ApiService {
     suspend fun submitReport(
         @Body request: SubmitReportRequest
     ): Response<SubmitReportResponse>
+
+    @GET("api/activity-stream/")
+    suspend fun getActivityStream(
+        @Query("limit") limit: Int = 100,
+        @Query("since") since: String? = null
+    ): Response<com.yybb.myapplication.data.network.dto.ActivityStreamResponse>
 }

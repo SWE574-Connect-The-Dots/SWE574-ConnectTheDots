@@ -20,6 +20,7 @@ export default function BackOffice() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasAccess, setHasAccess] = useState(true);
 
   // Fetch dashboard statistics from API
   useEffect(() => {
@@ -33,18 +34,18 @@ export default function BackOffice() {
         console.error('Error fetching dashboard stats:', err);
         console.error('Error response:', err.response?.data);
         console.error('Error status:', err.response?.status);
-        
-        let errorMessage = 'Failed to load dashboard statistics';
         if (err.response?.status === 403) {
-          errorMessage = 'Permission denied - Admin access required';
-        } else if (err.response?.status === 404) {
-          errorMessage = 'Dashboard endpoint not found';
-        } else if (err.response?.data?.error) {
-          errorMessage = err.response.data.error;
+          setError(null);
+          setHasAccess(false);
+        } else {
+          let errorMessage = 'Failed to load dashboard statistics';
+          if (err.response?.status === 404) {
+            errorMessage = 'Dashboard endpoint not found';
+          } else if (err.response?.data?.error) {
+            errorMessage = err.response.data.error;
+          }
+          setError(errorMessage);
         }
-        
-        setError(errorMessage);
-        // Keep default values on error
       } finally {
         setLoading(false);
       }
@@ -84,33 +85,34 @@ export default function BackOffice() {
       <h2>Dashboard</h2>
       <p>Welcome to the Connect The Dots admin dashboard.</p>
 
-      <div style={{ marginTop: "30px" }}>
-        <h3>Platform Overview</h3>
-        
-        {error && (
-          <div style={{
-            backgroundColor: "#fee2e2",
-            border: "1px solid #fca5a5",
-            color: "#dc2626",
-            padding: "10px",
-            borderRadius: "6px",
-            marginBottom: "20px"
-          }}>
-            {error}
-          </div>
-        )}
+      {hasAccess && (
+        <div style={{ marginTop: "30px" }}>
+          <h3>Platform Overview</h3>
+          
+          {error && (
+            <div style={{
+              backgroundColor: "#fee2e2",
+              border: "1px solid #fca5a5",
+              color: "var(--color-danger-light)",
+              padding: "10px",
+              borderRadius: "6px",
+              marginBottom: "20px"
+            }}>
+              {error}
+            </div>
+          )}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "20px",
-            marginTop: "20px",
-          }}
-        >
           <div
             style={{
-              backgroundColor: "white",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "20px",
+              marginTop: "20px",
+            }}
+          >
+          <div
+            style={{
+              backgroundColor: "var(--color-white)",
               padding: "20px",
               borderRadius: "8px",
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -126,7 +128,7 @@ export default function BackOffice() {
 
           <div
             style={{
-              backgroundColor: "white",
+              backgroundColor: "var(--color-white)",
               padding: "20px",
               borderRadius: "8px",
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -142,7 +144,7 @@ export default function BackOffice() {
 
           <div
             style={{
-              backgroundColor: "white",
+              backgroundColor: "var(--color-white)",
               padding: "20px",
               borderRadius: "8px",
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -158,7 +160,7 @@ export default function BackOffice() {
 
           <div
             style={{
-              backgroundColor: "white",
+              backgroundColor: "var(--color-white)",
               padding: "20px",
               borderRadius: "8px",
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -172,16 +174,17 @@ export default function BackOffice() {
             </p>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       <div style={{ marginTop: "50px" }}>
         <h3>Top Contributed Spaces</h3>
 
         
         {topSpacesLoading ? (
-          <p style={{ color: "#4A5568" }}>Loading top spaces...</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>Loading top spaces...</p>
         ) : topSpaces.length === 0 ? (
-          <p style={{ color: "#4A5568" }}>No spaces found.</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>No spaces found.</p>
         ) : (
           <div
             style={{
@@ -197,7 +200,7 @@ export default function BackOffice() {
                 key={space.id}
                 onClick={() => navigate(`/spaces/${space.id}`)}
                 style={{
-                  backgroundColor: "white",
+                  backgroundColor: "var(--color-white)",
                   padding: "20px",
                   borderRadius: "8px",
                   boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -206,7 +209,9 @@ export default function BackOffice() {
                   display: "flex",
                   flexDirection: "column",
                   gap: "15px",
+                  width: "280px",
                   minWidth: "280px",
+                  maxWidth: "280px",
                   flexShrink: 0,
                   position: "relative"
                 }}
@@ -224,8 +229,8 @@ export default function BackOffice() {
                   position: "absolute",
                   top: "15px",
                   right: "15px",
-                  backgroundColor: index === 0 ? "#8F6701" : index === 1 ? "#656F75" : index === 2 ? "#BD4902" : "#0076B5",
-                  color: "#FFFFFF", // White text for all badges
+                  backgroundColor: index === 0 ? "var(--color-warning)" : index === 1 ? "var(--color-border-2)" : index === 2 ? "var(--color-danger)" : "var(--color-accent)",
+                  color: "var(--color-white)",
                   width: "28px",
                   height: "28px",
                   borderRadius: "50%",
@@ -242,10 +247,13 @@ export default function BackOffice() {
 
                 <h4 style={{ 
                   margin: "0", 
-                  color: "#1B1F3B", // Primary Text - Almost Black
+                  color: "var(--color-text)",
                   fontSize: "18px",
                   fontWeight: "600",
-                  paddingRight: "45px" // Make room for badge
+                  paddingRight: "45px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
                 }}>
                   {space.title}
                 </h4>
@@ -253,10 +261,14 @@ export default function BackOffice() {
                 <p style={{
                   margin: "0",
                   fontSize: "14px",
-                  color: "#646E7A", // Placeholder Text - Gray
+                  color: "var(--color-gray-400)",
                   lineHeight: "1.4",
                   height: "40px",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical"
                 }}>
                   {space.description || "No description available"}
                 </p>
@@ -274,13 +286,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#2D6A4F", // Success - Emerald Green
+                      color: "var(--color-success)",
                       fontSize: "16px"
                     }}>
                       {space.collaborator_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#4A5568", // Secondary Text - Slate Gray
+                      color: "var(--color-text-secondary)",
                       fontSize: "13px"
                     }}>
                       collaborators
@@ -294,13 +306,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#3A0CA3", // Node Default - Indigo Blue
+                      color: "var(--color-purple)",
                       fontSize: "16px"
                     }}>
                       {space.node_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#4A5568", // Secondary Text - Slate Gray
+                      color: "var(--color-text-secondary)",
                       fontSize: "13px"
                     }}>
                       nodes
@@ -314,13 +326,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#374151", // Edges/Lines - Dark Gray
+                      color: "var(--color-border-1)",
                       fontSize: "16px"
                     }}>
                       {space.edge_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#4A5568", // Secondary Text - Slate Gray
+                      color: "var(--color-text-secondary)",
                       fontSize: "13px"
                     }}>
                       edges
@@ -334,13 +346,13 @@ export default function BackOffice() {
                   }}>
                     <span style={{ 
                       fontWeight: "bold", 
-                      color: "#215D69", // Info/Hint - Sky Blue
+                      color: "var(--color-teal-dark)",
                       fontSize: "16px"
                     }}>
                       {space.discussion_count || 0}
                     </span>
                     <span style={{ 
-                      color: "#4A5568", // Secondary Text - Slate Gray
+                      color: "var(--color-text-secondary)",
                       fontSize: "13px"
                     }}>
                       discussions

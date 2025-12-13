@@ -392,48 +392,8 @@ export default function Reports() {
        >
          <div>
            <span>
-             Showing {reports.length} of {reports.length} reports
+             Showing {reports.length} reports
            </span>
-         </div>
-         <div>
-           <button
-             style={{
-               border: "1px solid #ddd",
-               padding: "5px 10px",
-               margin: "0 5px",
-               borderRadius: "4px",
-               cursor: "pointer",
-               color: "black",
-             }}
-             disabled
-           >
-             Previous
-           </button>
-           <button
-             style={{
-               border: "none",
-               padding: "5px 10px",
-               margin: "0 5px",
-               borderRadius: "4px",
-               cursor: "pointer",
-               color: "black",
-             }}
-           >
-             1
-           </button>
-           <button
-             style={{
-               border: "1px solid #ddd",
-               padding: "5px 10px",
-               margin: "0 5px",
-               borderRadius: "4px",
-               cursor: "pointer",
-               color: "black",
-             }}
-             disabled
-           >
-             Next
-           </button>
          </div>
        </div>
     </div>

@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.focusable
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yybb.myapplication.R
 import com.yybb.myapplication.data.Constants.TAG_ICON_SIZE
@@ -90,7 +92,6 @@ import com.yybb.myapplication.data.model.WikidataProperty
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel
 import com.yybb.myapplication.presentation.ui.viewmodel.SpaceNodeDetailsViewModel.NodeOption
 import androidx.compose.ui.window.DialogProperties
-import com.yybb.myapplication.presentation.ui.screens.LoadingDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +113,7 @@ fun SpaceNodeDetailsScreen(
     val connectionSearchQuery by viewModel.connectionSearchQuery.collectAsState()
     val filteredConnections by viewModel.filteredConnections.collectAsState()
     val apiNodeProperties by viewModel.apiNodeProperties.collectAsState()
+    val savedPropertyItems by viewModel.savedPropertyItems.collectAsState()
     val isNodePropertiesLoading by viewModel.isNodePropertiesLoading.collectAsState()
     val isWikidataPropertiesLoading by viewModel.isWikidataPropertiesLoading.collectAsState()
     val wikidataPropertiesError by viewModel.wikidataPropertiesError.collectAsState()
@@ -135,30 +137,23 @@ fun SpaceNodeDetailsScreen(
     val isSubmittingReport by viewModel.isSubmittingReport.collectAsState()
     val reportSubmitSuccess by viewModel.reportSubmitSuccess.collectAsState()
     val reportError by viewModel.reportError.collectAsState()
+    val nodeDetails by viewModel.nodeDetails.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddEdgeDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val showEditLocationDialog by viewModel.showEditLocationDialog.collectAsState()
 
 
-    // Refresh connections when the Connections tab is selected or visible
-    // This ensures we have the latest data when:
-    // 1. Tab is first selected
-    // 2. User navigates back from EdgeDetailsScreen (composable recomposes with Connections tab visible)
-    // The ViewModel prevents duplicate concurrent calls via job cancellation
     LaunchedEffect(selectedTabIndex) {
         if (selectedTabIndex == 1) { // Connections tab
             viewModel.refreshNodeConnections()
         }
     }
     
-    // Additional refresh when composable is composed/recomposed and Connections tab is visible
-    // This handles the case when user navigates back while already on Connections tab
     LaunchedEffect(Unit) {
-        // Refresh connections when the screen becomes visible and Connections tab is active
-        // This runs when the composable is composed (including after navigation back)
         if (selectedTabIndex == 1) {
             viewModel.refreshNodeConnections()
         }
@@ -318,6 +313,24 @@ fun SpaceNodeDetailsScreen(
         LoadingDialog(message = stringResource(id = R.string.deleting_node_message))
     }
 
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+    val isUpdatingLocation by viewModel.isUpdatingLocation.collectAsState()
+    
+    if (isLoadingCities && showEditLocationDialog) {
+        LoadingDialog(message = "Loading cities...")
+    }
+
+    if (isUpdatingLocation) {
+        LoadingDialog(message = "Updating location...")
+    }
+
+    if (showEditLocationDialog) {
+        EditLocationDialog(
+            viewModel = viewModel,
+            onDismiss = { viewModel.hideEditLocationDialog() }
+        )
+    }
+
     LaunchedEffect(deleteNodeSuccess) {
         if (deleteNodeSuccess) {
             Toast.makeText(
@@ -413,7 +426,6 @@ fun SpaceNodeDetailsScreen(
                 actions = {
                     when (selectedTabIndex) {
                         0 -> {
-                            // Details tab - show menu with Delete and Report options
                             var showMenu by remember { mutableStateOf(false) }
                             Box {
                                 IconButton(onClick = { showMenu = true }) {
@@ -457,7 +469,6 @@ fun SpaceNodeDetailsScreen(
                             }
                         }
                         else -> {
-                            // Connections tab - show Add connection button
                             IconButton(onClick = { showAddEdgeDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
@@ -518,16 +529,28 @@ fun SpaceNodeDetailsScreen(
                         }
                     },
                     onPropertyRemove = viewModel::deleteNodeProperty,
+                    onDeletePropertyGroup = viewModel::deletePropertyGroup,
+                    savedPropertyItems = savedPropertyItems,
                     wikidataId = wikidataId,
                     searchQuery = searchQuery,
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onToggleProperty = viewModel::togglePropertySelection,
+                    onToggleSelectAll = viewModel::toggleSelectAllProperties,
+                    onTogglePropertyGroup = viewModel::togglePropertyGroup,
                     onSaveProperties = viewModel::saveSelectedProperties,
                     filteredOptions = filteredProperties,
+                    isSelectAllChecked = viewModel.isSelectAllChecked(),
+                    selectedPropertiesCount = viewModel.getSelectedPropertiesCount(),
+                    groupedProperties = viewModel.getGroupedProperties(if (searchQuery.isBlank()) null else filteredProperties),
+                    propertyItems = viewModel.getPropertyItems(if (searchQuery.isBlank()) null else filteredProperties),
                     isSavingProperties = isUpdatingNodeProperties,
                     isWikidataPropertiesLoading = isWikidataPropertiesLoading,
                     wikidataPropertiesError = wikidataPropertiesError,
-                    onNavigateToWebView = onNavigateToWebView
+                    onNavigateToWebView = onNavigateToWebView,
+                    locationName = viewModel.locationName.value,
+                    nodeDetails = nodeDetails,
+                    onEditLocationClick = { viewModel.showEditLocationDialog() },
+                    totalPropertiesCount = viewModel.getTotalPropertiesCount()
                 )
 
                 else -> ConnectionsContent(
@@ -567,16 +590,28 @@ private fun DetailsContent(
     onRetryProperties: () -> Unit,
     onPropertyValueClick: (NodeProperty) -> Unit,
     onPropertyRemove: (NodeProperty) -> Unit,
+    onDeletePropertyGroup: (String) -> Unit,
+    savedPropertyItems: List<SpaceNodeDetailsViewModel.SavedPropertyItem>,
     wikidataId: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onToggleProperty: (String) -> Unit,
+    onToggleSelectAll: () -> Unit,
+    onTogglePropertyGroup: (String) -> Unit,
     onSaveProperties: () -> Unit,
     filteredOptions: List<SpaceNodeDetailsViewModel.PropertyOption>,
     isSavingProperties: Boolean,
+    isSelectAllChecked: Boolean,
+    selectedPropertiesCount: Int,
+    totalPropertiesCount: Int,
+    groupedProperties: List<SpaceNodeDetailsViewModel.PropertyGroup>,
+    propertyItems: List<SpaceNodeDetailsViewModel.PropertyItem>,
     isWikidataPropertiesLoading: Boolean,
     wikidataPropertiesError: String?,
-    onNavigateToWebView: (String) -> Unit
+    onNavigateToWebView: (String) -> Unit,
+    locationName: String?,
+    nodeDetails: com.yybb.myapplication.data.model.SpaceNode?,
+    onEditLocationClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -627,6 +662,61 @@ private fun DetailsContent(
                         }
                     }
                 )
+                
+                // Location Section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Location:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Button(
+                        onClick = onEditLocationClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF436FED)
+                        )
+                    ) {
+                        Text("Edit Location", color = Color.White)
+                    }
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = locationName ?: "Location not specified",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (locationName != null) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        val latitude = nodeDetails?.latitude
+                        val longitude = nodeDetails?.longitude
+                        if (latitude != null && longitude != null) {
+                            Text(
+                                text = "Coordinates: $latitude, $longitude",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+                
                 Text(
                     text = stringResource(id = R.string.node_properties_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -677,13 +767,75 @@ private fun DetailsContent(
                 }
 
                 else -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        apiNodeProperties.forEach { property ->
-                            NodePropertyDisplayRow(
-                                property = property,
-                                onValueClick = onPropertyValueClick,
-                                onRemoveClick = onPropertyRemove
-                            )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 80.dp, max = 150.dp)
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                items = savedPropertyItems,
+                                key = { item ->
+                                    when (item) {
+                                        is SpaceNodeDetailsViewModel.SavedPropertyItem.Group -> item.group.propertyId
+                                        is SpaceNodeDetailsViewModel.SavedPropertyItem.Single -> item.property.statementId
+                                    }
+                                }
+                            ) { item ->
+                                when (item) {
+                                    is SpaceNodeDetailsViewModel.SavedPropertyItem.Group -> {
+                                        val group = item.group
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            // Group header with delete button
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "${group.propertyLabel} (${group.propertyId})",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                                IconButton(
+                                                    onClick = { onDeletePropertyGroup(group.propertyId) },
+                                                    modifier = Modifier.size(38.dp)
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(id = R.drawable.ic_delete_bin),
+                                                        contentDescription = "Delete all properties in group",
+                                                        modifier = Modifier.size(TAG_ICON_SIZE.dp)
+                                                    )
+                                                }
+                                            }
+                                            // Properties in the group (indented)
+                                            Column(
+                                                modifier = Modifier.padding(start = 16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                group.properties.forEach { property ->
+                                                    NodePropertyDisplayRow(
+                                                        property = property,
+                                                        onValueClick = onPropertyValueClick,
+                                                        onRemoveClick = onPropertyRemove
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    is SpaceNodeDetailsViewModel.SavedPropertyItem.Single -> {
+                                        NodePropertyDisplayRow(
+                                            property = item.property,
+                                            onValueClick = onPropertyValueClick,
+                                            onRemoveClick = onPropertyRemove
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -721,25 +873,22 @@ private fun DetailsContent(
                     onToggleProperty = onToggleProperty,
                     onValueClick = onPropertyValueClick,
                     isLoading = isWikidataPropertiesLoading,
-                    error = wikidataPropertiesError
+                    error = wikidataPropertiesError,
+                    onToggleSelectAll = onToggleSelectAll,
+                    isSelectAllChecked = isSelectAllChecked,
+                    onTogglePropertyGroup = onTogglePropertyGroup,
+                    groupedProperties = groupedProperties,
+                    propertyItems = propertyItems,
+                    searchQuery = searchQuery
                 )
-                Button(
-                    onClick = onSaveProperties,
-                    enabled = !isSavingProperties,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isSavingProperties) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(text = stringResource(id = R.string.save_properties_button))
-                }
+                SavePropertiesButton(
+                    onSaveClick = onSaveProperties,
+                    onToggleSelectAll = onToggleSelectAll,
+                    isSaving = isSavingProperties,
+                    isSelectAllChecked = isSelectAllChecked,
+                    selectedPropertiesCount = selectedPropertiesCount,
+                    totalPropertiesCount = totalPropertiesCount
+                )
             }
         }
     }
@@ -777,12 +926,93 @@ private fun NodePropertyDisplayRow(
 }
 
 @Composable
+private fun SavePropertiesButton(
+    onSaveClick: () -> Unit,
+    onToggleSelectAll: () -> Unit,
+    isSaving: Boolean,
+    isSelectAllChecked: Boolean,
+    selectedPropertiesCount: Int,
+    totalPropertiesCount: Int
+) {
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    
+    Button(
+        onClick = {
+            // Checking if we need confirmation: more than 20 properties and select all is checked
+            if (totalPropertiesCount > 20 && isSelectAllChecked) {
+                showConfirmationDialog = true
+            } else {
+                onSaveClick()
+            }
+        },
+        enabled = !isSaving,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (isSaving) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(text = stringResource(id = R.string.save_properties_button))
+    }
+    
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmationDialog = false },
+            title = { Text(text = stringResource(id = R.string.save_properties_button)) },
+            text = {
+                Text(
+                    text = stringResource(
+                        id = R.string.add_all_properties_confirmation,
+                        selectedPropertiesCount
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmationDialog = false
+                        onSaveClick()
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.yes_button))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmationDialog = false
+                        // Uncheck select all if it's currently checked
+                        if (isSelectAllChecked) {
+                            onToggleSelectAll()
+                        }
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.no_button))
+                }
+            }
+        )
+    }
+}
+
+@Composable
 private fun PropertySelectionList(
     options: List<SpaceNodeDetailsViewModel.PropertyOption>,
     onToggleProperty: (String) -> Unit,
     onValueClick: (NodeProperty) -> Unit,
     isLoading: Boolean = false,
-    error: String? = null
+    error: String? = null,
+    onToggleSelectAll: () -> Unit = {},
+    isSelectAllChecked: Boolean = false,
+    onTogglePropertyGroup: (String) -> Unit = {},
+    groupedProperties: List<SpaceNodeDetailsViewModel.PropertyGroup> = emptyList(),
+    propertyItems: List<SpaceNodeDetailsViewModel.PropertyItem> = emptyList(),
+    searchQuery: String = ""
 ) {
     Box(
         modifier = Modifier
@@ -830,25 +1060,126 @@ private fun PropertySelectionList(
                 }
             }
             else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(options) { option ->
+                val showGrouped = searchQuery.isBlank() && propertyItems.isNotEmpty()
+                
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = option.isChecked,
-                                onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                checked = isSelectAllChecked,
+                                onCheckedChange = { onToggleSelectAll() }
                             )
-                            PropertyDisplayText(
-                                property = option.property,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 8.dp),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                onValueClick = onValueClick
+                            Text(
+                                text = stringResource(id = R.string.add_all_properties),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
                             )
+                        }
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    if (showGrouped) {
+                        // Show grouped and single properties
+                        items(propertyItems) { item ->
+                            when (item) {
+                                is SpaceNodeDetailsViewModel.PropertyItem.Group -> {
+                                    val group = item.group
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // Group header with checkbox
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Start,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Checkbox(
+                                                checked = group.isAllChecked,
+                                                onCheckedChange = { onTogglePropertyGroup(group.propertyId) }
+                                            )
+                                            Text(
+                                                text = "${group.propertyLabel} (${group.propertyId})",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
+                                        // Properties in the group (indented)
+                                        Column(
+                                            modifier = Modifier.padding(start = 40.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            group.properties.forEach { option ->
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.Start,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Checkbox(
+                                                        checked = option.isChecked,
+                                                        onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                                    )
+                                                    PropertyDisplayText(
+                                                        property = option.property,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(start = 8.dp),
+                                                        textStyle = MaterialTheme.typography.bodyMedium,
+                                                        onValueClick = onValueClick
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                is SpaceNodeDetailsViewModel.PropertyItem.Single -> {
+                                    val option = item.option
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            checked = option.isChecked,
+                                            onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                        )
+                                        PropertyDisplayText(
+                                            property = option.property,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 8.dp),
+                                            textStyle = MaterialTheme.typography.bodyMedium,
+                                            onValueClick = onValueClick
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Show flat list when searching (filtered)
+                        items(options) { option ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = option.isChecked,
+                                    onCheckedChange = { onToggleProperty(option.property.statementId) }
+                                )
+                                PropertyDisplayText(
+                                    property = option.property,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 8.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium,
+                                    onValueClick = onValueClick
+                                )
+                            }
                         }
                     }
                 }
@@ -1605,6 +1936,421 @@ private fun NodeActionFab(
         containerColor = containerColor,
         contentColor = Color.White,
         modifier = Modifier.padding(horizontal = 4.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditLocationDialog(
+    viewModel: SpaceNodeDetailsViewModel,
+    onDismiss: () -> Unit
+) {
+    val countries by viewModel.countries.collectAsState()
+    val cities by viewModel.cities.collectAsState()
+    val isLoadingCountries by viewModel.isLoadingCountries.collectAsState()
+    val isLoadingCities by viewModel.isLoadingCities.collectAsState()
+    val isGettingCoordinates by viewModel.isGettingCoordinates.collectAsState()
+    val isUpdatingLocation by viewModel.isUpdatingLocation.collectAsState()
+    val locationUpdateError by viewModel.locationUpdateError.collectAsState()
+    val locationName by viewModel.locationName.collectAsState()
+    val coordinatesResult by viewModel.coordinatesResult.collectAsState()
+    val nodeDetails by viewModel.nodeDetails.collectAsState()
+
+    var selectedCountry by remember { mutableStateOf<String?>(null) }
+    var selectedCity by remember { mutableStateOf<String?>(null) }
+    var locationNameText by remember { mutableStateOf("") }
+    var latitudeText by remember { mutableStateOf("") }
+    var longitudeText by remember { mutableStateOf("") }
+    var countrySearchQuery by remember { mutableStateOf("") }
+    var citySearchQuery by remember { mutableStateOf("") }
+    var isCountryDropdownExpanded by remember { mutableStateOf(false) }
+    var isCityDropdownExpanded by remember { mutableStateOf(false) }
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+    var isInitialized by remember { mutableStateOf(false) }
+
+    val countryFocusRequester = remember { FocusRequester() }
+    val cityFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(nodeDetails) {
+        nodeDetails?.let { node ->
+            if (!isInitialized) {
+                selectedCountry = node.country
+                selectedCity = node.city
+                locationNameText = node.locationName ?: ""
+                latitudeText = node.latitude ?: ""
+                longitudeText = node.longitude ?: ""
+                countrySearchQuery = node.country ?: ""
+                citySearchQuery = node.city ?: ""
+                if (node.country != null) {
+                    viewModel.loadCities(node.country)
+                }
+                isInitialized = true
+            }
+        }
+    }
+
+    LaunchedEffect(selectedCountry) {
+        if (selectedCountry != null) {
+            if (hasUnsavedChanges || (isInitialized && nodeDetails?.city == null)) {
+                selectedCity = null
+                citySearchQuery = ""
+            }
+        } else {
+            selectedCity = null
+            citySearchQuery = ""
+        }
+    }
+
+    // Filter countries and cities
+    val filteredCountries = remember(countries, countrySearchQuery) {
+        val query = countrySearchQuery.trim()
+        if (query.isEmpty()) {
+            countries
+        } else {
+            countries.filter { country ->
+                country.name.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    val filteredCities = remember(cities, citySearchQuery) {
+        val query = citySearchQuery.trim()
+        if (query.isEmpty()) {
+            cities
+        } else {
+            cities.filter { city ->
+                city.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    LaunchedEffect(coordinatesResult) {
+        coordinatesResult?.let { coordinates ->
+            locationNameText = coordinates.displayName
+            latitudeText = coordinates.latitude.toString()
+            longitudeText = coordinates.longitude.toString()
+            hasUnsavedChanges = true
+        }
+    }
+
+    AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        confirmButton = {},
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 300.dp, max = 550.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Location:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (hasUnsavedChanges) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFE65100)
+                                ),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "Unsaved Changes",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                    Divider()
+                }
+
+                // Country Dropdown
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Country:",
+                        fontSize = 13.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = isCountryDropdownExpanded,
+                        onExpandedChange = { expanded ->
+                            isCountryDropdownExpanded = expanded
+                            if (expanded) {
+                                keyboardController?.hide()
+                            }
+                        }
+                    ) {
+                        OutlinedTextField(
+                            value = countrySearchQuery,
+                            onValueChange = { query ->
+                                countrySearchQuery = query
+                                keyboardController?.hide()
+                                isCountryDropdownExpanded = true
+                                hasUnsavedChanges = true
+                            },
+                            placeholder = { Text("-- Select Country --") },
+                            trailingIcon = {
+                                if (isLoadingCountries) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                } else {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = isCountryDropdownExpanded
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                                .focusRequester(countryFocusRequester),
+                            enabled = !isLoadingCountries
+                        )
+                        LaunchedEffect(isCountryDropdownExpanded) {
+                            if (isCountryDropdownExpanded) {
+                                keyboardController?.hide()
+                            }
+                        }
+                        ExposedDropdownMenu(
+                            expanded = isCountryDropdownExpanded && !isLoadingCountries,
+                            onDismissRequest = { isCountryDropdownExpanded = false }
+                        ) {
+                            if (filteredCountries.isEmpty() && countrySearchQuery.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No countries found") },
+                                    onClick = { }
+                                )
+                            } else {
+                                Column(
+                                    modifier = Modifier
+                                        .heightIn(max = 250.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    filteredCountries.forEach { country ->
+                                        DropdownMenuItem(
+                                            text = { Text(country.name) },
+                                            onClick = {
+                                                selectedCountry = country.name
+                                                countrySearchQuery = country.name
+                                                isCountryDropdownExpanded = false
+                                                hasUnsavedChanges = true
+                                                // Load cities when country is selected
+                                                viewModel.loadCities(country.name)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // City Dropdown (only visible when country is selected)
+                if (selectedCountry != null) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "City:",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = isCityDropdownExpanded,
+                            onExpandedChange = { isCityDropdownExpanded = !isCityDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = citySearchQuery,
+                                onValueChange = { query ->
+                                    citySearchQuery = query
+                                    isCityDropdownExpanded = true
+                                    hasUnsavedChanges = true
+                                },
+                                placeholder = { Text("-- Select City --") },
+                                trailingIcon = {
+                                    if (isLoadingCities) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                    } else {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(
+                                            expanded = isCityDropdownExpanded
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .focusRequester(cityFocusRequester),
+                                enabled = !isLoadingCities
+                            )
+                            LaunchedEffect(isCityDropdownExpanded) {
+                                if (isCityDropdownExpanded) {
+                                    cityFocusRequester.requestFocus()
+                                }
+                            }
+                            ExposedDropdownMenu(
+                                expanded = isCityDropdownExpanded && !isLoadingCities,
+                                onDismissRequest = { isCityDropdownExpanded = false },
+                                modifier = Modifier.heightIn(max = 200.dp)
+                            ) {
+                                if (filteredCities.isEmpty() && citySearchQuery.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No cities found") },
+                                        onClick = { }
+                                    )
+                                } else {
+                                    filteredCities.take(100).forEach { city ->
+                                        DropdownMenuItem(
+                                            text = { Text(city) },
+                                            onClick = {
+                                                selectedCity = city
+                                                citySearchQuery = city
+                                                isCityDropdownExpanded = false
+                                                hasUnsavedChanges = true
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Get Coordinates Button
+                if (selectedCountry != null && selectedCity != null) {
+                    Button(
+                        onClick = {
+                            viewModel.getCoordinatesFromAddress(selectedCity, selectedCountry)
+                        },
+                        enabled = !isGettingCoordinates,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isGettingCoordinates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Get Coordinates from Address", color = Color.White)
+                    }
+                }
+
+                // Location Name
+                OutlinedTextField(
+                    value = locationNameText,
+                    onValueChange = {
+                        locationNameText = it
+                        hasUnsavedChanges = true
+                    },
+                    label = { Text("Location Name (optional)", fontSize = 13.sp) },
+                    placeholder = { Text("Enter location name manually", fontSize = 13.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                )
+
+                // Latitude and Longitude
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = latitudeText,
+                        onValueChange = {
+                            latitudeText = it
+                            hasUnsavedChanges = true
+                        },
+                        label = { Text("Latitude", fontSize = 13.sp) },
+                        placeholder = { Text("e.g., 40.7128", fontSize = 13.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                    OutlinedTextField(
+                        value = longitudeText,
+                        onValueChange = {
+                            longitudeText = it
+                            hasUnsavedChanges = true
+                        },
+                        label = { Text("Longitude", fontSize = 13.sp) },
+                        placeholder = { Text("e.g., -74.0060", fontSize = 13.sp) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                }
+
+                if (locationUpdateError != null) {
+                    Text(
+                        text = locationUpdateError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (isUpdatingLocation) return@Button
+                            val lat = latitudeText.toDoubleOrNull()
+                            val lon = longitudeText.toDoubleOrNull()
+                            viewModel.updateNodeLocation(
+                                country = selectedCountry,
+                                city = selectedCity,
+                                locationName = locationNameText.takeIf { it.isNotBlank() },
+                                latitude = lat,
+                                longitude = lon
+                            )
+                        },
+                        enabled = !isUpdatingLocation && !isLoadingCities,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black,
+                            disabledContainerColor = Color.Black.copy(alpha = 0.6f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isUpdatingLocation) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Save Changes", color = Color.White)
+                    }
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFBDBDBD),
+                            contentColor = Color.Black
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
     )
 }
 

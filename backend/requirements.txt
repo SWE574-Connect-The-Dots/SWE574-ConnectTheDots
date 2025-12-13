@@ -28,3 +28,4 @@ sqlparse==0.5.3
 tomlkit==0.13.2
 urllib3==2.3.0
 unittest-xml-reporting
+google-generativeai==0.8.3

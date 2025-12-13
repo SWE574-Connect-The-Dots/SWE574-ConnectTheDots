@@ -15,7 +15,11 @@ class PropertyAPITests(APITestCase):
         self.node = Node.objects.create(label='Test Node', wikidata_id='Q123', space=self.space, created_by=self.user)
         self.client.login(username='testuser', password='testpassword')
 
-    def test_add_node_with_properties(self):
+    @patch('api.wikidata.get_wikidata_properties')
+    def test_add_node_with_properties(self, mock_get_wikidata_properties):
+        # Mock Wikidata API to return empty list (no P31 auto-fetch)
+        mock_get_wikidata_properties.return_value = []
+        
         url = reverse('space-add-node', kwargs={'pk': self.space.pk})
         data = {
             'wikidata_entity': {'id': 'Q456', 'label': 'New Test Node'},
@@ -51,7 +55,11 @@ class PropertyAPITests(APITestCase):
         self.assertEqual(response.data[0]['statement_id'], 'Q123$statement3')
         self.assertEqual(response.data[0]['property_label'], 'instance of')
 
-    def test_update_node_properties(self):
+    @patch('api.wikidata.get_wikidata_properties')
+    def test_update_node_properties(self, mock_get_wikidata_properties):
+        # Mock Wikidata API to return empty list (no P31 auto-fetch)
+        mock_get_wikidata_properties.return_value = []
+        
         Property.objects.create(node=self.node, property_id='P18', statement_id='Q123$oldstatement')
         url = reverse('space-update-node-properties', kwargs={'pk': self.space.pk, 'node_id': self.node.pk})
         data = {

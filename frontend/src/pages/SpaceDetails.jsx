@@ -14,6 +14,533 @@ import PropertySearch from "../components/PropertySearch";
 import SpaceMapModal from "../components/SpaceMapModal";
 import ReportModal from "../components/ReportModal";
 import ActivityStream from "../components/ActivityStream";
+import InstanceTypeFilter from "../components/InstanceTypeFilter";
+import InstanceTypeLegend from "../components/InstanceTypeLegend";
+import { getGroupById } from "../config/instanceTypes";
+import { marked } from "marked";
+
+const infoModalStyles = `
+.info-icon-btn {
+  background: none;
+  color: var(--color-gray-400);
+  border: 1px solid var(--color-gray-400);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.info-icon-btn:hover {
+  background: var(--color-gray-400);
+  color: var(--color-white);
+  border: 2px solid var(--color-gray-400);
+}
+
+.info-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.info-modal-content {
+  background: var(--color-white);
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.info-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--color-gray-200);
+  background: var(--color-accent);
+  color: var(--color-white);
+  border-radius: 12px 12px 0 0;
+}
+
+.info-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-white);
+  font-size: 28px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-modal-body {
+  padding: 24px;
+}
+
+.info-section {
+  margin-bottom: 32px;
+}
+
+.info-section:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-gray-200);
+}
+
+.info-section-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.info-section h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-section-content {
+  line-height: 1.7;
+}
+
+.info-section-content p {
+  margin: 0 0 12px 0;
+}
+
+.info-section-content p:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-content ul {
+  margin: 12px 0;
+  padding-left: 20px;
+  list-style-type: none;
+  border-left: 3px solid var(--color-gray-200);
+}
+
+.info-highlight {
+  background: var(--color-item-own-bg);
+  border-left: 4px solid var(--color-accent);
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.info-subsection ul{
+  margin-top: 16px;
+  padding-left: 16px;
+  border-left: 3px solid var(--color-gray-200);
+  list-style-type: none;
+}
+
+.info-subsection h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: var(--color-white);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 4px;
+}
+`;
+
+const advancedSearchStyles = `
+.advanced-search-wrapper {
+  margin-bottom: 30px;
+}
+
+.simple-search-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.simple-search-container {
+  flex: 1;
+  position: relative;
+}
+
+.simple-search-container input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.simple-search-container input:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.simple-search-container input::placeholder {
+  color: #999;
+}
+
+.simple-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757575;
+  font-size: 18px;
+}
+
+.advanced-search-toggle-btn {
+  padding: 12px 24px;
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.advanced-search-toggle-btn:hover {
+  background: #005A8C;
+}
+
+.advanced-search-container {
+  background: #F8F9FA;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 16px;
+  color: #1B1F3B;
+}
+
+.advanced-search-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B1F3B;
+}
+
+.advanced-search-subtitle {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.criteria-container {
+  background: #FFFFFF;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.criteria-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.criteria-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.criteria-field label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+}
+
+.criteria-field input,
+.criteria-field select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #1B1F3B;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.criteria-field input:focus,
+.criteria-field select:focus {
+  outline: none;
+  border-color: #0076B5;
+}
+
+.criteria-field input::placeholder {
+  color: #999;
+}
+
+.operator-field {
+  padding-top: 22px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.delete-criteria-btn {
+  padding: 8px;
+  margin-top: 22px;
+  background: transparent;
+  border: none;
+  color: #BD4902;
+  cursor: pointer;
+  font-size: 18px;
+  transition: color 0.2s;
+}
+
+.delete-criteria-btn:hover {
+  color: #FF6B35;
+}
+
+.logical-operator-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.logical-operator-btn {
+  padding: 6px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #FFFFFF;
+}
+
+.logical-operator-btn.active-and {
+  background: #2D6A4F;
+  color: #FFFFFF;
+  border-color: #2D6A4F;
+}
+
+.logical-operator-btn.inactive {
+  background: #FFFFFF;
+  color: #999;
+  border: 1px solid #ddd;
+}
+
+.logical-operator-btn.inactive:hover {
+  border-color: #999;
+  color: #666;
+}
+
+.logical-operator-btn.active-or {
+  background: #F57C00;
+  color: #FFFFFF;
+  border-color: #F57C00;
+}
+
+.add-criteria-btn {
+  width: 100%;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 20px;
+}
+
+.add-criteria-btn:hover {
+  border-color: #0076B5;
+  color: #0076B5;
+  background: #F8F9FA;
+}
+
+.search-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.search-action-btn {
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-action-btn.clear {
+  background: #FFFFFF;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.search-action-btn.clear:hover {
+  background: #F8F9FA;
+  border-color: #999;
+  color: #333;
+}
+
+.search-action-btn.search {
+  background: #0076B5;
+  color: #FFFFFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-action-btn.search:hover {
+  background: #005A8C;
+}
+`;
+
+const nodeListStyles = `
+.node-list-container {
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  background: var(--color-white);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.node-list-header {
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-gray-300);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-list-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.node-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.node-sort-select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-white);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.node-list-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.node-list-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.node-list-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.node-list-item:last-child {
+  border-bottom: none;
+}
+
+.node-list-item:hover {
+  background-color: var(--color-item-bg);
+}
+
+.node-item-label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.node-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-badge {
+  background: var(--color-gray-200);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+`;
 
 const propertySelectionStyles = `
 .property-selection-container {
@@ -127,7 +654,38 @@ const propertySelectionStyles = `
   box-shadow: 0 4px 6px rgba(55, 65, 81, 0.15);
   z-index: 1000;
   min-width: 200px;
+  color: var(--color-text);
   margin-top: 4px;
+}
+
+.summarize-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.summarize-btn:hover {
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.summarize-btn:active {
+  transform: translateY(0);
+}
+
+.summarize-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .dropdown-item {
@@ -135,8 +693,6 @@ const propertySelectionStyles = `
   align-items: center;
   padding: 12px 16px;
   border: none;
-  background: none;
-  color: #1B1F3B;
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -161,59 +717,15 @@ const propertySelectionStyles = `
   border-bottom-right-radius: 4px;
   border-bottom: none;
 }
-
-.dropdown-item.map-action {
-  background: #2D6A4F;
-  color: #FFFFFF;
-}
-
-.dropdown-item.map-action:hover {
-  background: rgba(45, 106, 79, 0.8);
-}
-
-.dropdown-item.join-action {
-  background: #008296;
-  color: #FFFFFF;
-}
-
-.dropdown-item.join-action:hover {
-  background: rgba(0, 130, 150, 0.8);
+.dropdown-item.delete-action {
+  color: var(--color-danger);
 }
 
 .dropdown-item.leave-action {
-  background: #8F6701;
-  color: #FFFFFF;
+  color: var(--color-warning);
 }
-
-.dropdown-item.leave-action:hover {
-  background: rgba(143, 103, 1, 0.8);
-}
-
-.dropdown-item.delete-action {
-  background: #BD4902;
-  color: #FFFFFF;
-}
-
-.dropdown-item.delete-action:hover {
-  background: rgba(189, 73, 2, 0.8);
-}
-
-.dropdown-item.report-action {
-  background: #4A5568;
-  color: #FFFFFF;
-}
-
-.dropdown-item.report-action:hover {
-  background: rgba(74, 85, 104, 0.8);
-}
-
-.dropdown-item.analytics-action {
-  background: #215D69;
-  color: #FFFFFF;
-}
-
-.dropdown-item.analytics-action:hover {
-  background: rgba(33, 93, 105, 0.8);
+.dropdown-item.join-action {
+  color: var(--color-success);
 }
 
 .dropdown-item:disabled {
@@ -223,6 +735,44 @@ const propertySelectionStyles = `
 }
 `;
 
+const fullscreenGraphStyles = `
+.graph-container-fullscreen {
+  background: var(--color-gray-200) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.graph-container-fullscreen::backdrop {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.fullscreen-exit-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--color-white);
+  border: 2px solid var(--color-white);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.fullscreen-exit-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+}
+`;
 
 const getPropertyLabelWithId = (prop) => {
   const label =
@@ -247,6 +797,25 @@ const PropertySelectionList = ({
 }) => {
   const scrollContainerRef = useRef(null);
 
+  const groupedProperties = useMemo(() => {
+    const groups = {};
+    properties.forEach((prop) => {
+      if (!prop || !prop.statement_id) return;
+      const propId = prop.property || prop.property_id;
+      const key = propId || getPropertyLabelWithId(prop) || "unknown";
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          label: getPropertyLabelWithId(prop).split(':')[0].trim(),
+          values: [],
+        };
+      }
+      groups[key].values.push(prop);
+    });
+    return Object.values(groups);
+  }, [properties]);
+
   const handleItemClick = (statementId) => {
     let scrollPos = 0;
     if (scrollContainerRef.current) {
@@ -264,6 +833,32 @@ const PropertySelectionList = ({
         scrollContainerRef.current.scrollTop = scrollPos;
       }, 0);
     }
+  };
+
+  const handleGlobalSelectAll = () => {
+    const allStatementIds = properties.map((p) => p.statement_id);
+    const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+    
+    if (areAllSelected) {
+      onChange([]);
+    } else {
+      onChange(allStatementIds);
+    }
+  };
+
+  const handleGroupSelectAll = (group) => {
+    const groupStatementIds = group.values.map((p) => p.statement_id);
+    const areAllGroupSelected = groupStatementIds.every((id) => selectedProperties.includes(id));
+
+    let newSelection = [...selectedProperties];
+
+    if (areAllGroupSelected) {
+      newSelection = newSelection.filter((id) => !groupStatementIds.includes(id));
+    } else {
+      const missingIds = groupStatementIds.filter((id) => !selectedProperties.includes(id));
+      newSelection = [...newSelection, ...missingIds];
+    }
+    onChange(newSelection);
   };
 
   const renderPropertyValue = (prop) => {
@@ -296,38 +891,88 @@ const PropertySelectionList = ({
     return prop?.value ? String(prop.value) : "No value available";
   };
 
+  const allStatementIds = properties.map((p) => p.statement_id);
+  const areAllSelected = allStatementIds.length > 0 && allStatementIds.every((id) => selectedProperties.includes(id));
+
   return (
     <div className="property-selection-container">
+      <div 
+        className="property-selection-header" 
+        style={{ 
+          padding: '8px 12px', 
+          borderBottom: '1px solid var(--color-gray-300)', 
+          backgroundColor: 'var(--color-bg-secondary)', 
+          display: 'flex', 
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+        onClick={handleGlobalSelectAll}
+      >
+        <input
+          type="checkbox"
+          checked={areAllSelected}
+          onChange={handleGlobalSelectAll}
+          className="property-checkbox"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--color-text)' }}>Select All Properties</span>
+      </div>
       <div className="property-selection-list" ref={scrollContainerRef}>
-        {properties
-          .filter((prop) => prop && prop.statement_id)
-          .map((prop) => (
-            <div
-              key={prop.statement_id}
-              className={`property-selection-item ${
-                selectedProperties.includes(prop.statement_id) ? "selected" : ""
-              }`}
-              onClick={() => handleItemClick(prop.statement_id)}
-            >
-              <input
-                type="checkbox"
-                id={`prop-${prop.statement_id}`}
-                checked={selectedProperties.includes(prop.statement_id)}
-                onChange={() => handleItemClick(prop.statement_id)}
-                className="property-checkbox"
-              />
-              <label
-                htmlFor={`prop-${prop.statement_id}`}
-                className="property-selection-label"
-                onClick={(e) => e.stopPropagation()}
+        {groupedProperties.map((group) => {
+          const groupStatementIds = group.values.map(p => p.statement_id);
+          const isGroupSelected = groupStatementIds.every(id => selectedProperties.includes(id));
+          
+          return (
+            <div key={group.key} className="property-group-item selection-group">
+              <div 
+                className="property-group-header selection-header"
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => handleGroupSelectAll(group)}
               >
-                <span className="property-label">
-                  {getPropertyLabelWithId(prop)}:
-                </span>{" "}
-                {renderPropertyValue(prop)}
-              </label>
+                <input
+                  type="checkbox"
+                  checked={isGroupSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleGroupSelectAll(group);
+                  }}
+                  className="property-checkbox"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="property-group-label">{group.label}</span>
+              </div>
+              <ul className="property-values-list">
+                {group.values.map((prop) => (
+                  <div
+                    key={prop.statement_id}
+                    className={`property-selection-item ${
+                      selectedProperties.includes(prop.statement_id)
+                        ? "selected"
+                        : ""
+                    }`}
+                    onClick={() => handleItemClick(prop.statement_id)}
+                  >
+                    <input
+                      type="checkbox"
+                      id={`prop-${prop.statement_id}`}
+                      checked={selectedProperties.includes(prop.statement_id)}
+                      onChange={() => handleItemClick(prop.statement_id)}
+                      className="property-checkbox"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label
+                      htmlFor={`prop-${prop.statement_id}`}
+                      className="property-selection-label"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {renderPropertyValue(prop)}
+                    </label>
+                  </div>
+                ))}
+              </ul>
             </div>
-          ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -352,6 +997,8 @@ const SpaceDetails = () => {
   const [isCollaborator, setIsCollaborator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
+  const [topCollaborators, setTopCollaborators] = useState([]);
+  const [showAllCollaborators, setShowAllCollaborators] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -368,6 +1015,32 @@ const SpaceDetails = () => {
   const [deleteError, setDeleteError] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // AI Summary states
+  const [aiSummary, setAiSummary] = useState(null);
+  const [showAiSummary, setShowAiSummary] = useState(false);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState(null);
+
+  const [simpleSearchQuery, setSimpleSearchQuery] = useState("");
+  const [simpleSearchResults, setSimpleSearchResults] = useState(null);
+  const [searchingSimpleQuery, setSearchingSimpleQuery] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [searchCriteria, setSearchCriteria] = useState([
+    { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+  ]);
+  const [advancedSearchQuery, setAdvancedSearchQuery] = useState("");
+  const [availableProperties, setAvailableProperties] = useState([]);
+  const [availableValues, setAvailableValues] = useState({});
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [loadingValues, setLoadingValues] = useState({});
+  const [advancedSearchResults, setAdvancedSearchResults] = useState(null);
+  const [searchingQuery, setSearchingQuery] = useState(false);
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState({});
+  const [showValueDropdown, setShowValueDropdown] = useState({});
+  const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
+  const [nodeSortOption, setNodeSortOption] = useState('recent');
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -397,6 +1070,15 @@ const SpaceDetails = () => {
   
   // Dropdown state
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  const [instanceTypes, setInstanceTypes] = useState([]);
+  const [selectedInstanceTypes, setSelectedInstanceTypes] = useState(new Set());
+  const [showLegend, setShowLegend] = useState(true);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
+  const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
+  const graphContainerRef = useRef(null);
 
   const {
     nodes,
@@ -412,6 +1094,69 @@ const SpaceDetails = () => {
     search,
     fetchProperties,
   } = useWikidataSearch();
+
+  const nodeDegrees = useMemo(() => {
+    const degrees = {};
+    if (!nodes || !edges) return degrees;
+
+    nodes.forEach(node => {
+      degrees[node.id] = 0;
+    });
+
+    edges.forEach(edge => {
+      if (degrees[edge.source] !== undefined) degrees[edge.source]++;
+      if (degrees[edge.target] !== undefined) degrees[edge.target]++;
+    });
+
+    return degrees;
+  }, [nodes, edges]);
+
+  const nodesWithColors = useMemo(() => {
+    if (!nodes) return [];
+    
+    return nodes.map(node => {
+      const instanceType = node.instance_type;
+      let color = 'var(--color-success)';
+      let label = null;
+      let icon = null;
+      
+      if (instanceType && instanceType.group_id) {
+        const group = getGroupById(instanceType.group_id);
+        if (group) {
+          color = group.color;
+          label = group.label;
+          icon = group.icon;
+        }
+      }
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          instanceTypeColor: color,
+          instanceTypeLabel: label,
+          instanceTypeIcon: icon
+        }
+      };
+    });
+  }, [nodes]);
+
+  const sortedNodes = useMemo(() => {
+    if (!existingNodes) return [];
+    
+    return [...existingNodes].sort((a, b) => {
+      if (nodeSortOption === 'recent') {
+        return parseInt(b.id) - parseInt(a.id);
+      } else if (nodeSortOption === 'connections') {
+        const degreeA = nodeDegrees[a.id] || 0;
+        const degreeB = nodeDegrees[b.id] || 0;
+        return degreeB - degreeA;
+      } else if (nodeSortOption === 'name') {
+        return a.label.localeCompare(b.label);
+      }
+      return 0;
+    });
+  }, [existingNodes, nodeSortOption, nodeDegrees]);
 
   const filteredAndSortedProperties = useMemo(() => {
     if (!entityProperties) return [];
@@ -475,6 +1220,19 @@ const SpaceDetails = () => {
           : [];
         const validNodes = nodesData.filter((n) => n && n.id && n.label);
         setExistingNodes(validNodes);
+
+        try {
+          const topCollaboratorsResponse = await api.get(`/spaces/${id}/top-collaborators/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setTopCollaborators(topCollaboratorsResponse.data?.top_collaborators || []);
+        } catch (error) {
+          console.error("Error fetching top collaborators:", error);
+          setTopCollaborators([]);
+        }
+
         fetchGraphData();
       } catch (error) {
         console.error("Error fetching space data:", error);
@@ -485,6 +1243,29 @@ const SpaceDetails = () => {
 
     fetchData();
   }, [id, fetchGraphData]);
+
+  useEffect(() => {
+    const fetchInstanceTypes = async () => {
+      try {
+        const response = await api.get(`/spaces/${id}/instance-types/`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        const groups = response.data.instance_groups || [];
+        setInstanceTypes(groups);
+        
+        setSelectedInstanceTypes(new Set());
+      } catch (error) {
+        console.error('Error fetching instance groups:', error);
+      }
+    };
+    
+    if (id) {
+      fetchInstanceTypes();
+    }
+  }, [id]);
 
   // Fetch countries on mount
   useEffect(() => {
@@ -959,8 +1740,229 @@ const SpaceDetails = () => {
     setSelectedNode(node);
   }, []);
 
+  const handleActivityNodeClick = useCallback((nodeId) => {
+    const node = nodes.find(n => n.id === nodeId.toString());
+    if (node) {
+      setSelectedNode(node);
+    }
+  }, [nodes]);
+
+  useEffect(() => {
+    const nodeIdFromQuery = new URLSearchParams(location.search).get("nodeId");
+    if (!nodeIdFromQuery) return;
+    if (!nodes || nodes.length === 0) return;
+
+    const node = nodes.find((n) => n.id === nodeIdFromQuery.toString());
+    if (!node) return;
+
+    setSelectedNode(node);
+
+    const params = new URLSearchParams(location.search);
+    params.delete("nodeId");
+    const newSearch = params.toString();
+    navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ""}`, { replace: true });
+  }, [location.pathname, location.search, navigate, nodes]);
+
   const handleReportSpace = () => {
     setShowReportModal(true);
+  };
+
+  const handleAiSummarize = async () => {
+    setLoadingAiSummary(true);
+    setAiSummaryError(null);
+    setShowAiSummary(true);
+    
+    try {
+      const response = await api.post(
+        `/spaces/${id}/summarize/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setAiSummary(response.data);
+    } catch (error) {
+      console.error("Error generating AI summary:", error);
+      setAiSummaryError(error.response?.data?.error || "Failed to generate AI summary");
+    } finally {
+      setLoadingAiSummary(false);
+    }
+  };
+
+  const handleAddCriteria = () => {
+    const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
+    setSearchCriteria([
+      ...searchCriteria,
+      { id: newId, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+  };
+
+  const handleRemoveCriteria = (id) => {
+    if (searchCriteria.length > 1) {
+      setSearchCriteria(searchCriteria.filter(c => c.id !== id));
+    }
+  };
+
+  const handleCriteriaChange = (id, field, value) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const handleToggleLogicalOp = (id) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === id ? { ...c, logicalOp: c.logicalOp === 'AND' ? 'OR' : 'AND' } : c
+    ));
+  };
+
+  const handleSimpleSearch = async () => {
+    if (!simpleSearchQuery.trim()) {
+      setSimpleSearchResults(null);
+      return;
+    }
+
+    setSearchingSimpleQuery(true);
+    try {
+      const response = await api.get(
+        `/spaces/${id}/search/text/?q=${encodeURIComponent(simpleSearchQuery)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setSimpleSearchResults(response.data);
+      setAdvancedSearchResults(null);
+    } catch (error) {
+      console.error("Error executing simple search:", error);
+      alert("search.failedToExecuteSearch");
+    } finally {
+      setSearchingSimpleQuery(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchCriteria([
+      { id: 1, property: '', propertyId: '', operator: 'is', value: '', valueId: '', logicalOp: 'AND' }
+    ]);
+    setAdvancedSearchQuery("");
+    setAdvancedSearchResults(null);
+  };
+
+  const fetchSpaceProperties = async () => {
+    if (availableProperties.length > 0) return;
+    
+    setLoadingProperties(true);
+    try {
+      const response = await api.get(`/spaces/${id}/search/properties/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableProperties(response.data);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const fetchPropertyValues = async (criteriaId, propertyId, searchText = '') => {
+    setLoadingValues(prev => ({ ...prev, [criteriaId]: true }));
+    try {
+      const params = searchText ? `?q=${encodeURIComponent(searchText)}` : '';
+      const response = await api.get(`/spaces/${id}/search/properties/${propertyId}/values/${params}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: response.data }));
+    } catch (error) {
+      console.error("Error fetching property values:", error);
+      setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    } finally {
+      setLoadingValues(prev => ({ ...prev, [criteriaId]: false }));
+    }
+  };
+
+  const handleAdvancedSearch = async () => {
+    const validCriteria = searchCriteria.filter(c => c.propertyId && (c.value || c.valueId));
+    
+    if (validCriteria.length === 0) {
+      alert("space.addSearchCriteria");
+      return;
+    }
+
+    const rules = validCriteria.map((c, index) => ({
+      property_id: c.propertyId,
+      value_id: c.valueId || null,
+      value_text: c.value || null,
+      ...(index < validCriteria.length - 1 && { operator: c.logicalOp })
+    }));
+
+    setSearchingQuery(true);
+    try {
+      const response = await api.post(
+        `/spaces/${id}/search/query/`,
+        {
+          rules: rules
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      setAdvancedSearchResults(response.data);
+      setSimpleSearchResults(null);
+    } catch (error) {
+      console.error("Error executing search:", error);
+    } finally {
+      setSearchingQuery(false);
+    }
+  };
+
+  const handlePropertySelect = (criteriaId, property) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, property: property.property_label, propertyId: property.property_id, value: '', valueId: '' } 
+        : c
+    ));
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: false }));
+    setAvailableValues(prev => ({ ...prev, [criteriaId]: [] }));
+    
+    if (property.property_id) {
+      fetchPropertyValues(criteriaId, property.property_id);
+    }
+  };
+
+  const handleValueSelect = (criteriaId, valueItem) => {
+    setSearchCriteria(searchCriteria.map(c =>
+      c.id === criteriaId 
+        ? { ...c, value: valueItem.value_text, valueId: valueItem.value_id } 
+        : c
+    ));
+    setShowValueDropdown(prev => ({ ...prev, [criteriaId]: false }));
+  };
+
+  const handlePropertyInputFocus = (criteriaId) => {
+    fetchSpaceProperties();
+    setShowPropertyDropdown(prev => ({ ...prev, [criteriaId]: true }));
+  };
+
+  const handleValueInputFocus = (criteriaId, propertyId) => {
+    if (propertyId) {
+      setShowValueDropdown(prev => ({ ...prev, [criteriaId]: true }));
+      if (!availableValues[criteriaId] || availableValues[criteriaId].length === 0) {
+        fetchPropertyValues(criteriaId, propertyId);
+      }
+    }
   };
 
   const handleCloseModal = () => {
@@ -1029,6 +2031,7 @@ const SpaceDetails = () => {
               latitude: updatedNodeData.latitude || null,
               longitude: updatedNodeData.longitude || null,
               location_name: updatedNodeData.location_name || null,
+              description: updatedNodeData.description || null,
             },
             // Also at top level for backward compatibility
             country: updatedNodeData.country || null,
@@ -1038,6 +2041,7 @@ const SpaceDetails = () => {
             latitude: updatedNodeData.latitude || null,
             longitude: updatedNodeData.longitude || null,
             location_name: updatedNodeData.location_name || null,
+            description: updatedNodeData.description || null,
           };
           setSelectedNode(updatedNode);
         }
@@ -1050,6 +2054,44 @@ const SpaceDetails = () => {
   const handleEdgeClick = useCallback((event, edge) => {
     setSelectedEdge(edge);
   }, []);
+
+  const handleFullscreenToggle = useCallback(() => {
+    if (!graphContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      graphContainerRef.current.requestFullscreen().then(() => {
+        setIsGraphFullscreen(true);
+      }).catch(err => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsGraphFullscreen(false);
+      }).catch(err => {
+        console.error("Error attempting to exit fullscreen:", err);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsGraphFullscreen(!!document.fullscreenElement);
+    };
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isGraphFullscreen) {
+        handleFullscreenToggle();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', handleEscKey);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isGraphFullscreen, handleFullscreenToggle]);
 
   const canDeleteSpace = () => {
     const username = localStorage.getItem("username");
@@ -1125,6 +2167,7 @@ const SpaceDetails = () => {
     }, [showDropdown]);
 
     return (
+      
       <div className="space-actions-dropdown" ref={dropdownRef}>
         <button
           className="dropdown-toggle"
@@ -1147,6 +2190,8 @@ const SpaceDetails = () => {
             >
               Show Space Map
             </button>
+
+            
             
             <button
               className={`dropdown-item ${isCollaborator ? 'leave-action' : 'join-action'}`}
@@ -1210,22 +2255,182 @@ const SpaceDetails = () => {
     );
   };
 
+  // Info Modal
+  const InfoModal = () => {
+    if (!showInfoModal) return null;
+
+    return (
+      <div className="info-modal-backdrop" onClick={() => setShowInfoModal(false)}>
+        <div className="info-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="info-modal-header">
+            <h2>
+              {t("infoModal.title")}
+            </h2>
+            <button 
+              className="info-modal-close-btn"
+              onClick={() => setShowInfoModal(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="info-modal-body">
+            {/* Space Graph Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.spaceGraph.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.spaceGraph.intro")}
+                </p>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.spaceGraph.nodes.title")}</h4>
+                  <ul>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.wikidataEntities").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.wikidataEntities").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.properties").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.nodes.locationData").split(':')[0]}:</strong> {t("infoModal.spaceGraph.nodes.locationData").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.spaceGraph.edges.title")}</h4>
+                  <ul>
+                    <li><strong>{t("infoModal.spaceGraph.edges.relationships").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.relationships").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.directionality").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.directionality").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.spaceGraph.edges.properties").split(':')[0]}:</strong> {t("infoModal.spaceGraph.edges.properties").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+                <div className="info-highlight">
+                  {t("infoModal.spaceGraph.tipClickNode")}
+                </div>
+
+                <div className="info-highlight">
+                  {t("infoModal.spaceGraph.tipNodeExpansion")}
+                </div>
+              </div>
+            </div>
+
+            {/* Search Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.search.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <div className="info-subsection">
+                  <h4>{t("infoModal.search.simpleSearch.title")}</h4>
+                  <p>
+                    {t("infoModal.search.simpleSearch.description")}
+                  </p>
+                </div>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.search.advancedSearch.title")}</h4>
+                  <p>
+                    {t("infoModal.search.advancedSearch.description")}
+                  </p>
+                  <ul>
+                    <li><strong>{t("infoModal.search.advancedSearch.propertyBased").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.propertyBased").split(':').slice(1).join(':').trim()}</li>
+                    <li><strong>{t("infoModal.search.advancedSearch.multipleCriteria").split(':')[0]}:</strong> {t("infoModal.search.advancedSearch.multipleCriteria").split(':').slice(1).join(':').trim()}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Collaborators Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.collaborators.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.collaborators.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.collaborators.joinCollaborator").split(':')[0]}:</strong> {t("infoModal.collaborators.joinCollaborator").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.addNodesEdges").split(':')[0]}:</strong> {t("infoModal.collaborators.addNodesEdges").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.collaborators.editDelete").split(':')[0]}:</strong> {t("infoModal.collaborators.editDelete").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Discussions Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.discussions.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.discussions.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.discussions.startDiscussions").split(':')[0]}:</strong> {t("infoModal.discussions.startDiscussions").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.replyReact").split(':')[0]}:</strong> {t("infoModal.discussions.replyReact").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.discussions.reportContent").split(':')[0]}:</strong> {t("infoModal.discussions.reportContent").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Activity Stream Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.activity.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.activity.intro")}
+                </p>
+                <strong>{t("infoModal.activity.realtimeUpdates").split(':')[0]}:</strong> {t("infoModal.activity.realtimeUpdates").split(':').slice(1).join(':').trim()}
+              
+              </div>
+            </div>
+
+            {/* Location Features Section */}
+            <div className="info-section">
+              <div className="info-section-header">
+                <h3>{t("infoModal.location.title")}</h3>
+              </div>
+              <div className="info-section-content">
+                <p>
+                  {t("infoModal.location.intro")}
+                </p>
+                <ul>
+                  <li><strong>{t("infoModal.location.spaceLocation").split(':')[0]}:</strong> {t("infoModal.location.spaceLocation").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.nodeLocations").split(':')[0]}:</strong> {t("infoModal.location.nodeLocations").split(':').slice(1).join(':').trim()}</li>
+                  <li><strong>{t("infoModal.location.mapVisualization").split(':')[0]}:</strong> {t("infoModal.location.mapVisualization").split(':').slice(1).join(':').trim()}</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
         width: "100%",
         margin: "0 auto",
-        padding: "20px 20px 20px 60px",
+        padding: "10px",
         display: "flex",
         overflowX: "hidden",
         boxSizing: "border-box",
-        maxWidth: "100vw",
+        maxWidth: "100%",
       }}
     >
       {/* Inject CSS for property selection */}
+      <style>{infoModalStyles}</style>
+      <style>{advancedSearchStyles}</style>
+      <style>{nodeListStyles}</style>
       <style>{propertySelectionStyles}</style>
+      <style>{fullscreenGraphStyles}</style>
 
-      <div style={{ flex: 1, marginRight: "20px" }}>
+      <div style={{ 
+        flex: 1, 
+        marginRight: isRightPanelCollapsed ? "30px" : "10px",
+        transition: "all 0.3s ease"
+      }}>
         <div
           style={{
             display: "flex",
@@ -1251,7 +2456,28 @@ const SpaceDetails = () => {
               </span>
             )}
           </h2>
-          <SpaceActionsDropdown />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              className="info-icon-btn"
+              onClick={() => setShowInfoModal(true)}
+              title="Information"
+              aria-label="Information"
+            >
+              ℹ︎
+            </button>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="summarize-btn"
+              onClick={handleAiSummarize}
+              disabled={loadingAiSummary || space.is_archived}
+            >
+              <span>✨</span>
+              {loadingAiSummary ? 'Generating...' : 'Summarize'}
+            </button>
+            <SpaceActionsDropdown />
+          </div>
+        </div>
         </div>
         <p>{space.description}</p>
         
@@ -1494,87 +2720,741 @@ const SpaceDetails = () => {
           ))}
         </div>
 
-        {/* Graph Visualization */}
+        {/* Advanced Search Section */}
+        <div className="advanced-search-wrapper">
+          <div className="simple-search-row">
+            <div className="simple-search-container" style={{ position: 'relative' }}>
+              <span className="simple-search-icon">🔍</span>
+              <input
+                type="text"
+                value={simpleSearchQuery}
+                onChange={(e) => setSimpleSearchQuery(e.target.value)}
+                placeholder="Search within this space's properties, values or content..."
+                onKeyUp={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSimpleSearch();
+                  }
+                }}
+                disabled={searchingSimpleQuery}
+              />
+              {searchingSimpleQuery && (
+                <span style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#0076B5',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  Searching...
+                </span>
+              )}
+            </div>
+            <button 
+              className="advanced-search-toggle-btn"
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+            >
+              Advanced Search
+            </button>
+          </div>
+
+          {/* Simple Search Results */}
+          {simpleSearchResults && (
+            <div style={{ 
+              marginTop: '16px',
+              padding: '16px', 
+              backgroundColor: '#fff', 
+              borderRadius: '4px',
+              border: '1px solid #ddd'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#1B1F3B', fontSize: '16px' }}>
+                  Search Results for "{simpleSearchQuery}"
+                </h4>
+                <button 
+                  onClick={() => {
+                    setSimpleSearchResults(null);
+                    setSimpleSearchQuery("");
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: '4px 8px'
+                  }}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Nodes Results */}
+              {simpleSearchResults.nodes && simpleSearchResults.nodes.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <h5 style={{ color: '#0076B5', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Nodes ({simpleSearchResults.nodes.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.nodes.map(node => (
+                      <div 
+                        key={node.id}
+                        style={{
+                          padding: '10px 12px',
+                          backgroundColor: '#f8f9fa',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontSize: '14px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#0076B5';
+                          e.currentTarget.style.backgroundColor = '#f0f7fc';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        }}
+                        onClick={() => {
+                          const nodeObj = nodes.find(n => n.id === node.id.toString());
+                          if (nodeObj) setSelectedNode(nodeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                          {node.label}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {node.wikidata_id}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Edges Results */}
+              {simpleSearchResults.edges && simpleSearchResults.edges.length > 0 && (
+                <div>
+                  <h5 style={{ color: '#2D6A4F', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                    Edges ({simpleSearchResults.edges.length})
+                  </h5>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {simpleSearchResults.edges.map(edge => {
+                      const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                      const targetNode = nodes.find(n => n.id === edge.target.toString());
+                      return (
+                        <div 
+                          key={edge.id}
+                          style={{
+                            padding: '10px 12px',
+                            backgroundColor: '#f8f9fa',
+                            borderRadius: '4px',
+                            border: '1px solid #e0e0e0',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '14px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#2D6A4F';
+                            e.currentTarget.style.backgroundColor = '#f0f7f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                            e.currentTarget.style.backgroundColor = '#f8f9fa';
+                          }}
+                          onClick={() => {
+                            const edgeObj = edges.find(e => e.id === edge.id.toString());
+                            if (edgeObj) setSelectedEdge(edgeObj);
+                          }}
+                        >
+                          <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '2px' }}>
+                            {sourceNode?.data?.label || `Node ${edge.source}`} 
+                            <span style={{ margin: '0 6px', color: '#2D6A4F', fontWeight: '400' }}>→</span>
+                            {targetNode?.data?.label || `Node ${edge.target}`}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                            {edge.label || 'No label'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* No Results */}
+              {(!simpleSearchResults.nodes || simpleSearchResults.nodes.length === 0) && 
+               (!simpleSearchResults.edges || simpleSearchResults.edges.length === 0) && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                  <p style={{ margin: 0 }}>No results found for "{simpleSearchQuery}"</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px' }}>
+                    Try different keywords or use Advanced Search for more options
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showAdvancedSearch && (
+            <div className="advanced-search-container">
+              <div className="advanced-search-header">
+                <h4>Advanced Search</h4>
+                <p className="advanced-search-subtitle">
+                  Construct structured queries to find exactly what you're looking for.
+                </p>
+              </div>
+
+              <div className="criteria-container">
+                {searchCriteria.map((criteria, index) => (
+                  <div key={criteria.id}>
+                    <div className="criteria-row">
+                      <div className="criteria-field" style={{ position: 'relative' }}>
+                        <label>Property</label>
+                        <input
+                          type="text"
+                          value={criteria.property}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'property', e.target.value)}
+                          onFocus={() => handlePropertyInputFocus(criteria.id)}
+                          onBlur={() => setTimeout(() => setShowPropertyDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder="Click to select property..."
+                          readOnly={loadingProperties}
+                        />
+                        {showPropertyDropdown[criteria.id] && availableProperties.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableProperties
+                              .filter(prop => 
+                                !criteria.property || 
+                                prop.property_label.toLowerCase().includes(criteria.property.toLowerCase()) ||
+                                prop.property_id.toLowerCase().includes(criteria.property.toLowerCase())
+                              )
+                              .map(prop => (
+                                <div
+                                  key={prop.property_id}
+                                  onClick={() => handlePropertySelect(criteria.id, prop)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {prop.property_label}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {prop.property_id} • {prop.count} {prop.count === 1 ? 'item' : 'items'} • {prop.source}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingProperties && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading properties...
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="operator-field">
+                        is
+                      </div>
+                      
+                      <div className="criteria-field" style={{ position: 'relative' }}>
+                        <label>Value</label>
+                        <input
+                          type="text"
+                          value={criteria.value}
+                          onChange={(e) => handleCriteriaChange(criteria.id, 'value', e.target.value)}
+                          onFocus={() => handleValueInputFocus(criteria.id, criteria.propertyId)}
+                          onBlur={() => setTimeout(() => setShowValueDropdown(prev => ({ ...prev, [criteria.id]: false })), 200)}
+                          placeholder={criteria.propertyId ? "Click to select value..." : "Select property first"}
+                          disabled={!criteria.propertyId}
+                          readOnly={loadingValues[criteria.id]}
+                        />
+                        {showValueDropdown[criteria.id] && availableValues[criteria.id] && availableValues[criteria.id].length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            {availableValues[criteria.id]
+                              .filter(valueItem => 
+                                !criteria.value || 
+                                (valueItem.value_text && valueItem.value_text.toLowerCase().includes(criteria.value.toLowerCase()))
+                              )
+                              .map((valueItem, idx) => (
+                                <div
+                                  key={`${valueItem.value_id}-${idx}`}
+                                  onClick={() => handleValueSelect(criteria.id, valueItem)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                                >
+                                  <div style={{ fontWeight: '500', color: '#1B1F3B' }}>
+                                    {valueItem.value_text || valueItem.value_id || 'Unknown'}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {valueItem.count} {valueItem.count === 1 ? 'occurrence' : 'occurrences'}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {loadingValues[criteria.id] && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Loading values...
+                          </div>
+                        )}
+                      </div>
+
+                      {searchCriteria.length > 1 && (
+                        <button
+                          className="delete-criteria-btn"
+                          onClick={() => handleRemoveCriteria(criteria.id)}
+                          title="Remove criteria"
+                        >
+                          ❌
+                        </button>
+                      )}
+                    </div>
+
+                    {index < searchCriteria.length - 1 && (
+                      <div className="logical-operator-row">
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'AND' ? 'active-and' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          AND
+                        </button>
+                        <button
+                          className={`logical-operator-btn ${criteria.logicalOp === 'OR' ? 'active-or' : 'inactive'}`}
+                          onClick={() => handleToggleLogicalOp(criteria.id)}
+                        >
+                          OR
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <button className="add-criteria-btn" onClick={handleAddCriteria}>
+                  + Add new property search
+                </button>
+              </div>
+
+              <div className="search-actions">
+                <button 
+                  className="search-action-btn clear"
+                  onClick={handleClearSearch}
+                  disabled={searchingQuery}
+                >
+                  Clear All
+                </button>
+                <button 
+                  className="search-action-btn search"
+                  onClick={handleAdvancedSearch}
+                  disabled={searchingQuery}
+                >
+                  {searchingQuery ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Search Results Section */}
+        {advancedSearchResults && (
+          <div style={{ 
+            marginTop: '20px', 
+            padding: '20px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            border: '1px solid #ddd'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#1B1F3B' }}>Search Results</h3>
+              <button 
+                onClick={() => setAdvancedSearchResults(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '4px 8px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Nodes Results */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: '#0076B5', marginBottom: '10px' }}>
+                Nodes ({advancedSearchResults.nodes?.length || 0})
+              </h4>
+              {advancedSearchResults.nodes && advancedSearchResults.nodes.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.nodes.map(node => (
+                    <div 
+                      key={node.id}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#fff',
+                        borderRadius: '4px',
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#0076B5';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,118,181,0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onClick={() => {
+                        const nodeObj = nodes.find(n => n.id === node.id.toString());
+                        if (nodeObj) setSelectedNode(nodeObj);
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                        {node.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        Wikidata: {node.wikidata_id}
+                      </div>
+                      {node.country && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          📍 {[node.street, node.district, node.city, node.country].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No nodes found matching your criteria.</p>
+              )}
+            </div>
+
+            {/* Edges Results */}
+            <div>
+              <h4 style={{ color: '#2D6A4F', marginBottom: '10px' }}>
+                Edges ({advancedSearchResults.edges?.length || 0})
+              </h4>
+              {advancedSearchResults.edges && advancedSearchResults.edges.length > 0 ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {advancedSearchResults.edges.map(edge => {
+                    const sourceNode = nodes.find(n => n.id === edge.source.toString());
+                    const targetNode = nodes.find(n => n.id === edge.target.toString());
+                    return (
+                      <div 
+                        key={edge.id}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: '#fff',
+                          borderRadius: '4px',
+                          border: '1px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#2D6A4F';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(45,106,79,0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        onClick={() => {
+                          const edgeObj = edges.find(e => e.id === edge.id.toString());
+                          if (edgeObj) setSelectedEdge(edgeObj);
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: '#1B1F3B', marginBottom: '4px' }}>
+                          {sourceNode?.data?.label || `Node ${edge.source}`} 
+                          <span style={{ margin: '0 8px', color: '#2D6A4F' }}>→</span>
+                          {targetNode?.data?.label || `Node ${edge.target}`}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666', fontStyle: 'italic' }}>
+                          Relation: {edge.label || 'No label'}
+                        </div>
+                        {edge.properties && edge.properties.length > 0 && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                            {edge.properties.length} {edge.properties.length === 1 ? 'property' : 'properties'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontSize: '14px' }}>No edges found matching your criteria.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Graph Visualization with Filter */}
         <div style={{ marginBottom: "30px" }}>
           <h3>Space Graph</h3>
-          <div
-            style={{
-              width: "100%",
-              height: "600px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              overflow: "hidden",
-              background: "#f8f9fa",
-            }}
-          >
-            <SpaceGraph
-              nodes={nodes}
-              edges={edges}
-              loading={graphLoading}
-              error={graphError}
-              onNodeClick={handleNodeClick}
-              onEdgeClick={handleEdgeClick}
-            />
+          <div style={{ 
+            display: "flex", 
+            gap: isLeftPanelCollapsed ? "0" : "12px", 
+            alignItems: "flex-start",
+            marginLeft: isLeftPanelCollapsed ? "30px" : "0",
+            transition: "all 0.3s ease"
+          }}>
+            {/* Left side: Filter and Legend (Collapsible) */}
+            {!isLeftPanelCollapsed && (
+              <div style={{ width: "240px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <InstanceTypeFilter
+                  instanceTypes={instanceTypes}
+                  selectedTypes={selectedInstanceTypes}
+                  onToggleType={(typeId) => {
+                    const newSet = new Set(selectedInstanceTypes);
+                    if (newSet.has(typeId)) {
+                      newSet.delete(typeId);
+                    } else {
+                      newSet.add(typeId);
+                    }
+                    setSelectedInstanceTypes(newSet);
+                  }}
+                  onSelectAll={() => {
+                    setSelectedInstanceTypes(new Set(instanceTypes.map(t => t.group_id)));
+                  }}
+                  onDeselectAll={() => {
+                    setSelectedInstanceTypes(new Set());
+                  }}
+                />
+                
+                <InstanceTypeLegend
+                  visibleTypes={instanceTypes}
+                  isVisible={showLegend}
+                  onToggle={() => setShowLegend(!showLegend)}
+                />
+              </div>
+            )}
+
+            {/* Graph Container with both toggle buttons */}
+            <div
+              style={{
+                flex: 1,
+                position: "relative"
+              }}
+            >
+              {/* Left Panel Toggle Button */}
+              <button
+                onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  left: isLeftPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isLeftPanelCollapsed ? t("graph.showFilters") : t("graph.hideFilters")}
+              >
+                {isLeftPanelCollapsed ? "►" : "◄"}
+              </button>
+
+              {/* Right Panel Toggle Button */}
+              <button
+                onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+                style={{
+                  position: "absolute",
+                  right: isRightPanelCollapsed ? "-24px" : "-2px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 1000,
+                  backgroundColor: "var(--color-accent)",
+                  color: "var(--color-white)",
+                  border: "1px solid var(--color-accent-dark, #5a0ca8)",
+                  borderRadius: "4px",
+                  padding: "4px 3px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  transition: "all 0.3s ease",
+                  width: "20px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.85
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+                title={isRightPanelCollapsed ? t("graph.showSidebar") : t("graph.hideSidebar")}
+              >
+                {isRightPanelCollapsed ? "◄" : "►"}
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <h3 style={{ margin: 0 }}>{t("graph.spaceGraphTitle")}</h3>
+            <button
+              onClick={handleFullscreenToggle}
+              style={{
+                padding: "8px 16px",
+                background: "var(--color-gray-200)",
+                color: "var(--color-text)",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--color-gray-200)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--color-gray-300)"}
+            >
+              <span>⤢</span> {t("graph.fullscreen")}
+            </button>
+          </div>
+              {/* Actual Graph with border and styling */}
+              <div
+                ref={graphContainerRef}
+                className={isGraphFullscreen ? "graph-container-fullscreen" : ""}
+                style={{
+                  width: "100%",
+                  height: isGraphFullscreen ? "100vh" : "600px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  background: "#f8f9fa",
+                  position: "relative",
+                }}
+              >
+            {isGraphFullscreen && (
+              <button
+                className="fullscreen-exit-btn"
+                onClick={handleFullscreenToggle}
+              >
+                <span>⨯</span> {t("graph.exitFullscreen")}
+              </button>
+            )}
+                <SpaceGraph
+                  nodes={nodesWithColors}
+                  edges={edges}
+                  loading={graphLoading}
+                  error={graphError}
+                  onNodeClick={handleNodeClick}
+                  onEdgeClick={handleEdgeClick}
+                  selectedInstanceTypes={selectedInstanceTypes}
+                  isFullscreen={isGraphFullscreen}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Existing nodes list */}
-        {existingNodes.length === 0 && (
-          <p>This space has no nodes yet. Start by adding one from Wikidata!</p>
+        {sortedNodes.length === 0 && (
+          <p>{t("space.addNodeFromWikidata")}</p>
         )}
-        <ol className="nodes-list">
-          {existingNodes.map((node) => (
-            <li key={node.id} className="node-item">
-              <strong>{node.label}</strong>
-            </li>
-          ))}
-        </ol>
-
-        {/* Revert Graph Section - Only show if collaborator and not archived */}
-        {isCollaborator && !space.is_archived && (
-          <>
-            <h3>Revert Graph to Previous State</h3>
-            {snapshots.length > 0 ? (
-              <select
-                onChange={(e) => {
-                  const snapshotId = e.target.value;
-                  if (!snapshotId) return;
-
-                  api
-                    .post(
-                      `/spaces/${id}/snapshots/revert/`,
-                      { snapshot_id: snapshotId },
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                          )}`,
-                          "Content-Type": "application/json",
-                        },
-                      }
-                    )
-                    .then(() => {
-                      alert(t("space.graphRevertedSuccessfully"));
-                      window.location.reload();
-                    })
-                    .catch((err) => {
-                      alert(t("space.revertFailed"));
-                      console.error(err);
-                    });
-                }}
-              >
-                <option value="">{t("space.selectSnapshotToRevert")}</option>
-                {snapshots.map((snap) => (
-                  <option key={snap.id} value={snap.id}>
-                    {new Date(snap.created_at).toLocaleString()}
-                  </option>
+        
+        {sortedNodes.length > 0 && (
+          <div className="node-list-container">
+            <div 
+              className="node-list-header"
+              onClick={() => setIsNodeListExpanded(!isNodeListExpanded)}>
+              <h3 className="node-list-title">{t("space.nodes")} ({sortedNodes.length})</h3>
+              <div className="node-list-controls">
+                <select 
+                  className="node-sort-select"
+                  value={nodeSortOption}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setNodeSortOption(e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="recent">{t("space.recentlyAdded")}</option>
+                  <option value="connections">{t("space.mostConnections")}</option>
+                  <option value="name">{t("space.nameAZ")}</option>
+                </select>
+                <button 
+                  className="node-list-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsNodeListExpanded(!isNodeListExpanded);
+                  }}
+                >
+                  {isNodeListExpanded ? '▼' : '▲'}
+                </button>
+              </div>
+            </div>
+            
+            {isNodeListExpanded && (
+              <div className="node-list-content">
+                {sortedNodes.map((node) => (
+                  <div 
+                    key={node.id} 
+                    className="node-list-item"
+                    onClick={(e) => handleNodeClick(e, node)}
+                  >
+                    <span className="node-item-label">{node.label}</span>
+                    <div className="node-item-meta">
+                      <span className="connection-badge">
+                        {nodeDegrees[node.id] || 0} {t("space.connections")}
+                      </span>
+                    </div>
+                  </div>
                 ))}
-              </select>
-            ) : (
-              <p>{t("space.noSnapshotsAvailable")}</p>
+              </div>
             )}
-            <hr />
-          </>
+          </div>
         )}
 
         {/* Add Node Section - Only show if collaborator and not archived */}
@@ -2029,16 +3909,18 @@ const SpaceDetails = () => {
         )}
       </div>
 
-      {/* Collaborators sidebar */}
-      <div
-        style={{
-          width: "260px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <ActivityStream spaceId={id} dense />
+      {/* Right sidebar (Collapsible) */}
+      {!isRightPanelCollapsed && (
+        <div
+          style={{
+            width: "260px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            transition: "all 0.3s ease"
+          }}
+        >
+          <ActivityStream spaceId={id} dense onNodeClick={handleActivityNodeClick} />
 
         <div
           style={{
@@ -2069,28 +3951,121 @@ const SpaceDetails = () => {
           {isCollaboratorsOpen && (
             <div style={{ padding: "10px" }}>
               {space.collaborators.length > 0 ? (
-                <ul style={{ listStyleType: "none", padding: 0 }}>
-                  {space.collaborators.map((collaborator, index) => (
-                    <li
-                      key={index}
+                <>
+                  {showAllCollaborators ? (
+                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                      {space.collaborators.map((collaborator, index) => (
+                        <li
+                          key={index}
+                          style={{
+                            padding: "8px",
+                            borderBottom:
+                              index < space.collaborators.length - 1
+                                ? `1px solid var(--color-gray-200)`
+                                : "none",
+                            cursor: "pointer",
+                            color: "var(--color-accent)",
+                            textDecoration: "underline",
+                          }}
+                          onClick={() => navigate(`/profile/${collaborator}`)}
+                        >
+                          {collaborator}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {topCollaborators.length > 0 ? (
+                        topCollaborators.slice(0, 5).map((collaborator, index) => (
+                          <div
+                            key={collaborator.id || index}
+                            style={{
+                              padding: "10px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--color-gray-200)",
+                              cursor: "pointer",
+                              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = "translateY(-2px)";
+                              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                            onClick={() => navigate(`/profile/${collaborator.username}`)}
+                          >
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}>
+                              <div style={{
+                                minWidth: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                                background: index < 3 ? "var(--color-danger)" : "var(--color-gray-400)",
+                                color: "var(--color-white)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "11px",
+                                fontWeight: "bold",
+                              }}>
+                                {index + 1}
+                              </div>
+                              <div style={{
+                                fontSize: "14px",
+                                fontWeight: "600",
+                                color: "var(--color-primary-text)",
+                                flex: 1,
+                              }}>
+                                {collaborator.username}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ 
+                          fontSize: "13px", 
+                          color: "var(--color-secondary-text)",
+                          fontStyle: "italic",
+                          padding: "8px"
+                        }}>
+                          {t("space.noContributionData")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {topCollaborators.length > 0 && (
+                    <button
+                      onClick={() => setShowAllCollaborators(!showAllCollaborators)}
                       style={{
+                        width: "100%",
+                        marginTop: "10px",
                         padding: "8px",
-                        borderBottom:
-                          index < space.collaborators.length - 1
-                            ? `1px solid var(--color-gray-200)`
-                            : "none",
+                        background: "var(--color-bg)",
+                        border: "1px solid var(--color-gray-200)",
+                        borderRadius: "4px",
+                        color: "#0076B5",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         cursor: "pointer",
-                        color: "#1a73e8",
-                        textDecoration: "underline",
+                        transition: "background-color 0.2s ease",
                       }}
-                      onClick={() => navigate(`/profile/${collaborator}`)}
+                      onMouseEnter={(e) => e.target.style.background = "var(--color-white)"} 
+                      onMouseLeave={(e) => e.target.style.background = "var(--color-gray-200)"}
                     >
-                      {collaborator}
-                    </li>
-                  ))}
-                </ul>
+                      {showAllCollaborators ? t("space.showTopContributors") : t("space.seeAllCollaborators")}
+                    </button>
+                  )}
+                </>
               ) : (
-                <p>No collaborators yet</p>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text)", fontStyle: "italic" }}>
+                  {t("space.noCollaboratorsYet")}
+                </p>
               )}
             </div>
           )}
@@ -2098,7 +4073,8 @@ const SpaceDetails = () => {
 
         {/* Add discussions component */}
         <SpaceDiscussions spaceId={id} isCollaborator={isCollaborator} isArchived={space.is_archived} />
-      </div>
+        </div>
+      )}
 
       {/* Node detail modal */}
       {selectedNode && isCollaborator && (
@@ -2143,6 +4119,242 @@ const SpaceDetails = () => {
           contentTitle={space.title}
           onClose={() => setShowReportModal(false)}
         />
+      )}
+
+      {/* Info Modal */}
+      <InfoModal />
+      {/* AI Summary Modal */}
+      {showAiSummary && (
+        <div 
+          className="modal-backdrop" 
+          onClick={() => setShowAiSummary(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="ai-summary-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                fontSize: '24px',
+                color: '#1B1F3B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span>✨</span>
+                AI Summary
+              </h2>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingAiSummary && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#666'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #f3f3f3',
+                  borderTop: '4px solid #2D6A4F',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 20px'
+                }}></div>
+                <p style={{ margin: 0, fontSize: '16px' }}>
+                  Generating AI summary...
+                </p>
+                <style>
+                  {`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            {aiSummaryError && !loadingAiSummary && (
+              <div style={{
+                padding: '20px',
+                backgroundColor: '#fee',
+                borderRadius: '8px',
+                color: '#c33',
+                marginBottom: '20px'
+              }}>
+                <p style={{ margin: 0, fontWeight: '600' }}>Error</p>
+                <p style={{ margin: '8px 0 0 0' }}>{aiSummaryError}</p>
+              </div>
+            )}
+
+            {aiSummary && !loadingAiSummary && !aiSummaryError && (
+              <div>
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  gap: '20px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Nodes
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.node_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Edges
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.edge_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Discussions
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.discussion_count || 0}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '120px' }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Collaborators
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', color: '#2D6A4F' }}>
+                      {aiSummary.metadata?.collaborator_count || 0}
+                    </div>
+                  </div>
+                </div>
+
+                <div 
+                  className="ai-summary-content"
+                  style={{
+                    fontSize: '15px',
+                    lineHeight: '1.7',
+                    color: '#333'
+                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: marked.parse(aiSummary.summary || '') 
+                  }}
+                />
+                
+                <style>
+                  {`
+                    .ai-summary-content h3 {
+                      color: #1B1F3B;
+                      font-size: 18px;
+                      font-weight: 600;
+                      margin: 20px 0 10px 0;
+                      border-bottom: 2px solid #2D6A4F;
+                      padding-bottom: 5px;
+                    }
+                    
+                    .ai-summary-content h3:first-child {
+                      margin-top: 0;
+                    }
+                    
+                    .ai-summary-content strong {
+                      color: #2D6A4F;
+                      font-weight: 600;
+                    }
+                    
+                    .ai-summary-content p {
+                      margin: 12px 0;
+                    }
+                    
+                    .ai-summary-content ul {
+                      margin: 10px 0;
+                      padding-left: 25px;
+                    }
+                    
+                    .ai-summary-content li {
+                      margin: 6px 0;
+                    }
+                    
+                    .ai-summary-content code {
+                      background-color: #f5f5f5;
+                      padding: 2px 6px;
+                      border-radius: 3px;
+                      font-family: monospace;
+                      font-size: 14px;
+                    }
+                  `}
+                </style>
+              </div>
+            )}
+
+            <div style={{ marginTop: '30px', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowAiSummary(false)}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#2D6A4F',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

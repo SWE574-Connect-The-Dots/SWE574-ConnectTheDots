@@ -227,10 +227,28 @@ export default function Home({ currentUser }) {
               <p>{space.description}</p>
               <div className="activities" />
             </div>
-            <div className="space-footer">
-              <div className="tags">
+            <div className="space-footer" style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              minHeight: "40px"
+            }}>
+              <div className="tags" style={{
+                display: "flex",
+                flexWrap: "nowrap",
+                gap: "8px",
+                flex: 1,
+                minWidth: 0,
+                overflowX: "auto",
+                overflowY: "hidden",
+                scrollbarWidth: "thin",
+                scrollbarColor: "#ccc transparent"
+              }}>
                 {space.tags.map((tag) => (
-                  <div key={tag.id} className="tag">
+                  <div key={tag.id} className="tag" style={{
+                    flexShrink: 0
+                  }}>
                     {tag.name}
                   </div>
                 ))}
@@ -253,7 +271,10 @@ export default function Home({ currentUser }) {
                   }
                 }}
                 disabled={loadingSpaces[space.id] || space.is_archived}
-                style={space.is_archived ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                style={{
+                  flexShrink: 0,
+                  ...(space.is_archived ? { opacity: 0.5, cursor: "not-allowed" } : {})
+                }}
               >
                 {loadingSpaces[space.id]
                   ? t("common.processing")

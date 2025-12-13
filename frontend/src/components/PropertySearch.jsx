@@ -14,6 +14,7 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   const { searchResults, loading, search, clearSearch } =
     useWikidataPropertySearch();
   const isSelectingEdgeRef = useRef(false);
+  const hasInteractedRef = useRef(false);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -24,6 +25,10 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   useEffect(() => {
     if (isSelectingEdgeRef.current) {
       isSelectingEdgeRef.current = false;
+      return;
+    }
+
+    if (!hasInteractedRef.current) {
       return;
     }
 
@@ -40,6 +45,7 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
 
   const handleSearch = (e) => {
     const query = e.target.value;
+    hasInteractedRef.current = true;
     setSearchTerm(query);
     setSelectedProperty({ id: null, label: query });
   };

@@ -51,7 +51,6 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `getReportReasons should return space reasons on success`() = runTest {
-        // Given
         val spaceReasons = listOf(
             ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
             ReportReasonItem("SPAM", "Spam")
@@ -68,10 +67,8 @@ class SpacesRepositoryReportTest {
         val response = Response.success(reportResponse)
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("space")
 
-        // Then
         assertTrue(result.isSuccess)
         val reasons = result.getOrNull()!!
         assertEquals(2, reasons.size)
@@ -84,7 +81,6 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `getReportReasons should return node reasons on success`() = runTest {
-        // Given
         val nodeReasons = listOf(
             ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
             ReportReasonItem("DUPLICATE_NODE", "Duplicate node")
@@ -101,10 +97,8 @@ class SpacesRepositoryReportTest {
         val response = Response.success(reportResponse)
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("node")
 
-        // Then
         assertTrue(result.isSuccess)
         val reasons = result.getOrNull()!!
         assertEquals(2, reasons.size)
@@ -114,7 +108,6 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `getReportReasons should return discussion reasons on success`() = runTest {
-        // Given
         val discussionReasons = listOf(
             ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
             ReportReasonItem("OFF_TOPIC", "Off-topic")
@@ -131,10 +124,8 @@ class SpacesRepositoryReportTest {
         val response = Response.success(reportResponse)
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("discussion")
 
-        // Then
         assertTrue(result.isSuccess)
         val reasons = result.getOrNull()!!
         assertEquals(2, reasons.size)
@@ -144,7 +135,6 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `getReportReasons should return profile reasons on success`() = runTest {
-        // Given
         val profileReasons = listOf(
             ReportReasonItem("INAPPROPRIATE", "Inappropriate content"),
             ReportReasonItem("FAKE_ACCOUNT", "Fake account")
@@ -161,10 +151,8 @@ class SpacesRepositoryReportTest {
         val response = Response.success(reportResponse)
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("profile")
 
-        // Then
         assertTrue(result.isSuccess)
         val reasons = result.getOrNull()!!
         assertEquals(2, reasons.size)
@@ -174,7 +162,6 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `getReportReasons should return empty list for unknown content type`() = runTest {
-        // Given
         val reportResponse = ReportResponse(
             version = 1,
             reasons = ReportReasonsData(
@@ -187,47 +174,38 @@ class SpacesRepositoryReportTest {
         val response = Response.success(reportResponse)
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("unknown")
 
-        // Then
         assertTrue(result.isSuccess)
         assertTrue(result.getOrNull()!!.isEmpty())
     }
 
     @Test
     fun `getReportReasons should return error on API failure`() = runTest {
-        // Given
         val response = Response.error<ReportResponse>(
             500,
             "Error".toResponseBody()
         )
         whenever(mockApiService.getReportReasons()).thenReturn(response)
 
-        // When
         val result = repository.getReportReasons("space")
 
-        // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()!!.message!!.contains("Failed to get report reasons"))
     }
 
     @Test
     fun `getReportReasons should return error when not authenticated`() = runTest {
-        // Given
         whenever(mockSessionManager.authToken).thenReturn(flowOf(null))
 
-        // When
         val result = repository.getReportReasons("space")
 
-        // Then
         assertTrue(result.isFailure)
         assertEquals("Not authenticated", result.exceptionOrNull()!!.message)
     }
 
     @Test
     fun `submitReport should submit report successfully`() = runTest {
-        // Given
         val submitResponse = SubmitReportResponse(
             id = 1,
             contentType = "space",
@@ -245,10 +223,8 @@ class SpacesRepositoryReportTest {
         val response = Response.success(submitResponse)
         whenever(mockApiService.submitReport(any())).thenReturn(response)
 
-        // When
         val result = repository.submitReport("space", 123, "INAPPROPRIATE")
 
-        // Then
         assertTrue(result.isSuccess)
         val report = result.getOrNull()!!
         assertEquals(1, report.id)
@@ -262,30 +238,24 @@ class SpacesRepositoryReportTest {
 
     @Test
     fun `submitReport should return error on API failure`() = runTest {
-        // Given
         val response = Response.error<SubmitReportResponse>(
             500,
             "Error".toResponseBody()
         )
         whenever(mockApiService.submitReport(any())).thenReturn(response)
 
-        // When
         val result = repository.submitReport("space", 12, "INAPPROPRIATE")
 
-        // Then
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()!!.message!!.contains("Failed to submit report"))
     }
 
     @Test
     fun `submitReport should return error when not authenticated`() = runTest {
-        // Given
         whenever(mockSessionManager.authToken).thenReturn(flowOf(null))
 
-        // When
         val result = repository.submitReport("space", 1, "INAPPROPRIATE")
 
-        // Then
         assertTrue(result.isFailure)
         assertEquals("Not authenticated", result.exceptionOrNull()!!.message)
     }

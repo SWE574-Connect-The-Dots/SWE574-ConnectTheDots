@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yybb.myapplication.data.model.NodeProperty
 import com.yybb.myapplication.data.model.WikidataProperty
+import com.yybb.myapplication.data.network.dto.CountryPosition
 import com.yybb.myapplication.data.network.dto.ReportReasonItem
+import com.yybb.myapplication.data.repository.CountriesRepository
 import com.yybb.myapplication.data.repository.SpaceNodeDetailsRepository
 import com.yybb.myapplication.data.repository.SpacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 class SpaceNodeDetailsViewModel @Inject constructor(
     private val spaceNodeDetailsRepository: SpaceNodeDetailsRepository,
     private val spacesRepository: SpacesRepository,
+    private val countriesRepository: CountriesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -31,6 +35,30 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         val property: NodeProperty,
         val isChecked: Boolean
     )
+
+    data class PropertyGroup(
+        val propertyId: String,
+        val propertyLabel: String,
+        val properties: List<PropertyOption>,
+        val isAllChecked: Boolean,
+        val hasSavedProperties: Boolean
+    )
+
+    sealed class PropertyItem {
+        data class Group(val group: PropertyGroup) : PropertyItem()
+        data class Single(val option: PropertyOption) : PropertyItem()
+    }
+
+    data class SavedPropertyGroup(
+        val propertyId: String,
+        val propertyLabel: String,
+        val properties: List<NodeProperty>
+    )
+
+    sealed class SavedPropertyItem {
+        data class Group(val group: SavedPropertyGroup) : SavedPropertyItem()
+        data class Single(val property: NodeProperty) : SavedPropertyItem()
+    }
 
     data class NodeOption(
         val id: String,
@@ -186,6 +214,37 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             initialValue = _propertyOptions.value
         )
 
+    // Location state
+    private val _locationName = MutableStateFlow<String?>(null)
+    val locationName: StateFlow<String?> = _locationName.asStateFlow()
+
+    private val _nodeDetails = MutableStateFlow<com.yybb.myapplication.data.model.SpaceNode?>(null)
+    val nodeDetails: StateFlow<com.yybb.myapplication.data.model.SpaceNode?> = _nodeDetails.asStateFlow()
+
+    private val _showEditLocationDialog = MutableStateFlow(false)
+    val showEditLocationDialog: StateFlow<Boolean> = _showEditLocationDialog.asStateFlow()
+
+    private val _countries = MutableStateFlow<List<CountryPosition>>(emptyList())
+    val countries: StateFlow<List<CountryPosition>> = _countries.asStateFlow()
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities.asStateFlow()
+
+    private val _isLoadingCountries = MutableStateFlow(false)
+    val isLoadingCountries: StateFlow<Boolean> = _isLoadingCountries.asStateFlow()
+
+    private val _isLoadingCities = MutableStateFlow(false)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities.asStateFlow()
+
+    private val _isGettingCoordinates = MutableStateFlow(false)
+    val isGettingCoordinates: StateFlow<Boolean> = _isGettingCoordinates.asStateFlow()
+
+    private val _isUpdatingLocation = MutableStateFlow(false)
+    val isUpdatingLocation: StateFlow<Boolean> = _isUpdatingLocation.asStateFlow()
+
+    private val _locationUpdateError = MutableStateFlow<String?>(null)
+    val locationUpdateError: StateFlow<String?> = _locationUpdateError.asStateFlow()
+
     init {
         // Validate required data
         if (nodeLabelArg.isNullOrBlank()) {
@@ -195,6 +254,8 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             fetchNodeProperties()
             fetchWikidataProperties()
             fetchNodeConnections()
+            fetchNodeDetails()
+            loadCountries()
         }
     }
 
@@ -227,6 +288,28 @@ class SpaceNodeDetailsViewModel @Inject constructor(
         }
     }
 
+    fun toggleSelectAllProperties() {
+        val allChecked = _propertyOptions.value.all { it.isChecked }
+        val existingPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        
+        _propertyOptions.update { options ->
+            if (allChecked) {
+                // Uncheck all, but keep the ones already added to the node
+                options.map { option ->
+                    option.copy(isChecked = existingPropertyIds.contains(option.property.statementId))
+                }
+            } else {
+                // Check all
+                options.map { option -> option.copy(isChecked = true) }
+            }
+        }
+    }
+
+    fun isSelectAllChecked(): Boolean {
+        val options = _propertyOptions.value
+        return options.isNotEmpty() && options.all { it.isChecked }
+    }
+
     fun saveSelectedProperties() {
         val selected = _propertyOptions.value
             .filter { it.isChecked }
@@ -251,6 +334,102 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             }
 
             _isUpdatingNodeProperties.value = false
+        }
+    }
+
+    fun getSelectedPropertiesCount(): Int {
+        return _propertyOptions.value.count { it.isChecked }
+    }
+
+    fun getTotalPropertiesCount(): Int {
+        return _propertyOptions.value.size
+    }
+
+    fun getGroupedProperties(filteredOptions: List<PropertyOption>? = null): List<PropertyGroup> {
+        val options = filteredOptions ?: _propertyOptions.value
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        
+        return options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 } // Only groups with more than one property
+            .map { (propertyId, groupOptions) ->
+                val firstProperty = groupOptions.first().property
+                val allChecked = groupOptions.all { it.isChecked }
+                val hasSaved = groupOptions.any { it.property.statementId in savedPropertyIds }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupOptions,
+                    isAllChecked = allChecked,
+                    hasSavedProperties = hasSaved
+                )
+            }
+            .sortedBy { it.propertyLabel }
+    }
+
+    fun getPropertyItems(filteredOptions: List<PropertyOption>? = null): List<PropertyItem> {
+        val options = filteredOptions ?: _propertyOptions.value
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        val groupedPropertyIds = options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 }
+            .keys
+            .toSet()
+        
+        val items = mutableListOf<PropertyItem>()
+        
+        // Add groups for properties with multiple items
+        options
+            .groupBy { it.property.propertyId }
+            .filter { it.value.size > 1 }
+            .map { (propertyId, groupOptions) ->
+                val firstProperty = groupOptions.first().property
+                val allChecked = groupOptions.all { it.isChecked }
+                val hasSaved = groupOptions.any { it.property.statementId in savedPropertyIds }
+                
+                PropertyGroup(
+                    propertyId = propertyId,
+                    propertyLabel = firstProperty.propertyLabel,
+                    properties = groupOptions,
+                    isAllChecked = allChecked,
+                    hasSavedProperties = hasSaved
+                )
+            }
+            .sortedBy { it.propertyLabel }
+            .forEach { group ->
+                items.add(PropertyItem.Group(group))
+            }
+        
+        // Add single properties (not in any group)
+        options
+            .filter { it.property.propertyId !in groupedPropertyIds }
+            .sortedBy { it.property.propertyLabel }
+            .forEach { option ->
+                items.add(PropertyItem.Single(option))
+            }
+        
+        return items
+    }
+
+    fun togglePropertyGroup(propertyId: String) {
+        val savedPropertyIds = _apiNodeProperties.value.map { it.statementId }.toSet()
+        val groupProperties = _propertyOptions.value.filter { it.property.propertyId == propertyId }
+        val allChecked = groupProperties.all { it.isChecked }
+        
+        _propertyOptions.update { options ->
+            options.map { option ->
+                if (option.property.propertyId == propertyId) {
+                    // Don't uncheck if it's already saved to the node
+                    if (allChecked && option.property.statementId in savedPropertyIds) {
+                        option // Keep checked if it's saved
+                    } else {
+                        option.copy(isChecked = !allChecked)
+                    }
+                } else {
+                    option
+                }
+            }
         }
     }
 
@@ -347,6 +526,91 @@ class SpaceNodeDetailsViewModel @Inject constructor(
             _isDeletingNodeProperty.value = false
         }
     }
+
+    fun deletePropertyGroup(propertyId: String) {
+        val propertiesToDelete = _apiNodeProperties.value.filter { it.propertyId == propertyId }
+        if (propertiesToDelete.isEmpty()) return
+
+        viewModelScope.launch {
+            if (_isDeletingNodeProperty.value) return@launch
+
+            _isDeletingNodeProperty.value = true
+            _nodePropertyDeletionMessage.value = null
+            _nodePropertyDeletionError.value = null
+
+            // Delete all properties in the group sequentially
+            var allSuccess = true
+            var lastError: String? = null
+
+            for (property in propertiesToDelete) {
+                val deleteResult =
+                    spaceNodeDetailsRepository.deleteNodeProperty(spaceId, nodeId, property.statementId)
+                deleteResult.onFailure { throwable ->
+                    allSuccess = false
+                    lastError = throwable.message
+                }
+            }
+
+            if (allSuccess) {
+                val refreshResult = spaceNodeDetailsRepository.getNodeProperties(spaceId, nodeId)
+                refreshResult.onSuccess { properties ->
+                    _apiNodeProperties.value = properties
+                    syncPropertyOptionsWithSelectedProperties()
+                    val firstProperty = propertiesToDelete.first()
+                    _nodePropertyDeletionMessage.value = "${firstProperty.propertyLabel} (${propertiesToDelete.size} properties)"
+                }.onFailure { throwable ->
+                    _nodePropertyDeletionError.value = throwable.message
+                }
+            } else {
+                _nodePropertyDeletionError.value = lastError ?: "Failed to delete some properties"
+            }
+
+            _isDeletingNodeProperty.value = false
+        }
+    }
+
+    val savedPropertyItems: StateFlow<List<SavedPropertyItem>> = _apiNodeProperties
+        .map { properties ->
+            val groupedPropertyIds = properties
+                .groupBy { it.propertyId }
+                .filter { it.value.size > 1 }
+                .keys
+                .toSet()
+            
+            val items = mutableListOf<SavedPropertyItem>()
+            
+            // Add groups for properties with multiple items
+            properties
+                .groupBy { it.propertyId }
+                .filter { it.value.size > 1 }
+                .map { (propertyId, groupProperties) ->
+                    val firstProperty = groupProperties.first()
+                    SavedPropertyGroup(
+                        propertyId = propertyId,
+                        propertyLabel = firstProperty.propertyLabel,
+                        properties = groupProperties
+                    )
+                }
+                .sortedBy { it.propertyLabel }
+                .forEach { group ->
+                    items.add(SavedPropertyItem.Group(group))
+                }
+            
+            // Add single properties (not in any group)
+            properties
+                .filter { it.propertyId !in groupedPropertyIds }
+                .sortedBy { it.propertyLabel }
+                .forEach { property ->
+                    items.add(SavedPropertyItem.Single(property))
+                }
+            
+            items
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     private fun fetchAvailableConnectionNodes() {
         viewModelScope.launch {
@@ -605,6 +869,151 @@ class SpaceNodeDetailsViewModel @Inject constructor(
 
     fun clearReportError() {
         _reportError.value = null
+    }
+
+    // Location functions
+    fun showEditLocationDialog() {
+        _showEditLocationDialog.value = true
+    }
+
+    fun hideEditLocationDialog() {
+        _showEditLocationDialog.value = false
+    }
+
+    fun loadCountries() {
+        viewModelScope.launch {
+            _isLoadingCountries.value = true
+            countriesRepository.getCountries()
+                .onSuccess { countriesList ->
+                    _countries.value = (countriesList ?: emptyList()).sortedBy { it.name }
+                    _isLoadingCountries.value = false
+                }
+                .onFailure {
+                    _isLoadingCountries.value = false
+                }
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _isLoadingCities.value = true
+            _cities.value = emptyList()
+            countriesRepository.getCities(country)
+                .onSuccess { citiesList ->
+                    _cities.value = citiesList.sorted()
+                    _isLoadingCities.value = false
+                }
+                .onFailure {
+                    _isLoadingCities.value = false
+                }
+        }
+    }
+
+    private val _coordinatesResult = MutableStateFlow<com.yybb.myapplication.data.network.dto.NominatimCoordinates?>(null)
+    val coordinatesResult: StateFlow<com.yybb.myapplication.data.network.dto.NominatimCoordinates?> = _coordinatesResult.asStateFlow()
+
+    fun getCoordinatesFromAddress(city: String?, country: String?) {
+        if (city == null || country == null) {
+            _coordinatesResult.value = null
+            return
+        }
+
+        viewModelScope.launch {
+            _isGettingCoordinates.value = true
+            _locationUpdateError.value = null
+            _coordinatesResult.value = null
+            val query = "$city, $country"
+            val result = spaceNodeDetailsRepository.getCoordinatesFromAddress(query)
+            _isGettingCoordinates.value = false
+            result.onSuccess { coordinates ->
+                _coordinatesResult.value = coordinates
+            }.onFailure { throwable ->
+                _coordinatesResult.value = null
+                _locationUpdateError.value = throwable.message ?: "Failed to get coordinates"
+            }
+        }
+    }
+
+    fun updateNodeLocation(
+        country: String?,
+        city: String?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) {
+        if (_isUpdatingLocation.value) return
+        
+        viewModelScope.launch {
+            _isUpdatingLocation.value = true
+            _locationUpdateError.value = null
+
+            try {
+                val updateResult = spaceNodeDetailsRepository.updateNodeLocation(
+                    spaceId = spaceId,
+                    nodeId = nodeId,
+                    country = country,
+                    city = city,
+                    locationName = locationName,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+
+                updateResult.onSuccess {
+                    // Create snapshot
+                    val snapshotResult = spaceNodeDetailsRepository.createSnapshot(spaceId)
+                    snapshotResult.onSuccess {
+                        // Refresh node details by calling getSpaceNodes and finding matching node
+                        refreshNodeDetailsFromSpaceNodes()
+                        _isUpdatingLocation.value = false
+                        _showEditLocationDialog.value = false
+                    }.onFailure { throwable ->
+                        _locationUpdateError.value = throwable.message ?: "Failed to create snapshot"
+                        _isUpdatingLocation.value = false
+                    }
+                }.onFailure { throwable ->
+                    _locationUpdateError.value = throwable.message ?: "Failed to update location"
+                    _isUpdatingLocation.value = false
+                }
+            } catch (e: Exception) {
+                _locationUpdateError.value = e.message ?: "An unexpected error occurred"
+                _isUpdatingLocation.value = false
+            }
+        }
+    }
+
+    private suspend fun refreshNodeDetailsFromSpaceNodes() {
+        val result = spaceNodeDetailsRepository.getSpaceNodes(spaceId)
+        result.onSuccess { nodes ->
+            // First try to find by wikidata_id if available
+            val currentWikidataId = _wikidataId.value
+            val matchingNode = if (currentWikidataId.isNotBlank()) {
+                nodes.find { it.wikidataId == currentWikidataId }
+            } else {
+                // Fallback to matching by nodeId if wikidata_id is not available
+                nodes.find { it.id.toString() == nodeId }
+            }
+            
+            if (matchingNode != null) {
+                _nodeDetails.value = matchingNode
+                _locationName.value = matchingNode.locationName
+                // Update node name if it has changed
+                if (matchingNode.label.isNotBlank()) {
+                    _nodeName.value = matchingNode.label
+                }
+            }
+        }.onFailure {
+            // Silently fail - location is optional
+        }
+    }
+
+    private fun fetchNodeDetails() {
+        viewModelScope.launch {
+            refreshNodeDetailsFromSpaceNodes()
+        }
+    }
+
+    fun clearLocationUpdateError() {
+        _locationUpdateError.value = null
     }
 }
 

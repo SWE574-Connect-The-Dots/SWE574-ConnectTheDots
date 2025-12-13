@@ -2,6 +2,7 @@ package com.yybb.myapplication.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,7 +36,7 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             SpacesScreen(navController = navController)
         }
         composable(BottomNavItem.ActivityStream.route) {
-            ActivityStreamScreen()
+            ActivityStreamScreen(navController = navController)
         }
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(navController = navController)
@@ -64,7 +65,21 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
                     navController.navigate(Screen.SpaceNodes.createRoute(spaceId))
                 },
                 onNavigateToProfile = { username ->
-                    navController.navigate(Screen.Profile.createRoute(username))
+                    if (username.isEmpty()) {
+                        // Navigate to current user's profile via bottom nav
+                        navController.navigate(BottomNavItem.Profile.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    } else {
+                        navController.navigate(Screen.Profile.createRoute(username))
+                    }
+                },
+                onNavigateFromActivity = { activity ->
+                    com.yybb.myapplication.presentation.ui.utils.navigateFromActivity(activity, navController)
                 }
             )
         }
@@ -160,8 +175,8 @@ fun MainNavGraph(navController: NavHostController, rootNavController: NavHostCon
             EditProfileScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
-                onSave = { profession, bio ->
-                    viewModel.saveProfile(profession, bio)
+                onSave = { profession, bio, city, country ->
+                    viewModel.saveProfile(profession, bio, city, country)
                     navController.popBackStack()
                 }
             )

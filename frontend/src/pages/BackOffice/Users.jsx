@@ -1,35 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import userMockData from "../../data/userListMock.json";
+import api from "../../axiosConfig";
+import { API_ENDPOINTS } from "../../constants/config";
+import { useTranslation } from "../../contexts/TranslationContext";
 
 export default function Users() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [sortField, setSortField] = useState("username");
   const [sortDirection, setSortDirection] = useState("asc");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAdmin, setIsAdmin] = useState(true);
-  const [editingUserId, setEditingUserId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const availableRoles = ["User", "Moderator", "Admin"];
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (editingUserId && !event.target.closest(".role-dropdown-container")) {
-        setEditingUserId(null);
-      }
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(API_ENDPOINTS.USERS);
+      const usersData = response.data.users || [];
+      
+      const transformedUsers = usersData.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        createdDate: new Date(user.created_at).toLocaleDateString(),
+        role: user.user_type_display,
+        user_type: user.user_type,
+        profession: user.profession || "N/A"
+      }));
+      
+      setUsers(transformedUsers);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Failed to load users");
+      console.error("Failed to load users:", err);
+    } finally {
+      setLoading(false);
     }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [editingUserId]);
+  };
 
   useEffect(() => {
-    setUsers(userMockData);
-    const isAdminUser = localStorage.getItem("is_superuser") === "true";
-    setIsAdmin(isAdminUser || true);
+    fetchUsers();
   }, []);
 
   const sortedUsers = [...users].sort((a, b) => {
@@ -46,7 +58,8 @@ export default function Users() {
     (user) =>
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.profession.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSort = (field) => {
@@ -58,18 +71,24 @@ export default function Users() {
     }
   };
 
-  const handleRoleChange = (username, newRole) => {
-    setUsers(
-      users.map((user) =>
-        user.username === username ? { ...user, role: newRole } : user
-      )
-    );
-    setEditingUserId(null);
-  };
-
-  const toggleRoleEdit = (username) => {
-    if (isAdmin) {
-      setEditingUserId(editingUserId === username ? null : username);
+  const handleArchiveUser = async (userId, username) => {
+    if (!window.confirm(`Are you sure you want to archive user "${username}"?`)) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      await api.post(API_ENDPOINTS.ARCHIVE_CREATE, {
+        content_type: "profile",
+        content_id: userId,
+        reason: "Archived from users panel"
+      });
+      
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to archive user:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,7 +133,7 @@ export default function Users() {
 
   return (
     <div>
-      <h2>Users</h2>
+      <h2>{t("backoffice.users")}</h2>
       <div
         style={{
           marginBottom: "20px",
@@ -125,7 +144,7 @@ export default function Users() {
         <div>
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder={t("backoffice.searchUsers")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -158,7 +177,7 @@ export default function Users() {
                 }}
                 onClick={() => handleSort("username")}
               >
-                Username {getSortIndicator("username")}
+                {t("backoffice.username")} {getSortIndicator("username")}
               </th>
               <th
                 style={{
@@ -168,7 +187,17 @@ export default function Users() {
                 }}
                 onClick={() => handleSort("email")}
               >
-                Email {getSortIndicator("email")}
+                {t("backoffice.email")} {getSortIndicator("email")}
+              </th>
+              <th
+                style={{
+                  padding: "15px",
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+                onClick={() => handleSort("profession")}
+              >
+                {t("backoffice.profession")} {getSortIndicator("profession")}
               </th>
               <th
                 style={{
@@ -178,7 +207,7 @@ export default function Users() {
                 }}
                 onClick={() => handleSort("createdDate")}
               >
-                Created Date {getSortIndicator("createdDate")}
+                {t("backoffice.createdDate")} {getSortIndicator("createdDate")}
               </th>
               <th
                 style={{
@@ -188,15 +217,15 @@ export default function Users() {
                 }}
                 onClick={() => handleSort("role")}
               >
-                Role {getSortIndicator("role")}
+                {t("backoffice.role")} {getSortIndicator("role")}
               </th>
-              <th style={{ padding: "15px", textAlign: "center" }}>Actions</th>
+              <th style={{ padding: "15px", textAlign: "center" }}>{t("backoffice.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.map((user, index) => (
               <tr
-                key={user.username}
+                key={user.id}
                 style={{
                   borderBottom: "1px solid #f1f1f1",
                   backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
@@ -204,77 +233,12 @@ export default function Users() {
               >
                 <td style={{ padding: "12px 15px" }}>{user.username}</td>
                 <td style={{ padding: "12px 15px" }}>{user.email}</td>
+                <td style={{ padding: "12px 15px" }}>{user.profession}</td>
                 <td style={{ padding: "12px 15px" }}>{user.createdDate}</td>
                 <td style={{ padding: "12px 15px" }}>
-                  {isAdmin && user.role !== "Admin" ? (
-                    <div
-                      className="role-dropdown-container"
-                      style={{ display: "inline-block", position: "relative" }}
-                    >
-                      <span
-                        onClick={() => toggleRoleEdit(user.username)}
-                        style={{
-                          ...getRoleBadgeStyle(user.role),
-                          cursor: "pointer",
-                          display: "inline-block",
-                        }}
-                        title="Click to change role"
-                      >
-                        {user.role} ▼
-                      </span>
-                      {editingUserId === user.username && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom:
-                              index >= filteredUsers.length - 3
-                                ? "100%"
-                                : "auto",
-                            top:
-                              index >= filteredUsers.length - 3
-                                ? "auto"
-                                : "100%",
-                            left: 0,
-                            zIndex: 999,
-                            backgroundColor: "white",
-                            border: "1px solid #ddd",
-                            borderRadius: "4px",
-                            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                            minWidth: "120px",
-                          }}
-                        >
-                          {availableRoles
-                            .filter((role) => role !== "Admin")
-                            .map((role) => (
-                              <div
-                                key={role}
-                                onClick={() =>
-                                  handleRoleChange(user.username, role)
-                                }
-                                style={{
-                                  padding: "8px 12px",
-                                  cursor: "pointer",
-                                  borderBottom: "1px solid #eee",
-                                  backgroundColor:
-                                    role === user.role
-                                      ? "#f1f1f1"
-                                      : "transparent",
-                                  fontWeight:
-                                    role === user.role ? "bold" : "normal",
-                                  zIndex: 1,
-                                }}
-                              >
-                                {role}
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={getRoleBadgeStyle(user.role)}>
-                      {user.role}
-                    </span>
-                  )}
+                  <span style={getRoleBadgeStyle(user.role)}>
+                    {user.role}
+                  </span>
                 </td>
                 <td style={{ padding: "12px 15px", textAlign: "center" }}>
                   <button
@@ -290,24 +254,25 @@ export default function Users() {
                       fontSize: "12px",
                     }}
                   >
-                    Visit Profile
+                    {t("backoffice.visitProfile")}
                   </button>
-                  {user.role !== "Admin" ? (
+                  {user.role !== "Admin" && (
                     <button
+                      onClick={() => handleArchiveUser(user.id, user.username)}
+                      disabled={loading}
                       style={{
                         backgroundColor: "var(--color-danger-dark)",
                         color: "white",
                         border: "none",
                         padding: "5px 10px",
                         borderRadius: "4px",
-                        cursor: "pointer",
+                        cursor: loading ? "not-allowed" : "pointer",
                         fontSize: "12px",
+                        opacity: loading ? 0.6 : 1,
                       }}
                     >
-                      Archive
+                      {t("backoffice.archiveUser")}
                     </button>
-                  ) : (
-                    <></>
                   )}
                 </td>
               </tr>
@@ -326,48 +291,8 @@ export default function Users() {
       >
         <div>
           <span>
-            Showing {filteredUsers.length} of {users.length} users
+            {t("backoffice.showing")} {filteredUsers.length} {t("backoffice.of")} {users.length} {t("backoffice.usersCount")}
           </span>
-        </div>
-        <div>
-          <button
-            style={{
-              border: "1px solid #ddd",
-              padding: "5px 10px",
-              margin: "0 5px",
-              borderRadius: "4px",
-              cursor: "pointer",
-              color: "black",
-            }}
-            disabled
-          >
-            Previous
-          </button>
-          <button
-            style={{
-              color: "black",
-              border: "none",
-              padding: "5px 10px",
-              margin: "0 5px",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            1
-          </button>
-          <button
-            style={{
-              border: "1px solid #ddd",
-              padding: "5px 10px",
-              margin: "0 5px",
-              borderRadius: "4px",
-              cursor: "pointer",
-              color: "black",
-            }}
-            disabled
-          >
-            Next
-          </button>
         </div>
       </div>
     </div>

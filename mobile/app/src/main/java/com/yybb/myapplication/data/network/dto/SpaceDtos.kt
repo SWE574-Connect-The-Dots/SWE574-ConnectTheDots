@@ -33,7 +33,9 @@ data class TagResponse(
 data class CreateSpaceRequest(
     val title: String,
     val description: String,
-    val tags: List<String> // List of tag names
+    val tags: List<String>, // List of tag names
+    val country: String? = null,
+    val city: String? = null
 )
 
 // Create Space Response
@@ -63,7 +65,13 @@ data class SpaceDetailsResponse(
     @SerializedName("creator_username")
     val creatorUsername: String,
     val tags: List<SpaceTagDto>,
-    val collaborators: List<String>
+    val collaborators: List<String>,
+    @SerializedName("is_archived")
+    val isArchived: Boolean,
+    val country: String? = null,
+    val city: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null
 )
 
 data class SpaceTagDto(
@@ -111,7 +119,9 @@ data class SpaceNodeResponse(
     val latitude: String?,
     val longitude: String?,
     @SerializedName("location_name")
-    val locationName: String?
+    val locationName: String?,
+    @SerializedName("created_at")
+    val createdAt: String?
 )
 
 data class SpaceEdgeResponse(
@@ -318,7 +328,7 @@ data class SubmitReportResponse(
     val contentId: Int,
     val reason: String,
     val status: String,
-    val space: Int?,
+    val space: Int,
     val reporter: Int,
     @SerializedName("reporter_username")
     val reporterUsername: String,
@@ -330,4 +340,33 @@ data class SubmitReportResponse(
     val entityReportCount: Int,
     @SerializedName("entity_is_reported")
     val entityIsReported: Boolean
+)
+
+// Update Node Location Request
+data class UpdateNodeLocationRequest(
+    val country: String?,
+    val city: String?,
+    val district: String? = null,
+    val street: String? = null,
+    val latitude: Double?,
+    val longitude: Double?,
+    @SerializedName("location_name")
+    val locationName: String?
+)
+
+// Update Node Location Response
+data class UpdateNodeLocationResponse(
+    val message: String,
+    val location: NodeLocationData
+)
+
+data class NodeLocationData(
+    val country: String?,
+    val city: String?,
+    val district: String?,
+    val street: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    @SerializedName("location_name")
+    val locationName: String?
 )
