@@ -128,9 +128,6 @@ jobs:
             -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
-            -e NEO4J_URI=bolt://neo4j:7687 \
-            -e NEO4J_USER=neo4j \
-            -e NEO4J_PASSWORD='${{ secrets.NEO4J_PASSWORD }}'
             api python manage.py migrate --plan
           
           # Fail the step if conflicts were detected
@@ -161,9 +158,6 @@ jobs:
             -e DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             -e DB_NAME='${{ secrets.DB_NAME }}' \
             -e DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" \
-            -e NEO4J_URI=bolt://neo4j:7687 \
-            -e NEO4J_USER=neo4j \
-            -e NEO4J_PASSWORD='${{ secrets.NEO4J_PASSWORD }}'
             api python manage.py migrate --noinput
 
           $COMPOSE_CMD exec -T \
