@@ -1740,6 +1740,29 @@ const SpaceDetails = () => {
     setSelectedNode(node);
   }, []);
 
+  const handleActivityNodeClick = useCallback((nodeId) => {
+    const node = nodes.find(n => n.id === nodeId.toString());
+    if (node) {
+      setSelectedNode(node);
+    }
+  }, [nodes]);
+
+  useEffect(() => {
+    const nodeIdFromQuery = new URLSearchParams(location.search).get("nodeId");
+    if (!nodeIdFromQuery) return;
+    if (!nodes || nodes.length === 0) return;
+
+    const node = nodes.find((n) => n.id === nodeIdFromQuery.toString());
+    if (!node) return;
+
+    setSelectedNode(node);
+
+    const params = new URLSearchParams(location.search);
+    params.delete("nodeId");
+    const newSearch = params.toString();
+    navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ""}`, { replace: true });
+  }, [location.pathname, location.search, navigate, nodes]);
+
   const handleReportSpace = () => {
     setShowReportModal(true);
   };
@@ -3897,7 +3920,7 @@ const SpaceDetails = () => {
             transition: "all 0.3s ease"
           }}
         >
-          <ActivityStream spaceId={id} dense />
+          <ActivityStream spaceId={id} dense onNodeClick={handleActivityNodeClick} />
 
         <div
           style={{

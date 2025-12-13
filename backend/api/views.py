@@ -1246,6 +1246,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
             
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
+            deleted_node_label = node.label
             Edge.objects.filter(source=node).delete()
             Edge.objects.filter(target=node).delete()
             Property.objects.filter(node=node).delete()
@@ -1257,8 +1258,8 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     type='Delete',
                     object=f'Node:{deleted_node_id}',
                     target=f'Space:{space.id}',
-                    summary=f"{request.user.username} deleted a node",
-                    payload={'node_id': deleted_node_id, 'space_id': space.id}
+                    summary=f"{request.user.username} deleted node '{deleted_node_label}'",
+                    payload={'node_id': deleted_node_id, 'node_label': deleted_node_label, 'space_id': space.id}
                 )
             except Exception:
                 pass
