@@ -94,6 +94,7 @@
 .tabs-container {
   display: flex;
   background-color: var(--color-bg);
+  margin-bottom: 15px;
 }
 
 .tab {
@@ -111,10 +112,6 @@
   color: var(--color-text);
 }
 
-/* Spaces Container */
-.spaces-container {
-  padding: 20px;
-}
 
 /* Space Card Styles */
 .space-card {
@@ -488,7 +485,7 @@
   background-color: var(--color-white);
   border: 1px solid var(--color-border-2);
   border-radius: 6px;
-  padding: 1.5rem;
+  padding: 1rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -587,4 +584,19 @@
   padding: 20px;
   max-width: 90%;
   margin: 0 auto;
+}
+
+.login-container input,
+.register-container input {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  color: var(--color-gray-400);
+  padding: 0.75rem;
+  font-size: 1rem
+}
+
+.login-container form,
+.register-container form {
+  gap: 0.75rem
 }

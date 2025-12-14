@@ -291,7 +291,6 @@ export default function Home({ currentUser }) {
         </div>
         {/* Activity Stream Sidebar */}
         <div style={{ 
-          width: "260px", 
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",

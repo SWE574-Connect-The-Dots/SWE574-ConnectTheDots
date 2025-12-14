@@ -39,7 +39,7 @@ services:
       context: ../frontend
       dockerfile: ./Dockerfile
       args:
-        API_URL: http://13.53.174.44:8000/api
+        API_URL: http://13.60.88.202:8000/api
     ports:
       - "3000:80"
     depends_on:

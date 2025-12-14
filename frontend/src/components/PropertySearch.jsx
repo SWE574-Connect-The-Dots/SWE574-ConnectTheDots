@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
 import useWikidataPropertySearch from "../hooks/useWikidataPropertySearch";
+import useClickOutside from "../hooks/useClickOutside";
 import "./PropertySearch.css";
 
 const PropertySearch = ({ onSelect, initialLabel }) => {
@@ -15,6 +16,11 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
     useWikidataPropertySearch();
   const isSelectingEdgeRef = useRef(false);
   const hasInteractedRef = useRef(false);
+  const containerRef = useClickOutside(() => {
+    if (searchResults.length > 0) {
+      clearSearch();
+    }
+  });
 
   useEffect(() => {
     if (selectedProperty) {
@@ -58,7 +64,7 @@ const PropertySearch = ({ onSelect, initialLabel }) => {
   };
 
   return (
-    <div className="property-search-container">
+    <div ref={containerRef} className="property-search-container">
       <input
         type="text"
         value={searchTerm}
