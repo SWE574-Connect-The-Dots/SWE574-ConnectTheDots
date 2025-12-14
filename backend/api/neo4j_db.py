@@ -1,4 +1,5 @@
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, TRUST_ALL_CERTIFICATES
+from neo4j.exceptions import AuthError, ServiceUnavailable
 from django.conf import settings
 import logging
 
@@ -10,16 +11,37 @@ class Neo4jConnection:
     @classmethod
     def get_driver(cls):
         if cls._driver is None:
-            cls._driver = GraphDatabase.driver(
-                settings.NEO4J_URI,
-                auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
-            )
+            try:
+                logger.info(f"Connecting to Neo4j at {settings.NEO4J_URI}")
+                cls._driver = GraphDatabase.driver(
+                    settings.NEO4J_URI,
+                    auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+                    encrypted=False,
+                    trust=TRUST_ALL_CERTIFICATES
+                )
+                # Verify connection
+                with cls._driver.session() as session:
+                    result = session.run("RETURN 1")
+                    logger.info("Neo4j connection verified successfully")
+            except AuthError as e:
+                logger.error(f"Neo4j Authentication Error: {e}")
+                cls._driver = None
+                raise
+            except ServiceUnavailable as e:
+                logger.error(f"Neo4j Service Unavailable: {e}")
+                cls._driver = None
+                raise
+            except Exception as e:
+                logger.error(f"Failed to initialize Neo4j driver: {e}", exc_info=True)
+                cls._driver = None
+                raise
         return cls._driver
 
     @classmethod
     def close(cls):
         if cls._driver:
             cls._driver.close()
+            cls._driver = None
 
     @staticmethod
     def create_node(node_id, label, space_id, properties=None):
