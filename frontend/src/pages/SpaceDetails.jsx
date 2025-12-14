@@ -825,6 +825,9 @@ const SpaceDetails = () => {
   const [showNodeDropdown, setShowNodeDropdown] = useState(false);
   const [showEdgeDropdown, setShowEdgeDropdown] = useState(false);
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
+  const [nodeSearchQuery, setNodeSearchQuery] = useState("");
+  const [edgeSearchQuery, setEdgeSearchQuery] = useState("");
+  const [propertySearchQuery, setPropertySearchQuery] = useState("");
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
 
@@ -2660,35 +2663,67 @@ const SpaceDetails = () => {
                       border: '1px solid #ddd',
                       borderTop: 'none',
                       borderRadius: '0 0 4px 4px',
-                      maxHeight: '200px',
+                      maxHeight: '250px',
                       overflowY: 'auto',
                       zIndex: 1000,
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}>
-                      {nodes && nodes.length > 0 ? nodes.map((node) => (
-                        <label key={node.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          borderBottom: '1px solid #eee',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedNodeIds.includes(node.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedNodeIds([...selectedNodeIds, node.id]);
-                              } else {
-                                setSelectedNodeIds(selectedNodeIds.filter(id => id !== node.id));
-                              }
-                            }}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
-                          />
-                          <span>{node.data?.label || node.id}</span>
-                        </label>
-                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No nodes available</span>}
+                      <input
+                        type="text"
+                        placeholder="Search nodes..."
+                        value={nodeSearchQuery}
+                        onChange={(e) => setNodeSearchQuery(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderBottom: '1px solid #ddd',
+                          fontSize: '13px',
+                          outline: 'none',
+                          backgroundColor: '#f9f9f9',
+                          position: 'sticky',
+                          top: 0
+                        }}
+                      />
+                      <div style={{ overflowY: 'auto', flex: 1 }}>
+                        {nodes && nodes.length > 0 ? 
+                          nodes.filter(node => 
+                            node.data?.label?.toLowerCase().includes(nodeSearchQuery.toLowerCase()) || 
+                            node.id.toString().includes(nodeSearchQuery)
+                          ).map((node) => (
+                            <label key={node.id} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #eee',
+                              cursor: 'pointer',
+                              fontSize: '14px'
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedNodeIds.includes(node.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedNodeIds([...selectedNodeIds, node.id]);
+                                  } else {
+                                    setSelectedNodeIds(selectedNodeIds.filter(id => id !== node.id));
+                                  }
+                                }}
+                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                              />
+                              <span>{node.data?.label || node.id}</span>
+                            </label>
+                          )) 
+                          : <span style={{ padding: '10px 12px', color: '#888' }}>No nodes available</span>
+                        }
+                        {nodeSearchQuery && nodes?.filter(node => 
+                          node.data?.label?.toLowerCase().includes(nodeSearchQuery.toLowerCase()) || 
+                          node.id.toString().includes(nodeSearchQuery)
+                        ).length === 0 && (
+                          <span style={{ padding: '10px 12px', color: '#888' }}>No nodes match "{nodeSearchQuery}"</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2739,35 +2774,65 @@ const SpaceDetails = () => {
                       border: '1px solid #ddd',
                       borderTop: 'none',
                       borderRadius: '0 0 4px 4px',
-                      maxHeight: '200px',
+                      maxHeight: '250px',
                       overflowY: 'auto',
                       zIndex: 1000,
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}>
-                      {edges && edges.length > 0 ? [...new Set(edges.map(edge => edge.data?.original_label || edge.label || 'Unknown'))].map((edgeType) => (
-                        <label key={edgeType} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          borderBottom: '1px solid #eee',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedEdgeTypes.includes(edgeType)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedEdgeTypes([...selectedEdgeTypes, edgeType]);
-                              } else {
-                                setSelectedEdgeTypes(selectedEdgeTypes.filter(type => type !== edgeType));
-                              }
-                            }}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
-                          />
-                          <span>{edgeType}</span>
-                        </label>
-                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No edge types available</span>}
+                      <input
+                        type="text"
+                        placeholder="Search edge types..."
+                        value={edgeSearchQuery}
+                        onChange={(e) => setEdgeSearchQuery(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderBottom: '1px solid #ddd',
+                          fontSize: '13px',
+                          outline: 'none',
+                          backgroundColor: '#f9f9f9',
+                          position: 'sticky',
+                          top: 0
+                        }}
+                      />
+                      <div style={{ overflowY: 'auto', flex: 1 }}>
+                        {edges && edges.length > 0 ? 
+                          [...new Set(edges.map(edge => edge.data?.original_label || edge.label || 'Unknown'))].filter(edgeType =>
+                            edgeType.toLowerCase().includes(edgeSearchQuery.toLowerCase())
+                          ).map((edgeType) => (
+                            <label key={edgeType} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #eee',
+                              cursor: 'pointer',
+                              fontSize: '14px'
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedEdgeTypes.includes(edgeType)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedEdgeTypes([...selectedEdgeTypes, edgeType]);
+                                  } else {
+                                    setSelectedEdgeTypes(selectedEdgeTypes.filter(type => type !== edgeType));
+                                  }
+                                }}
+                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                              />
+                              <span>{edgeType}</span>
+                            </label>
+                          )) 
+                          : <span style={{ padding: '10px 12px', color: '#888' }}>No edge types available</span>
+                        }
+                        {edgeSearchQuery && edges && [...new Set(edges.map(edge => edge.data?.original_label || edge.label || 'Unknown'))].filter(edgeType =>
+                          edgeType.toLowerCase().includes(edgeSearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <span style={{ padding: '10px 12px', color: '#888' }}>No edge types match "{edgeSearchQuery}"</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2818,38 +2883,72 @@ const SpaceDetails = () => {
                       border: '1px solid #ddd',
                       borderTop: 'none',
                       borderRadius: '0 0 4px 4px',
-                      maxHeight: '200px',
+                      maxHeight: '250px',
                       overflowY: 'auto',
                       zIndex: 1000,
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}>
-                      {entityProperties && entityProperties.length > 0 ? entityProperties.map((prop) => (
-                        <label key={prop.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          borderBottom: '1px solid #eee',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedPropertyFilters.some(p => p.property === prop.property)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedPropertyFilters([...selectedPropertyFilters, {
-                                  property: prop.property,
-                                  label: prop.property_label || prop.property
-                                }]);
-                              } else {
-                                setSelectedPropertyFilters(selectedPropertyFilters.filter(p => p.property !== prop.property));
-                              }
-                            }}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
-                          />
-                          <span>{prop.property_label || prop.property || prop.id}</span>
-                        </label>
-                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No properties available</span>}
+                      <input
+                        type="text"
+                        placeholder="Search properties..."
+                        value={propertySearchQuery}
+                        onChange={(e) => setPropertySearchQuery(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderBottom: '1px solid #ddd',
+                          fontSize: '13px',
+                          outline: 'none',
+                          backgroundColor: '#f9f9f9',
+                          position: 'sticky',
+                          top: 0
+                        }}
+                      />
+                      <div style={{ overflowY: 'auto', flex: 1 }}>
+                        {entityProperties && entityProperties.length > 0 ? 
+                          entityProperties.filter(prop =>
+                            (prop.property_label?.toLowerCase().includes(propertySearchQuery.toLowerCase())) ||
+                            (prop.property?.toLowerCase().includes(propertySearchQuery.toLowerCase())) ||
+                            (prop.id?.toString().includes(propertySearchQuery))
+                          ).map((prop) => (
+                            <label key={prop.id} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #eee',
+                              cursor: 'pointer',
+                              fontSize: '14px'
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedPropertyFilters.some(p => p.property === prop.property)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedPropertyFilters([...selectedPropertyFilters, {
+                                      property: prop.property,
+                                      label: prop.property_label || prop.property
+                                    }]);
+                                  } else {
+                                    setSelectedPropertyFilters(selectedPropertyFilters.filter(p => p.property !== prop.property));
+                                  }
+                                }}
+                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                              />
+                              <span>{prop.property_label || prop.property || prop.id}</span>
+                            </label>
+                          )) 
+                          : <span style={{ padding: '10px 12px', color: '#888' }}>No properties available</span>
+                        }
+                        {propertySearchQuery && entityProperties && entityProperties.filter(prop =>
+                          (prop.property_label?.toLowerCase().includes(propertySearchQuery.toLowerCase())) ||
+                          (prop.property?.toLowerCase().includes(propertySearchQuery.toLowerCase())) ||
+                          (prop.id?.toString().includes(propertySearchQuery))
+                        ).length === 0 && (
+                          <span style={{ padding: '10px 12px', color: '#888' }}>No properties match "{propertySearchQuery}"</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
