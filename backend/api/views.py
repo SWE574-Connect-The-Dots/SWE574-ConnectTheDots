@@ -1,6 +1,9 @@
 from datetime import timedelta
+import logging
 import requests
 from django.contrib.auth import authenticate
+
+logger = logging.getLogger(__name__)
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
@@ -276,7 +279,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
         node_query = request.query_params.get('node_q', '').strip()
         edge_query = request.query_params.get('edge_q', '').strip()
         property_query = request.query_params.get('property_q', '').strip()
+        property_values_query = request.query_params.get('property_values_q', '').strip()
         depth = request.query_params.get('depth', '1')
+        
+        print(f"🔍 GRAPH SEARCH VIEW CALLED: node_q={node_query}, edge_q={edge_query}, property_q={property_query}, property_values_q={property_values_query}, depth={depth}")
+        logger.info(f"graph_search VIEW: node_q={node_query}, edge_q={edge_query}, property_q={property_query}, property_values_q={property_values_query}, depth={depth}")
         
         # Parse depth parameter
         try:
@@ -294,10 +301,13 @@ class SpaceViewSet(viewsets.ModelViewSet):
             node_query = general_query
             edge_query = general_query
             
-        if not node_query and not edge_query and not property_query:
+        if not node_query and not edge_query and not property_query and not property_values_query:
+            print(f"⚠️ EARLY RETURN: All queries empty")
             return Response({'nodes': [], 'edges': []})
-            
-        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, property_queries=property_query, depth=depth)
+        
+        print(f"✅ Calling search_graph with space_id={int(pk)}")
+        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, property_queries=property_query, property_values=property_values_query, depth=depth)
+        print(f"✅ search_graph returned {len(results.get('nodes', []))} nodes and {len(results.get('edges', []))} edges")
         return Response(results)
         
     def perform_create(self, serializer):
@@ -1284,26 +1294,45 @@ class SpaceViewSet(viewsets.ModelViewSet):
         try:
             space = self.get_object()
             
-            # Get all unique properties in this space
-            properties = Property.objects.filter(
+            # Get all unique properties with their nodes
+            properties_dict = {}
+            
+            property_instances = Property.objects.filter(
                 node__space_id=pk
-            ).values(
-                'id', 'property_id', 'property_label'
-            ).distinct()
+            ).select_related('node').values(
+                'property_id', 
+                'property_label',
+                'node__id',
+                'node__label'
+            )
             
-            # Convert to list and remove duplicates
-            props_list = []
-            seen_ids = set()
-            
-            for prop in properties:
+            for prop in property_instances:
                 prop_id = prop['property_id']
-                if prop_id not in seen_ids:
-                    seen_ids.add(prop_id)
-                    props_list.append({
-                        'id': prop['id'],
-                        'property': prop['property_id'],
-                        'property_label': prop['property_label'] or prop['property_id']
-                    })
+                if prop_id not in properties_dict:
+                    properties_dict[prop_id] = {
+                        'property': prop_id,
+                        'property_label': prop['property_label'] or prop_id,
+                        'nodes': []
+                    }
+                
+                # Add node info if not already added
+                node_info = {
+                    'id': prop['node__id'],
+                    'label': prop['node__label']
+                }
+                if node_info not in properties_dict[prop_id]['nodes']:
+                    properties_dict[prop_id]['nodes'].append(node_info)
+            
+            # Convert to list and add counts
+            props_list = []
+            for prop_id, prop_data in properties_dict.items():
+                props_list.append({
+                    'id': prop_id,
+                    'property': prop_id,
+                    'property_label': prop_data['property_label'],
+                    'node_count': len(prop_data['nodes']),
+                    'nodes': prop_data['nodes']
+                })
             
             # Sort by label for better UX
             props_list.sort(key=lambda x: x['property_label'])

@@ -833,6 +833,7 @@ const SpaceDetails = () => {
   const [selectedPropertyValues, setSelectedPropertyValues] = useState([]);
   const [propertyValuesCache, setPropertyValuesCache] = useState({}); // Cache for property values
   const [isLoadingPropertyValues, setIsLoadingPropertyValues] = useState(false);
+  const [selectedPropertyForValues, setSelectedPropertyForValues] = useState(null); // Which property to show values for
   const [isSubgraphFullscreen, setIsSubgraphFullscreen] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
@@ -1752,20 +1753,40 @@ const SpaceDetails = () => {
   const handleGraphSearch = async () => {
     if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0 && selectedPropertyFilters.length === 0) return;
     
+    console.log("🔍 Starting graph search with:");
+    console.log("  - selectedNodeIds:", selectedNodeIds);
+    console.log("  - selectedEdgeTypes:", selectedEdgeTypes);
+    console.log("  - selectedPropertyFilters:", selectedPropertyFilters);
+    console.log("  - selectedPropertyValues:", selectedPropertyValues);
+    
     setIsGraphSearching(true);
     try {
       const params = new URLSearchParams();
       if (selectedNodeIds.length > 0) params.append('node_q', selectedNodeIds.join(','));
       if (selectedEdgeTypes.length > 0) params.append('edge_q', selectedEdgeTypes.join(','));
-      if (selectedPropertyFilters.length > 0) params.append('property_q', selectedPropertyFilters.map(p => p.property).join(','));
-      if (selectedPropertyValues.length > 0) params.append('property_values_q', selectedPropertyValues.join(','));
+      
+      // When property values are selected, only use property values (more specific)
+      // Don't send property_q at all to avoid matching nodes that just have the property
+      if (selectedPropertyValues.length > 0) {
+        // Extract just the value part (after the "PropertyId:") from the combined key
+        const values = selectedPropertyValues.map(v => v.includes(':') ? v.split(':').slice(1).join(':') : v);
+        params.append('property_values_q', values.join(','));
+      } else if (selectedPropertyFilters.length > 0) {
+        // Only use property_q when no specific values are selected
+        params.append('property_q', selectedPropertyFilters.map(p => p.property).join(','));
+      }
       params.append('depth', graphSearchDepth.toString());
+      
+      console.log("🌐 API Request URL:", `/spaces/${id}/graph-search/?${params.toString()}`);
       
       const response = await api.get(`/spaces/${id}/graph-search/?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
+      console.log("📊 Graph search response:", response.data);
+      console.log("🎯 Nodes with matchedProperty flag:", response.data.nodes.filter(n => n.matchedProperty));
+      console.log("🎯🎯 Nodes with matchedPropertyValue flag:", response.data.nodes.filter(n => n.matchedPropertyValue));
       setGraphSearchResults(response.data);
     } catch (error) {
       console.error("Graph search failed:", error);
@@ -2989,11 +3010,11 @@ const SpaceDetails = () => {
                           ).map((prop) => (
                             <label key={prop.id} style={{
                               display: 'flex',
-                              alignItems: 'center',
+                              alignItems: 'stretch',
                               padding: '10px 12px',
                               borderBottom: '1px solid #eee',
                               cursor: 'pointer',
-                              fontSize: '14px'
+                              fontSize: '13px'
                             }}>
                               <input
                                 type="checkbox"
@@ -3008,9 +3029,22 @@ const SpaceDetails = () => {
                                     setSelectedPropertyFilters(selectedPropertyFilters.filter(p => p.property !== prop.property));
                                   }
                                 }}
-                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                                style={{ marginRight: '8px', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '2px' }}
                               />
-                              <span>{prop.property_label || prop.property || prop.id}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '500', marginBottom: '4px' }}>{prop.property_label || prop.property || prop.id}</div>
+                                {prop.nodes && prop.nodes.length > 0 && (
+                                  <div style={{ fontSize: '11px', color: '#666', lineHeight: '1.4' }}>
+                                    <div style={{ color: '#888', marginBottom: '2px' }}>
+                                       {prop.node_count} {prop.node_count === 1 ? 'node' : 'nodes'}:
+                                    </div>
+                                    <div style={{ color: '#0076B5', marginLeft: '16px' }}>
+                                      {prop.nodes.slice(0, 3).map(node => node.label).join(', ')}
+                                      {prop.nodes.length > 3 && ` +${prop.nodes.length - 3} more`}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </label>
                           )) 
                           : <span style={{ padding: '10px 12px', color: '#888' }}>No properties available</span>
@@ -3082,6 +3116,28 @@ const SpaceDetails = () => {
                       display: 'flex',
                       flexDirection: 'column'
                     }}>
+                      {/* Property selector */}
+                      <select
+                        value={selectedPropertyForValues || ''}
+                        onChange={(e) => setSelectedPropertyForValues(e.target.value || null)}
+                        style={{
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderBottom: '1px solid #eee',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#333',
+                          backgroundColor: '#f8f9fa',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">All Properties</option>
+                        {selectedPropertyFilters.map(prop => (
+                          <option key={prop.property} value={prop.property}>
+                            {prop.label}
+                          </option>
+                        ))}
+                      </select>
                       <input
                         type="text"
                         placeholder="Search values..."
@@ -3108,7 +3164,12 @@ const SpaceDetails = () => {
                             // Build values list from cached property values
                             const valueEntries = [];
                             
-                            selectedPropertyFilters.forEach(selectedProp => {
+                            // Filter properties based on selection
+                            const propsToShow = selectedPropertyForValues 
+                              ? selectedPropertyFilters.filter(p => p.property === selectedPropertyForValues)
+                              : selectedPropertyFilters;
+                            
+                            propsToShow.forEach(selectedProp => {
                               const cachedValues = propertyValuesCache[selectedProp.property];
                               if (cachedValues && Array.isArray(cachedValues)) {
                                 cachedValues.forEach(item => {
@@ -3202,7 +3263,13 @@ const SpaceDetails = () => {
                         {propertyValuesSearchQuery && !isLoadingPropertyValues && (() => {
                           try {
                             const valueEntries = [];
-                            selectedPropertyFilters.forEach(selectedProp => {
+                            
+                            // Filter properties based on selection
+                            const propsToShow = selectedPropertyForValues 
+                              ? selectedPropertyFilters.filter(p => p.property === selectedPropertyForValues)
+                              : selectedPropertyFilters;
+                            
+                            propsToShow.forEach(selectedProp => {
                               const cachedValues = propertyValuesCache[selectedProp.property];
                               if (cachedValues && Array.isArray(cachedValues)) {
                                 cachedValues.forEach(item => {
@@ -3418,6 +3485,13 @@ const SpaceDetails = () => {
                           }}>
                             <SpaceGraph
                               nodes={graphSearchResults.nodes.map((node, index) => {
+                                // Debug: Log nodes with match flags
+                                if (node.matchedProperty) {
+                                  console.log(`✓ Node "${node.label}" (ID: ${node.id}) has matchedProperty: true`);
+                                }
+                                if (node.matchedPropertyValue) {
+                                  console.log(`✓✓ Node "${node.label}" (ID: ${node.id}) has matchedPropertyValue: true`);
+                                }
                                 // Convert to full node format
                                 const fullNode = nodes.find(n => String(n.id) === String(node.id));
                                 
@@ -3448,7 +3522,9 @@ const SpaceDetails = () => {
                                     ...fullNode.data,
                                     instanceTypeColor,
                                     instanceTypeLabel,
-                                    instanceTypeIcon
+                                    instanceTypeIcon,
+                                    matchedProperty: node.matchedProperty,  // Pass property match flag
+                                    matchedPropertyValue: node.matchedPropertyValue  // Pass property value match flag
                                   }
                                 } : {
                                   id: String(node.id),
@@ -3462,7 +3538,9 @@ const SpaceDetails = () => {
                                     description: node.description,
                                     instanceTypeColor,
                                     instanceTypeLabel,
-                                    instanceTypeIcon
+                                    instanceTypeIcon,
+                                    matchedProperty: node.matchedProperty,  // Pass property match flag
+                                    matchedPropertyValue: node.matchedPropertyValue  // Pass property value match flag
                                   }
                                 };
                               })}
