@@ -26,12 +26,12 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            resValue("string", "base_url", "http://13.62.99.171:8000/")
+            resValue("string", "base_url", "http://16.171.44.79:8000/")
             resValue("string", "app_name", "(Dev) Connect-The-Dots")
         }
         create("production") {
             dimension = "environment"
-            resValue("string", "base_url", "http://13.53.174.44:8000/")
+            resValue("string", "base_url", "http://13.60.88.202:8000/")
             resValue("string", "app_name", "(Prod) Connect-The-Dots")
         }
     }
