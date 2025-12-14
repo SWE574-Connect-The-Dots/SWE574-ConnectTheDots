@@ -16,7 +16,9 @@ class Neo4jConnection:
                 cls._driver = GraphDatabase.driver(
                     settings.NEO4J_URI,
                     auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-                    encrypted=False
+                    encrypted=False,
+                    connection_timeout=30,
+                    max_connection_lifetime=3600
                 )
                 logger.info("Neo4j driver created")
             except Exception as e:
@@ -176,7 +178,6 @@ class Neo4jConnection:
         except Exception as e:
             logger.error(f"Failed to delete node property in Neo4j: {e}")
 
-    @staticmethod
     @staticmethod
     def search_graph(space_id, node_queries=None, edge_queries=None, property_queries=None, depth=1):
         """

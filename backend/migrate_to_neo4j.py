@@ -183,53 +183,51 @@ class PostgresToNeo4jMigrator:
     def migrate_nodes(self):
         """
         Migrate all nodes from PostgreSQL to Neo4j.
-        Nodes are linked to their Space.
+        Uses the same create_node logic as current saves.
         """
         logger.info("📍 Starting Node migration...")
         nodes = Node.objects.all()
 
         for node in nodes:
             try:
+                # Build properties dict matching current save logic
                 properties = {
-                    'pg_id': node.id,
-                    'space_id': node.space.id,
-                    'label': node.label,
+                    'description': node.description or '',
                     'wikidata_id': node.wikidata_id or '',
-                    'created_at': node.created_at.isoformat(),
-                    'created_by_id': node.created_by.id,
-                    'created_by_username': node.created_by.username,
                     'country': node.country or '',
                     'city': node.city or '',
                     'district': node.district or '',
                     'street': node.street or '',
-                    'latitude': node.latitude,
-                    'longitude': node.longitude,
+                    'latitude': node.latitude if node.latitude is not None else None,
+                    'longitude': node.longitude if node.longitude is not None else None,
                     'location_name': node.location_name or '',
-                    'description': node.description or '',
-                    'is_archived': node.is_archived,
-                    'report_count': node.report_count,
-                    'is_reported': node.is_reported,
                 }
 
-                query = """
-                MERGE (s:Space {pg_id: $space_id})
-                CREATE (n:Node:Entity)
-                SET n += $properties
-                CREATE (n)-[:IN_SPACE]->(s)
-                RETURN n
-                """
+                # Add node properties from Property model (matching API logic)
+                node_properties = Property.objects.filter(node=node)
+                for prop in node_properties:
+                    # Use property label (matching current API logic)
+                    key = prop.property_label or prop.property_id
+                    value = prop.value_text
+                    if key and value:
+                        # Sanitize key for Neo4j (same as API: remove non-alphanumeric except underscore)
+                        safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                        if safe_key:
+                            properties[safe_key] = str(value)
 
-                with self.driver.session() as session:
-                    session.run(
-                        query,
-                        space_id=node.space.id,
-                        properties=properties
-                    )
+                # Use Neo4jConnection.create_node (same as current save logic)
+                Neo4jConnection.create_node(
+                    node_id=node.id,
+                    label=node.label,
+                    space_id=node.space.id,
+                    properties=properties
+                )
 
                 self.migrated_nodes += 1
+                prop_count = node_properties.count()
                 logger.info(
-                    f"  ✓ Node '{node.label}' (ID: {node.id}) in Space "
-                    f"'{node.space.title}' migrated."
+                    f"  ✓ Node '{node.label}' (ID: {node.id}) with {prop_count} properties "
+                    f"in Space '{node.space.title}' migrated."
                 )
 
             except Exception as e:
@@ -241,88 +239,29 @@ class PostgresToNeo4jMigrator:
 
     def migrate_node_properties(self):
         """
-        Migrate properties of nodes from PostgreSQL to Neo4j.
+        Node properties are now migrated together with nodes as Neo4j properties.
+        This method is kept for backward compatibility but does nothing.
         """
-        logger.info("🏷️  Starting Node Properties migration...")
-        properties = Property.objects.all()
-        migrated_count = 0
-
-        for prop in properties:
-            try:
-                prop_data = {
-                    'pg_id': prop.id,
-                    'property_id': prop.property_id,
-                    'statement_id': prop.statement_id or '',
-                    'property_label': prop.property_label or '',
-                    'value_text': prop.value_text or '',
-                    'value_id': prop.value_id or '',
-                    'value': prop.value,
-                }
-
-                query = """
-                MATCH (n:Node {pg_id: $node_id})
-                SET n.properties = CASE WHEN n.properties IS NULL 
-                    THEN [$prop_data] 
-                    ELSE n.properties + [$prop_data] END
-                RETURN n
-                """
-
-                with self.driver.session() as session:
-                    session.run(
-                        query,
-                        node_id=prop.node.id,
-                        prop_data=prop_data
-                    )
-
-                migrated_count += 1
-
-            except Exception as e:
-                error_msg = f"Failed to migrate Node Property {prop.id}: {e}"
-                logger.error(f"  ❌ {error_msg}")
-                self.errors.append(error_msg)
-
-        logger.info(
-            f"✅ Node Properties migration complete. Total: {migrated_count}"
-        )
+        logger.info("ℹ️  Node properties already migrated with nodes (skipping)")
 
     def migrate_edges(self):
         """
         Migrate all edges (relationships) from PostgreSQL to Neo4j.
+        Uses the same create_edge logic as current saves.
         """
         logger.info("🔗 Starting Edge migration...")
         edges = Edge.objects.all()
 
         for edge in edges:
             try:
-                # Sanitize the relation property for Neo4j relationship type
-                safe_label = edge.relation_property.replace("`", "``")
-                safe_label = safe_label.replace(" ", "_")
-                if not safe_label:
-                    safe_label = "RELATED_TO"
-
-                properties = {
-                    'pg_id': edge.id,
-                    'relation_property': edge.relation_property,
-                    'wikidata_property_id': edge.wikidata_property_id or '',
-                    'created_at': edge.created_at.isoformat(),
-                }
-
-                # Build dynamic query with the relationship type
-                query = f"""
-                MATCH (source:Node {{pg_id: $source_id}})
-                MATCH (target:Node {{pg_id: $target_id}})
-                CREATE (source)-[r:`{safe_label}`]->(target)
-                SET r += $properties
-                RETURN r
-                """
-
-                with self.driver.session() as session:
-                    session.run(
-                        query,
-                        source_id=edge.source.id,
-                        target_id=edge.target.id,
-                        properties=properties
-                    )
+                # Use Neo4jConnection.create_edge (same as current save logic)
+                Neo4jConnection.create_edge(
+                    edge_id=edge.id,
+                    source_node_id=edge.source.id,
+                    target_node_id=edge.target.id,
+                    relation_label=edge.relation_property,
+                    properties={'wikidata_property_id': edge.wikidata_property_id or ''}
+                )
 
                 self.migrated_edges += 1
                 logger.info(
@@ -342,50 +281,9 @@ class PostgresToNeo4jMigrator:
 
     def migrate_edge_properties(self):
         """
-        Migrate properties of edges from PostgreSQL to Neo4j.
+        Skip edge properties migration - they are only stored in PostgreSQL.
         """
-        logger.info("🏷️  Starting Edge Properties migration...")
-        edge_properties = EdgeProperty.objects.all()
-        migrated_count = 0
-
-        for edge_prop in edge_properties:
-            try:
-                prop_data = {
-                    'pg_id': edge_prop.id,
-                    'property_id': edge_prop.property_id,
-                    'statement_id': edge_prop.statement_id or '',
-                    'property_label': edge_prop.property_label or '',
-                    'value_text': edge_prop.value_text or '',
-                    'value_id': edge_prop.value_id or '',
-                    'value': edge_prop.value,
-                }
-
-                query = """
-                MATCH ()-[r]->()
-                WHERE r.pg_id = $edge_id
-                SET r.properties = CASE WHEN r.properties IS NULL 
-                    THEN [$prop_data] 
-                    ELSE r.properties + [$prop_data] END
-                RETURN r
-                """
-
-                with self.driver.session() as session:
-                    session.run(
-                        query,
-                        edge_id=edge_prop.edge.id,
-                        prop_data=prop_data
-                    )
-
-                migrated_count += 1
-
-            except Exception as e:
-                error_msg = f"Failed to migrate Edge Property {edge_prop.id}: {e}"
-                logger.error(f"  ❌ {error_msg}")
-                self.errors.append(error_msg)
-
-        logger.info(
-            f"✅ Edge Properties migration complete. Total: {migrated_count}"
-        )
+        logger.info("ℹ️  Edge properties are stored in PostgreSQL only (skipping)")
 
     def verify_migration(self):
         """
@@ -466,12 +364,12 @@ class PostgresToNeo4jMigrator:
                 logger.error("Migration aborted.")
                 return False
 
-        # Run migrations in order
+        # Run migrations in order (spaces first, then nodes, then edges)
         self.migrate_spaces()
         self.migrate_nodes()
-        self.migrate_node_properties()
+        self.migrate_node_properties()  # Skip - properties in PostgreSQL only
         self.migrate_edges()
-        self.migrate_edge_properties()
+        self.migrate_edge_properties()  # Skip - properties in PostgreSQL only
 
         # Verify and report
         self.verify_migration()
