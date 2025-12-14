@@ -825,9 +825,14 @@ const SpaceDetails = () => {
   const [showNodeDropdown, setShowNodeDropdown] = useState(false);
   const [showEdgeDropdown, setShowEdgeDropdown] = useState(false);
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
+  const [showPropertyValuesDropdown, setShowPropertyValuesDropdown] = useState(false);
   const [nodeSearchQuery, setNodeSearchQuery] = useState("");
   const [edgeSearchQuery, setEdgeSearchQuery] = useState("");
   const [propertySearchQuery, setPropertySearchQuery] = useState("");
+  const [propertyValuesSearchQuery, setPropertyValuesSearchQuery] = useState("");
+  const [selectedPropertyValues, setSelectedPropertyValues] = useState([]);
+  const [propertyValuesCache, setPropertyValuesCache] = useState({}); // Cache for property values
+  const [isLoadingPropertyValues, setIsLoadingPropertyValues] = useState(false);
   const [isSubgraphFullscreen, setIsSubgraphFullscreen] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
@@ -872,6 +877,7 @@ const SpaceDetails = () => {
   const nodeDropdownRef = useRef(null);
   const edgeDropdownRef = useRef(null);
   const propertyDropdownRef = useRef(null);
+  const propertyValuesDropdownRef = useRef(null);
 
   const {
     nodes,
@@ -1568,6 +1574,9 @@ const SpaceDetails = () => {
       if (propertyDropdownRef.current && !propertyDropdownRef.current.contains(event.target)) {
         setShowPropertyDropdown(false);
       }
+      if (propertyValuesDropdownRef.current && !propertyValuesDropdownRef.current.contains(event.target)) {
+        setShowPropertyValuesDropdown(false);
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -1677,6 +1686,69 @@ const SpaceDetails = () => {
     fetchSpaceProperties();
   }, [id, fetchSpaceProperties]);
 
+  // Fetch property values for selected properties
+  const fetchPropertyValues = useCallback(async (propertyIds) => {
+    if (!propertyIds || propertyIds.length === 0) return;
+    
+    setIsLoadingPropertyValues(true);
+    
+    try {
+      // Fetch values for each property that's not already cached
+      for (const propId of propertyIds) {
+        setPropertyValuesCache(prevCache => {
+          // Check if already cached
+          if (prevCache[propId]) {
+            return prevCache;
+          }
+          // Will be updated after fetch
+          return prevCache;
+        });
+        
+        // Check current cache before fetching
+        let shouldFetch = true;
+        setPropertyValuesCache(prevCache => {
+          if (prevCache[propId]) {
+            shouldFetch = false;
+          }
+          return prevCache;
+        });
+        
+        if (shouldFetch) {
+          try {
+            const response = await api.get(`/spaces/${id}/search/properties/${propId}/values/`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            });
+            setPropertyValuesCache(prevCache => ({
+              ...prevCache,
+              [propId]: response.data
+            }));
+          } catch (err) {
+            console.error(`Failed to fetch values for property ${propId}:`, err);
+            // Set empty array for failed fetches to avoid retrying
+            setPropertyValuesCache(prevCache => ({
+              ...prevCache,
+              [propId]: []
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch property values:", error);
+    } finally {
+      setIsLoadingPropertyValues(false);
+    }
+  }, [id]);
+
+  // Fetch property values when showing the dropdown and properties are selected
+  useEffect(() => {
+    if (showPropertyValuesDropdown && selectedPropertyFilters.length > 0) {
+      const propertyIds = selectedPropertyFilters.map(f => f.property);
+      fetchPropertyValues(propertyIds);
+    }
+  }, [showPropertyValuesDropdown, selectedPropertyFilters, fetchPropertyValues]);
+
   const handleGraphSearch = async () => {
     if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0 && selectedPropertyFilters.length === 0) return;
     
@@ -1686,6 +1758,7 @@ const SpaceDetails = () => {
       if (selectedNodeIds.length > 0) params.append('node_q', selectedNodeIds.join(','));
       if (selectedEdgeTypes.length > 0) params.append('edge_q', selectedEdgeTypes.join(','));
       if (selectedPropertyFilters.length > 0) params.append('property_q', selectedPropertyFilters.map(p => p.property).join(','));
+      if (selectedPropertyValues.length > 0) params.append('property_values_q', selectedPropertyValues.join(','));
       params.append('depth', graphSearchDepth.toString());
       
       const response = await api.get(`/spaces/${id}/graph-search/?${params.toString()}`, {
@@ -2955,6 +3028,225 @@ const SpaceDetails = () => {
                 </div>
                 <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
                   Searches in property names and values
+                </span>
+              </div>
+
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
+                  📊 Property Values {selectedPropertyFilters.length === 0 && <span style={{color: '#999', fontSize: '12px'}}>(select properties first)</span>}
+                </label>
+                <div ref={propertyValuesDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => selectedPropertyFilters.length > 0 && setShowPropertyValuesDropdown(!showPropertyValuesDropdown)}
+                    disabled={selectedPropertyFilters.length === 0}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: showPropertyValuesDropdown ? '4px 4px 0 0' : '4px',
+                      fontSize: '14px',
+                      backgroundColor: selectedPropertyFilters.length === 0 ? '#f5f5f5' : '#fff',
+                      color: selectedPropertyValues.length === 0 ? '#999' : '#000',
+                      cursor: selectedPropertyFilters.length === 0 ? 'not-allowed' : 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      opacity: selectedPropertyFilters.length === 0 ? 0.6 : 1
+                    }}
+                  >
+                    <span>
+                      {selectedPropertyValues.length === 0 
+                        ? `Filter by values` 
+                        : selectedPropertyValues.length === 1
+                        ? selectedPropertyValues[0]
+                        : `${selectedPropertyValues.length} selected`
+                      }
+                    </span>
+                    <span>{showPropertyValuesDropdown ? '▼' : '▶'}</span>
+                  </button>
+                  {showPropertyValuesDropdown && selectedPropertyFilters.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
+                      borderTop: 'none',
+                      borderRadius: '0 0 4px 4px',
+                      maxHeight: '250px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Search values..."
+                        value={propertyValuesSearchQuery}
+                        onChange={(e) => setPropertyValuesSearchQuery(e.target.value)}
+                        style={{
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderBottom: '1px solid #ddd',
+                          fontSize: '13px',
+                          outline: 'none',
+                          backgroundColor: '#f9f9f9',
+                          position: 'sticky',
+                          top: 0
+                        }}
+                      />
+                      <div style={{ overflowY: 'auto', flex: 1 }}>
+                        {isLoadingPropertyValues ? (
+                          <span style={{ padding: '10px 12px', color: '#888', fontSize: '13px' }}>
+                            Loading values...
+                          </span>
+                        ) : (() => {
+                          try {
+                            // Build values list from cached property values
+                            const valueEntries = [];
+                            
+                            selectedPropertyFilters.forEach(selectedProp => {
+                              const cachedValues = propertyValuesCache[selectedProp.property];
+                              if (cachedValues && Array.isArray(cachedValues)) {
+                                cachedValues.forEach(item => {
+                                  const valueText = item.value_text || item.value;
+                                  if (valueText) { // Only add non-empty values
+                                    valueEntries.push({
+                                      value: String(valueText), // Ensure value is always a string
+                                      propLabel: selectedProp.label,
+                                      propertyId: selectedProp.property,
+                                      count: item.count || 1
+                                    });
+                                  }
+                                });
+                              }
+                            });
+
+                            // Remove duplicates and sort
+                            const uniqueValueMap = new Map();
+                            valueEntries.forEach(entry => {
+                              const key = `${entry.propertyId}:${entry.value}`;
+                              if (!uniqueValueMap.has(key)) {
+                                uniqueValueMap.set(key, entry);
+                              }
+                            });
+
+                            const filteredValues = Array.from(uniqueValueMap.values())
+                              .sort((a, b) => {
+                                try {
+                                  return (a.value || '').localeCompare(b.value || '');
+                                } catch (e) {
+                                  return 0;
+                                }
+                              })
+                              .filter(entry => {
+                                const searchStr = propertyValuesSearchQuery.toLowerCase();
+                                const valueStr = (entry.value || '').toLowerCase();
+                                const propStr = (entry.propLabel || '').toLowerCase();
+                                return valueStr.includes(searchStr) || propStr.includes(searchStr);
+                              });
+
+                            return filteredValues.length > 0 ? (
+                              filteredValues.map((entry) => {
+                                const valueKey = `${entry.propertyId}:${entry.value}`;
+                                return (
+                                  <label key={valueKey} style={{
+                                    display: 'flex',
+                                    alignItems: 'stretch',
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #eee',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                  }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPropertyValues.includes(valueKey)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedPropertyValues([...selectedPropertyValues, valueKey]);
+                                        } else {
+                                          setSelectedPropertyValues(selectedPropertyValues.filter(v => v !== valueKey));
+                                        }
+                                      }}
+                                      style={{ marginRight: '8px', cursor: 'pointer', alignSelf: 'flex-start', marginTop: '2px' }}
+                                    />
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ color: '#000', fontWeight: '500', wordBreak: 'break-word' }}>{entry.value}</div>
+                                      <div style={{ color: '#888', fontSize: '11px', marginTop: '2px' }}>
+                                        📌 {entry.propLabel} {entry.count > 1 ? `(${entry.count})` : ''}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              })
+                            ) : (
+                              <span style={{ padding: '10px 12px', color: '#888', fontSize: '13px' }}>
+                                {selectedPropertyFilters.length === 0 
+                                  ? "Select properties to see available values"
+                                  : "No values found for selected properties"
+                                }
+                              </span>
+                            );
+                          } catch (error) {
+                            console.error("Error rendering property values:", error);
+                            return (
+                              <span style={{ padding: '10px 12px', color: '#d32f2f', fontSize: '13px' }}>
+                                Error loading values. Please try again.
+                              </span>
+                            );
+                          }
+                        })()}
+                        {propertyValuesSearchQuery && !isLoadingPropertyValues && (() => {
+                          try {
+                            const valueEntries = [];
+                            selectedPropertyFilters.forEach(selectedProp => {
+                              const cachedValues = propertyValuesCache[selectedProp.property];
+                              if (cachedValues && Array.isArray(cachedValues)) {
+                                cachedValues.forEach(item => {
+                                  const valueText = item.value_text || item.value;
+                                  if (valueText) {
+                                    valueEntries.push({
+                                      value: String(valueText),
+                                      propLabel: selectedProp.label,
+                                      propertyId: selectedProp.property
+                                    });
+                                  }
+                                });
+                              }
+                            });
+
+                            const uniqueValueMap = new Map();
+                            valueEntries.forEach(entry => {
+                              const key = `${entry.propertyId}:${entry.value}`;
+                              if (!uniqueValueMap.has(key)) {
+                                uniqueValueMap.set(key, entry);
+                              }
+                            });
+
+                            const hasMatches = Array.from(uniqueValueMap.values()).some(entry => {
+                              const searchStr = propertyValuesSearchQuery.toLowerCase();
+                              const valueStr = (entry.value || '').toLowerCase();
+                              const propStr = (entry.propLabel || '').toLowerCase();
+                              return valueStr.includes(searchStr) || propStr.includes(searchStr);
+                            });
+                            
+                            return !hasMatches;
+                          } catch (error) {
+                            console.error("Error checking matches:", error);
+                            return false;
+                          }
+                        })() && (
+                          <span style={{ padding: '10px 12px', color: '#888', fontSize: '13px' }}>No values match "{propertyValuesSearchQuery}"</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  Filter nodes by selected property values
                 </span>
               </div>
 
