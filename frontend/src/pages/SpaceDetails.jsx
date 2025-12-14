@@ -2894,7 +2894,37 @@ const SpaceDetails = () => {
                               nodes={graphSearchResults.nodes.map((node, index) => {
                                 // Convert to full node format
                                 const fullNode = nodes.find(n => String(n.id) === String(node.id));
-                                return fullNode || {
+                                
+                                // Get instance type color for the node
+                                let instanceTypeColor = 'var(--color-success)';
+                                let instanceTypeLabel = null;
+                                let instanceTypeIcon = null;
+                                
+                                if (fullNode && fullNode.instance_type && fullNode.instance_type.group_id) {
+                                  const group = getGroupById(fullNode.instance_type.group_id);
+                                  if (group) {
+                                    instanceTypeColor = group.color;
+                                    instanceTypeLabel = group.label;
+                                    instanceTypeIcon = group.icon;
+                                  }
+                                } else if (node.instance_type && node.instance_type.group_id) {
+                                  const group = getGroupById(node.instance_type.group_id);
+                                  if (group) {
+                                    instanceTypeColor = group.color;
+                                    instanceTypeLabel = group.label;
+                                    instanceTypeIcon = group.icon;
+                                  }
+                                }
+                                
+                                return fullNode ? {
+                                  ...fullNode,
+                                  data: {
+                                    ...fullNode.data,
+                                    instanceTypeColor,
+                                    instanceTypeLabel,
+                                    instanceTypeIcon
+                                  }
+                                } : {
                                   id: String(node.id),
                                   type: 'circular',
                                   position: { 
@@ -2903,7 +2933,10 @@ const SpaceDetails = () => {
                                   },
                                   data: {
                                     label: node.label,
-                                    description: node.description
+                                    description: node.description,
+                                    instanceTypeColor,
+                                    instanceTypeLabel,
+                                    instanceTypeIcon
                                   }
                                 };
                               })}
