@@ -821,8 +821,10 @@ const SpaceDetails = () => {
   const [graphSearchDepth, setGraphSearchDepth] = useState(1);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectedEdgeTypes, setSelectedEdgeTypes] = useState([]);
+  const [selectedPropertyFilters, setSelectedPropertyFilters] = useState([]);
   const [showNodeDropdown, setShowNodeDropdown] = useState(false);
   const [showEdgeDropdown, setShowEdgeDropdown] = useState(false);
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
 
@@ -865,6 +867,7 @@ const SpaceDetails = () => {
   const graphContainerRef = useRef(null);
   const nodeDropdownRef = useRef(null);
   const edgeDropdownRef = useRef(null);
+  const propertyDropdownRef = useRef(null);
 
   const {
     nodes,
@@ -1558,6 +1561,9 @@ const SpaceDetails = () => {
       if (edgeDropdownRef.current && !edgeDropdownRef.current.contains(event.target)) {
         setShowEdgeDropdown(false);
       }
+      if (propertyDropdownRef.current && !propertyDropdownRef.current.contains(event.target)) {
+        setShowPropertyDropdown(false);
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -1647,14 +1653,35 @@ const SpaceDetails = () => {
   const [graphNodeQuery, setGraphNodeQuery] = useState("");
   const [graphEdgeQuery, setGraphEdgeQuery] = useState("");
 
+  // Fetch all properties for the space (for graph search)
+  const fetchSpaceProperties = useCallback(async () => {
+    try {
+      const response = await api.get(`/spaces/${id}/all-properties/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setEntityProperties(response.data);
+    } catch (error) {
+      console.error("Failed to fetch space properties:", error);
+      setEntityProperties([]);
+    }
+  }, [id]);
+
+  // Fetch properties when component mounts
+  useEffect(() => {
+    fetchSpaceProperties();
+  }, [id, fetchSpaceProperties]);
+
   const handleGraphSearch = async () => {
-    if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0) return;
+    if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0 && selectedPropertyFilters.length === 0) return;
     
     setIsGraphSearching(true);
     try {
       const params = new URLSearchParams();
       if (selectedNodeIds.length > 0) params.append('node_q', selectedNodeIds.join(','));
       if (selectedEdgeTypes.length > 0) params.append('edge_q', selectedEdgeTypes.join(','));
+      if (selectedPropertyFilters.length > 0) params.append('property_q', selectedPropertyFilters.map(p => p.property).join(','));
       params.append('depth', graphSearchDepth.toString());
       
       const response = await api.get(`/spaces/${id}/graph-search/?${params.toString()}`, {
@@ -2746,6 +2773,88 @@ const SpaceDetails = () => {
                 </div>
                 <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
                   Searches in relationship types and labels
+                </span>
+              </div>
+
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
+                  🏷️ Select Properties
+                </label>
+                <div ref={propertyDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowPropertyDropdown(!showPropertyDropdown)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: showPropertyDropdown ? '4px 4px 0 0' : '4px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff',
+                      color: selectedPropertyFilters.length === 0 ? '#999' : '#000',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span>
+                      {selectedPropertyFilters.length === 0 
+                        ? `Filter by properties` 
+                        : selectedPropertyFilters.length === 1
+                        ? selectedPropertyFilters[0].label
+                        : `${selectedPropertyFilters.length} selected`
+                      }
+                    </span>
+                    <span>{showPropertyDropdown ? '▼' : '▶'}</span>
+                  </button>
+                  {showPropertyDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
+                      borderTop: 'none',
+                      borderRadius: '0 0 4px 4px',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}>
+                      {entityProperties && entityProperties.length > 0 ? entityProperties.map((prop) => (
+                        <label key={prop.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          borderBottom: '1px solid #eee',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPropertyFilters.some(p => p.property === prop.property)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPropertyFilters([...selectedPropertyFilters, {
+                                  property: prop.property,
+                                  label: prop.property_label || prop.property
+                                }]);
+                              } else {
+                                setSelectedPropertyFilters(selectedPropertyFilters.filter(p => p.property !== prop.property));
+                              }
+                            }}
+                            style={{ marginRight: '8px', cursor: 'pointer' }}
+                          />
+                          <span>{prop.property_label || prop.property || prop.id}</span>
+                        </label>
+                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No properties available</span>}
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  Searches in property names and values
                 </span>
               </div>
 

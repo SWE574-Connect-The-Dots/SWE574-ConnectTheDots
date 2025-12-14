@@ -270,11 +270,12 @@ class SpaceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='graph-search')
     def graph_search(self, request, pk=None):
         """
-        Search the graph using Neo4j with support for multiple node and edge queries.
+        Search the graph using Neo4j with support for multiple node, edge, and property queries.
         Supports depth parameter for N-hop neighbor search.
         """
         node_query = request.query_params.get('node_q', '').strip()
         edge_query = request.query_params.get('edge_q', '').strip()
+        property_query = request.query_params.get('property_q', '').strip()
         depth = request.query_params.get('depth', '1')
         
         # Parse depth parameter
@@ -289,14 +290,14 @@ class SpaceViewSet(viewsets.ModelViewSet):
         
         # Fallback for backward compatibility or single search box
         general_query = request.query_params.get('q', '').strip()
-        if general_query and not node_query and not edge_query:
+        if general_query and not node_query and not edge_query and not property_query:
             node_query = general_query
             edge_query = general_query
             
-        if not node_query and not edge_query:
+        if not node_query and not edge_query and not property_query:
             return Response({'nodes': [], 'edges': []})
             
-        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, depth=depth)
+        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, property_queries=property_query, depth=depth)
         return Response(results)
         
     def perform_create(self, serializer):
@@ -1274,6 +1275,44 @@ class SpaceViewSet(viewsets.ModelViewSet):
             print(f"Error in wikidata_entity_properties for {entity_id}: {str(e)}")
             return Response(
                 {"error": f"Failed to fetch properties for {entity_id}"},
+                status=500
+            )
+
+    @action(detail=True, methods=['get'], url_path='all-properties')
+    def all_properties(self, request, pk=None):
+        """Get all unique properties across all nodes in a space"""
+        try:
+            space = self.get_object()
+            
+            # Get all unique properties in this space
+            properties = Property.objects.filter(
+                node__space_id=pk
+            ).values(
+                'id', 'property_id', 'property_label'
+            ).distinct()
+            
+            # Convert to list and remove duplicates
+            props_list = []
+            seen_ids = set()
+            
+            for prop in properties:
+                prop_id = prop['property_id']
+                if prop_id not in seen_ids:
+                    seen_ids.add(prop_id)
+                    props_list.append({
+                        'id': prop['id'],
+                        'property': prop['property_id'],
+                        'property_label': prop['property_label'] or prop['property_id']
+                    })
+            
+            # Sort by label for better UX
+            props_list.sort(key=lambda x: x['property_label'])
+            
+            return Response(props_list)
+        except Exception as e:
+            print(f"Error fetching all properties: {str(e)}")
+            return Response(
+                {"error": str(e)},
                 status=500
             )
 

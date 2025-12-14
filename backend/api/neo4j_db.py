@@ -178,9 +178,9 @@ class Neo4jConnection:
 
     @staticmethod
     @staticmethod
-    def search_graph(space_id, node_queries=None, edge_queries=None, depth=1):
+    def search_graph(space_id, node_queries=None, edge_queries=None, property_queries=None, depth=1):
         """
-        Search for nodes and edges in a specific space using node IDs or text search terms.
+        Search for nodes and edges in a specific space using node IDs, text search terms, and property filters.
         Returns a subgraph containing matching nodes, matching edges, their neighbors up to 'depth' levels,
         and all edges between them.
         
@@ -188,13 +188,25 @@ class Neo4jConnection:
             space_id: The space ID to search in
             node_queries: List of node IDs or search terms (supports both)
             edge_queries: List of edge search terms
+            property_queries: List of property names/ids to filter nodes by
             depth: Number of relationship levels to include (1 = direct connections only)
         """
+        # First, if property_queries are provided, get matching node IDs from Postgres
+        property_node_ids = []
+        if property_queries:
+            from .models import Property, Node as DjangoNode
+            property_matches = Property.objects.filter(
+                node__space_id=space_id,
+                property_id__in=property_queries if isinstance(property_queries, list) else [property_queries]
+            ).values_list('node__id', flat=True).distinct()
+            property_node_ids = list(property_matches)
+        
         query = """
         // 1. Find matching nodes (by ID or text search)
         OPTIONAL MATCH (n:Node {space_id: $space_id})
         WHERE (size($node_ids) > 0 AND any(id IN $node_ids WHERE n.pg_id = id)) OR
-              (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term))
+              (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)) OR
+              (size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
         WITH collect(n) as matchingNodes
         
         // 2. Find matching edges
@@ -257,7 +269,12 @@ class Neo4jConnection:
         elif isinstance(edge_queries, str):
             edge_queries = [q.strip() for q in edge_queries.split(',') if q.strip()]
         
-        logger.info(f"Graph search called with space_id={space_id}, node_ids={node_ids}, node_text_queries={node_text_queries}, edge_queries={edge_queries}")
+        if property_queries is None:
+            property_queries = []
+        elif isinstance(property_queries, str):
+            property_queries = [q.strip() for q in property_queries.split(',') if q.strip()]
+        
+        logger.info(f"Graph search called with space_id={space_id}, node_ids={node_ids}, node_text_queries={node_text_queries}, edge_queries={edge_queries}, property_queries={property_queries}, property_node_ids={property_node_ids}")
         
         try:
             driver = Neo4jConnection.get_driver()
@@ -266,7 +283,8 @@ class Neo4jConnection:
                                     space_id=space_id, 
                                     node_ids=node_ids,  # Numeric node IDs
                                     node_text_queries=node_text_queries,  # Text search terms
-                                    edge_queries=edge_queries)
+                                    edge_queries=edge_queries,
+                                    property_node_ids=property_node_ids)  # Node IDs with matching properties
                 record = result.single()
                 
                 if record:
