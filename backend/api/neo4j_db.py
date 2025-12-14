@@ -18,20 +18,9 @@ class Neo4jConnection:
                     auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
                     encrypted=False
                 )
-                # Verify connection
-                with cls._driver.session() as session:
-                    result = session.run("RETURN 1")
-                    logger.info("Neo4j connection verified successfully")
-            except AuthError as e:
-                logger.error(f"Neo4j Authentication Error: {e}")
-                cls._driver = None
-                raise
-            except ServiceUnavailable as e:
-                logger.error(f"Neo4j Service Unavailable: {e}")
-                cls._driver = None
-                raise
+                logger.info("Neo4j driver created")
             except Exception as e:
-                logger.error(f"Failed to initialize Neo4j driver: {e}", exc_info=True)
+                logger.error(f"Failed to create Neo4j driver: {e}", exc_info=True)
                 cls._driver = None
                 raise
         return cls._driver
