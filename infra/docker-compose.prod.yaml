@@ -33,13 +33,12 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-
   frontend:
     build:
       context: ../frontend
       dockerfile: ./Dockerfile
       args:
-        API_URL: http://13.62.99.171:8000/api
+        API_URL: http://16.171.44.79:8000/api
     ports:
       - "3000:80"
     depends_on:
