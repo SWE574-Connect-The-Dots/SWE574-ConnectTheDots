@@ -117,7 +117,7 @@ const SpaceDiscussions = ({ spaceId, isCollaborator, isArchived = false }) => {
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder={t("discussion.addComment")}
                 style={{
-                  width: "100%",
+                  width: "-webkit-fill-available",
                   padding: "8px",
                   borderRadius: "4px",
                   border: "1px solid var(--color-gray-300)",

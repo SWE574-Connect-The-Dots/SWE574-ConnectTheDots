@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { useTranslation } from "../contexts/TranslationContext";
 import api from "../axiosConfig";
 import PropertySearch from "./PropertySearch";
+import useClickOutside from "../hooks/useClickOutside";
 import "./NodeDetailModal.css";
 
 const EdgeDetailModal = ({
@@ -27,6 +28,10 @@ const EdgeDetailModal = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isSourceToTarget, setIsSourceToTarget] = useState(true);
   const [allEdges, setAllEdges] = useState([]);
+
+  const modalRef = useClickOutside(() => {
+    onClose();
+  });
 
   useEffect(() => {
     const fetchEdges = async () => {
@@ -105,7 +110,7 @@ const EdgeDetailModal = ({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-content">
+      <div className="modal-content" ref={modalRef}>
         <div className="modal-header">
           <h2>{t("common.edge")}: {originalLabel}</h2>
           <button onClick={onClose} className="close-button">
