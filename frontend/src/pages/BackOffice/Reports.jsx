@@ -201,23 +201,36 @@ export default function Reports() {
     ...new Set(reports.map((report) => report.content_type)),
   ];
 
-  const sortedReports = [...reports].sort((a, b) => {
-    if (activeSort === 'date') {
-      const dateA = new Date(a.created_at);
-      const dateB = new Date(b.created_at);
-      if (dateSortOrder === 'asc') {
-        return dateA - dateB;
+  const filteredAndSortedReports = reports
+    .filter((report) => {
+      const typeMatch = typeFilter === "All" || report.content_type === typeFilter;
+      
+      const searchMatch = searchTerm === "" || 
+        report.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.reporter_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.content_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(report.id)?.includes(searchTerm);
+      
+      return typeMatch && searchMatch;
+    })
+    .sort((a, b) => {
+      if (activeSort === 'date') {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        if (dateSortOrder === 'asc') {
+          return dateA - dateB;
+        } else {
+          return dateB - dateA;
+        }
       } else {
-        return dateB - dateA;
+        if (sortOrder === 'asc') {
+          return a.entity_report_count - b.entity_report_count;
+        } else {
+          return b.entity_report_count - a.entity_report_count;
+        }
       }
-    } else {
-      if (sortOrder === 'asc') {
-        return a.entity_report_count - b.entity_report_count;
-      } else {
-        return b.entity_report_count - a.entity_report_count;
-      }
-    }
-  });
+    });
 
   const handleSortToggle = () => {
     setActiveSort('reportCount');
@@ -409,7 +422,20 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody>
-            {sortedReports.map((report, index) => (
+            {loading && filteredAndSortedReports.length === 0 ? (
+              <tr>
+                <td colSpan="8" style={{ padding: "20px", textAlign: "center" }}>
+                  Loading...
+                </td>
+              </tr>
+            ) : filteredAndSortedReports.length === 0 ? (
+              <tr>
+                <td colSpan="8" style={{ padding: "20px", textAlign: "center" }}>
+                  No reports found matching your filters
+                </td>
+              </tr>
+            ) : (
+              filteredAndSortedReports.map((report, index) => (
                 <tr
                   key={`${report.content_type}-${report._group.content_id}`}
                   style={{
@@ -450,7 +476,8 @@ export default function Reports() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -465,7 +492,7 @@ export default function Reports() {
        >
          <div>
            <span>
-             Showing {sortedReports.length} reports
+             Showing {filteredAndSortedReports.length} of {reports.length} reports
            </span>
          </div>
        </div>
