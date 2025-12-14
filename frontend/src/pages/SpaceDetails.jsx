@@ -828,6 +828,7 @@ const SpaceDetails = () => {
   const [nodeSearchQuery, setNodeSearchQuery] = useState("");
   const [edgeSearchQuery, setEdgeSearchQuery] = useState("");
   const [propertySearchQuery, setPropertySearchQuery] = useState("");
+  const [isSubgraphFullscreen, setIsSubgraphFullscreen] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
 
@@ -3080,17 +3081,42 @@ const SpaceDetails = () => {
 
                         {/* Graph Visualization */}
                         <div style={{ marginBottom: '20px' }}>
-                          <h5 style={{ 
-                            color: '#1B1F3B',
-                            marginBottom: '10px',
-                            fontSize: '15px',
-                            fontWeight: '600',
+                          <div style={{
                             display: 'flex',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            gap: '8px'
+                            marginBottom: '10px'
                           }}>
-                            <span>🕸️</span> Subgraph Visualization
-                          </h5>
+                            <h5 style={{
+                              color: '#1B1F3B',
+                              marginBottom: '0',
+                              fontSize: '15px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <span>🕸️</span> Subgraph Visualization
+                            </h5>
+                            <button
+                              onClick={() => setIsSubgraphFullscreen(!isSubgraphFullscreen)}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#0076B5',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#005090'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = '#0076B5'}
+                            >
+                              {isSubgraphFullscreen ? '⛌ Exit Fullscreen' : '⛶ Fullscreen'}
+                            </button>
+                          </div>
                           <div style={{ 
                             height: '400px', 
                             border: '2px solid #ddd', 
@@ -4480,6 +4506,145 @@ const SpaceDetails = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Subgraph Modal */}
+      {isSubgraphFullscreen && graphSearchResults && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            width: '95vw',
+            height: '95vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #ddd',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f9f9f9'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1B1F3B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span>🕸️</span> Full Screen Subgraph Visualization
+              </h3>
+              <button
+                onClick={() => setIsSubgraphFullscreen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#d32f2f',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#b71c1c'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#d32f2f'}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <SpaceGraph
+                nodes={graphSearchResults.nodes.map((node, index) => {
+                  const fullNode = nodes.find(n => String(n.id) === String(node.id));
+                  
+                  let instanceTypeColor = 'var(--color-success)';
+                  let instanceTypeLabel = null;
+                  let instanceTypeIcon = null;
+                  
+                  if (fullNode && fullNode.instance_type && fullNode.instance_type.group_id) {
+                    const group = getGroupById(fullNode.instance_type.group_id);
+                    if (group) {
+                      instanceTypeColor = group.color;
+                      instanceTypeLabel = group.label;
+                      instanceTypeIcon = group.icon;
+                    }
+                  } else if (node.instance_type && node.instance_type.group_id) {
+                    const group = getGroupById(node.instance_type.group_id);
+                    if (group) {
+                      instanceTypeColor = group.color;
+                      instanceTypeLabel = group.label;
+                      instanceTypeIcon = group.icon;
+                    }
+                  }
+                  
+                  return fullNode ? {
+                    ...fullNode,
+                    data: {
+                      ...fullNode.data,
+                      instanceTypeColor,
+                      instanceTypeLabel,
+                      instanceTypeIcon
+                    }
+                  } : {
+                    id: String(node.id),
+                    type: 'circular',
+                    position: { 
+                      x: 100 + (index % 5) * 150 + Math.random() * 50, 
+                      y: 100 + Math.floor(index / 5) * 100 + Math.random() * 50 
+                    },
+                    data: {
+                      label: node.label,
+                      description: node.description,
+                      instanceTypeColor,
+                      instanceTypeLabel,
+                      instanceTypeIcon
+                    }
+                  };
+                })}
+                edges={graphSearchResults.edges.map(edge => {
+                  const fullEdge = edges.find(e => String(e.id) === String(edge.id));
+                  return fullEdge || {
+                    id: String(edge.id),
+                    source: String(edge.source),
+                    target: String(edge.target),
+                    label: edge.label
+                  };
+                })}
+                loading={false}
+                error={null}
+                onNodeClick={handleNodeClick}
+                onEdgeClick={handleEdgeClick}
+              />
             </div>
           </div>
         </div>
