@@ -1,4 +1,4 @@
-from neo4j import GraphDatabase, TRUST_ALL_CERTIFICATES
+from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError, ServiceUnavailable
 from django.conf import settings
 import logging
@@ -16,8 +16,7 @@ class Neo4jConnection:
                 cls._driver = GraphDatabase.driver(
                     settings.NEO4J_URI,
                     auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-                    encrypted=False,
-                    trust=TRUST_ALL_CERTIFICATES
+                    encrypted=False
                 )
                 # Verify connection
                 with cls._driver.session() as session:
