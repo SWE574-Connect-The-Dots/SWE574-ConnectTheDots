@@ -2609,10 +2609,18 @@ const SpaceDetails = () => {
                       textAlign: 'left',
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      color: selectedNodeIds.length === 0 ? '#999' : '#000'
                     }}
                   >
-                    <span>{selectedNodeIds.length === 0 ? `${nodes?.length || 0} nodes available` : `${selectedNodeIds.length} selected`}</span>
+                    <span>
+                      {selectedNodeIds.length === 0 
+                        ? `${nodes?.length || 0} nodes available` 
+                        : selectedNodeIds.length === 1
+                        ? nodes?.find(n => n.id === selectedNodeIds[0])?.data?.label || selectedNodeIds[0]
+                        : `${selectedNodeIds.length} selected`
+                      }
+                    </span>
                     <span>{showNodeDropdown ? '▼' : '▶'}</span>
                   </button>
                   {showNodeDropdown && (
@@ -2676,6 +2684,7 @@ const SpaceDetails = () => {
                       borderRadius: showEdgeDropdown ? '4px 4px 0 0' : '4px',
                       fontSize: '14px',
                       backgroundColor: '#fff',
+                      color: selectedEdgeTypes.length === 0 ? '#999' : '#000',
                       cursor: 'pointer',
                       textAlign: 'left',
                       display: 'flex',
@@ -2683,7 +2692,14 @@ const SpaceDetails = () => {
                       alignItems: 'center'
                     }}
                   >
-                    <span>{selectedEdgeTypes.length === 0 ? `${edges?.length || 0} edge types available` : `${selectedEdgeTypes.length} selected`}</span>
+                    <span>
+                      {selectedEdgeTypes.length === 0 
+                        ? `${edges?.length || 0} edge types available` 
+                        : selectedEdgeTypes.length === 1
+                        ? selectedEdgeTypes[0]
+                        : `${selectedEdgeTypes.length} selected`
+                      }
+                    </span>
                     <span>{showEdgeDropdown ? '▼' : '▶'}</span>
                   </button>
                   {showEdgeDropdown && (
@@ -2748,7 +2764,9 @@ const SpaceDetails = () => {
                     borderRadius: '4px',
                     fontSize: '14px',
                     backgroundColor: '#fff',
-                    cursor: 'pointer'
+                    color: '#1B1F3B',
+                    cursor: 'pointer',
+                    appearance: 'auto'
                   }}
                 >
                   <option value="1">1 Level</option>
