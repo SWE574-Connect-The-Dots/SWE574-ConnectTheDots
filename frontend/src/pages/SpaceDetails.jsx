@@ -2614,7 +2614,7 @@ const SpaceDetails = () => {
               <span>🕸️</span> Advanced Graph Search
             </h4>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-              Search for multiple nodes and edges by separating terms with commas. Adjust relation depth to include neighbors.
+              Search the graph by selecting specific nodes, edge types, and/or node properties. Use relation depth to expand your search to neighbors and extended networks.
             </p>
             
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '15px' }}>
