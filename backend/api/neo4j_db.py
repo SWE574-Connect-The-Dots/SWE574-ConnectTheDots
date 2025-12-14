@@ -180,21 +180,21 @@ class Neo4jConnection:
     @staticmethod
     def search_graph(space_id, node_queries=None, edge_queries=None, depth=1):
         """
-        Search for nodes and edges in a specific space using multiple search terms.
+        Search for nodes and edges in a specific space using node IDs or text search terms.
         Returns a subgraph containing matching nodes, matching edges, their neighbors up to 'depth' levels,
         and all edges between them.
         
         Args:
             space_id: The space ID to search in
-            node_queries: List of node search terms
+            node_queries: List of node IDs or search terms (supports both)
             edge_queries: List of edge search terms
             depth: Number of relationship levels to include (1 = direct connections only)
         """
         query = """
-        // 1. Find matching nodes
+        // 1. Find matching nodes (by ID or text search)
         OPTIONAL MATCH (n:Node {space_id: $space_id})
-        WHERE size($node_queries) > 0 AND 
-              any(term IN $node_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)
+        WHERE (size($node_ids) > 0 AND any(id IN $node_ids WHERE n.pg_id = id)) OR
+              (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term))
         WITH collect(n) as matchingNodes
         
         // 2. Find matching edges
@@ -239,21 +239,40 @@ class Neo4jConnection:
             node_queries = []
         elif isinstance(node_queries, str):
             node_queries = [q.strip() for q in node_queries.split(',') if q.strip()]
+        
+        # Separate node IDs and text queries
+        node_ids = []
+        node_text_queries = []
+        for query_item in node_queries:
+            try:
+                # Try to convert to int (it's a node ID from pg_id)
+                node_id = int(query_item)
+                node_ids.append(node_id)
+            except (ValueError, TypeError):
+                # It's a text search term
+                node_text_queries.append(query_item)
             
         if edge_queries is None:
             edge_queries = []
         elif isinstance(edge_queries, str):
             edge_queries = [q.strip() for q in edge_queries.split(',') if q.strip()]
         
+        logger.info(f"Graph search called with space_id={space_id}, node_ids={node_ids}, node_text_queries={node_text_queries}, edge_queries={edge_queries}")
+        
         try:
             driver = Neo4jConnection.get_driver()
             with driver.session() as session:
-                result = session.run(query, space_id=space_id, node_queries=node_queries, edge_queries=edge_queries)
+                result = session.run(query, 
+                                    space_id=space_id, 
+                                    node_ids=node_ids,  # Numeric node IDs
+                                    node_text_queries=node_text_queries,  # Text search terms
+                                    edge_queries=edge_queries)
                 record = result.single()
                 
                 if record:
-                    nodes = record['uniqueNodes']
-                    edges = record['allEdges']
+                    nodes = record.get('uniqueNodes', [])
+                    edges = record.get('allEdges', [])
+                    logger.info(f"Graph search found {len(nodes)} nodes and {len(edges)} edges")
                     
                     for node in nodes:
                         result_data['nodes'].append({
@@ -273,5 +292,6 @@ class Neo4jConnection:
                         
         except Exception as e:
             logger.error(f"Graph search failed: {e}")
-            
+        
+        logger.info(f"Returning {len(result_data['nodes'])} nodes and {len(result_data['edges'])} edges")
         return result_data

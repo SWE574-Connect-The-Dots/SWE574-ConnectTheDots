@@ -819,6 +819,10 @@ const SpaceDetails = () => {
   const [graphSearchResults, setGraphSearchResults] = useState(null);
   const [isGraphSearching, setIsGraphSearching] = useState(false);
   const [graphSearchDepth, setGraphSearchDepth] = useState(1);
+  const [selectedNodeIds, setSelectedNodeIds] = useState([]);
+  const [selectedEdgeTypes, setSelectedEdgeTypes] = useState([]);
+  const [showNodeDropdown, setShowNodeDropdown] = useState(false);
+  const [showEdgeDropdown, setShowEdgeDropdown] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
 
@@ -859,6 +863,8 @@ const SpaceDetails = () => {
 
   const [isGraphFullscreen, setIsGraphFullscreen] = useState(false);
   const graphContainerRef = useRef(null);
+  const nodeDropdownRef = useRef(null);
+  const edgeDropdownRef = useRef(null);
 
   const {
     nodes,
@@ -1543,6 +1549,21 @@ const SpaceDetails = () => {
     navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ""}`, { replace: true });
   }, [location.pathname, location.search, navigate, nodes]);
 
+  // Handle click outside dropdowns
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (nodeDropdownRef.current && !nodeDropdownRef.current.contains(event.target)) {
+        setShowNodeDropdown(false);
+      }
+      if (edgeDropdownRef.current && !edgeDropdownRef.current.contains(event.target)) {
+        setShowEdgeDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleReportSpace = () => {
     setShowReportModal(true);
   };
@@ -1627,13 +1648,13 @@ const SpaceDetails = () => {
   const [graphEdgeQuery, setGraphEdgeQuery] = useState("");
 
   const handleGraphSearch = async () => {
-    if (!graphNodeQuery.trim() && !graphEdgeQuery.trim()) return;
+    if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0) return;
     
     setIsGraphSearching(true);
     try {
       const params = new URLSearchParams();
-      if (graphNodeQuery.trim()) params.append('node_q', graphNodeQuery.trim());
-      if (graphEdgeQuery.trim()) params.append('edge_q', graphEdgeQuery.trim());
+      if (selectedNodeIds.length > 0) params.append('node_q', selectedNodeIds.join(','));
+      if (selectedEdgeTypes.length > 0) params.append('edge_q', selectedEdgeTypes.join(','));
       params.append('depth', graphSearchDepth.toString());
       
       const response = await api.get(`/spaces/${id}/graph-search/?${params.toString()}`, {
@@ -2572,23 +2593,70 @@ const SpaceDetails = () => {
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '15px' }}>
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  🔵 Node Search
+                  🔵 Select Nodes
                 </label>
-                <input
-                  type="text"
-                  value={graphNodeQuery}
-                  onChange={(e) => setGraphNodeQuery(e.target.value)}
-                  placeholder="e.g., Mersin, Istanbul, Ankara (comma-separated)"
-                  onKeyUp={(e) => e.key === 'Enter' && handleGraphSearch()}
-                  disabled={isGraphSearching}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
+                <div ref={nodeDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowNodeDropdown(!showNodeDropdown)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: showNodeDropdown ? '4px 4px 0 0' : '4px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span>{selectedNodeIds.length === 0 ? `${nodes?.length || 0} nodes available` : `${selectedNodeIds.length} selected`}</span>
+                    <span>{showNodeDropdown ? '▼' : '▶'}</span>
+                  </button>
+                  {showNodeDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
+                      borderTop: 'none',
+                      borderRadius: '0 0 4px 4px',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}>
+                      {nodes && nodes.length > 0 ? nodes.map((node) => (
+                        <label key={node.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          borderBottom: '1px solid #eee',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedNodeIds.includes(node.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedNodeIds([...selectedNodeIds, node.id]);
+                              } else {
+                                setSelectedNodeIds(selectedNodeIds.filter(id => id !== node.id));
+                              }
+                            }}
+                            style={{ marginRight: '8px', cursor: 'pointer' }}
+                          />
+                          <span>{node.data?.label || node.id}</span>
+                        </label>
+                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No nodes available</span>}
+                    </div>
+                  )}
+                </div>
                 <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
                   Searches in node labels and descriptions
                 </span>
@@ -2596,23 +2664,70 @@ const SpaceDetails = () => {
               
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  🔗 Edge Search
+                  🔗 Select Edge Types
                 </label>
-                <input
-                  type="text"
-                  value={graphEdgeQuery}
-                  onChange={(e) => setGraphEdgeQuery(e.target.value)}
-                  placeholder="e.g., owned by, located in (comma-separated)"
-                  onKeyUp={(e) => e.key === 'Enter' && handleGraphSearch()}
-                  disabled={isGraphSearching}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
+                <div ref={edgeDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowEdgeDropdown(!showEdgeDropdown)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: showEdgeDropdown ? '4px 4px 0 0' : '4px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span>{selectedEdgeTypes.length === 0 ? `${edges?.length || 0} edge types available` : `${selectedEdgeTypes.length} selected`}</span>
+                    <span>{showEdgeDropdown ? '▼' : '▶'}</span>
+                  </button>
+                  {showEdgeDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
+                      borderTop: 'none',
+                      borderRadius: '0 0 4px 4px',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}>
+                      {edges && edges.length > 0 ? [...new Set(edges.map(edge => edge.data?.original_label || edge.label || 'Unknown'))].map((edgeType) => (
+                        <label key={edgeType} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          borderBottom: '1px solid #eee',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedEdgeTypes.includes(edgeType)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedEdgeTypes([...selectedEdgeTypes, edgeType]);
+                              } else {
+                                setSelectedEdgeTypes(selectedEdgeTypes.filter(type => type !== edgeType));
+                              }
+                            }}
+                            style={{ marginRight: '8px', cursor: 'pointer' }}
+                          />
+                          <span>{edgeType}</span>
+                        </label>
+                      )) : <span style={{ padding: '10px 12px', color: '#888' }}>No edge types available</span>}
+                    </div>
+                  )}
+                </div>
                 <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
                   Searches in relationship types and labels
                 </span>
