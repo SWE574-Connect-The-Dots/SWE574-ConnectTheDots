@@ -272,7 +272,7 @@ class Neo4jConnection:
         WITH uniqueNodes, collect(DISTINCT r) as uniqueRels, propValNodeIds
         
         // 7. Clean up nulls from edges
-        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges, propValNodeIds
+        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges
         
         // 8. Get matching edges for highlighting
         OPTIONAL MATCH (s:Node {space_id: $space_id})-[mr]->(t:Node {space_id: $space_id})
@@ -280,7 +280,7 @@ class Neo4jConnection:
               any(term IN $edge_queries WHERE type(mr) CONTAINS term OR mr.label CONTAINS term)
         WITH uniqueNodes, finalEdges, collect(DISTINCT mr.pg_id) as matchedEdgeIds
         
-        RETURN uniqueNodes, finalEdges, matchedEdgeIds as allEdges, propValNodeIds
+        RETURN uniqueNodes, finalEdges, matchedEdgeIds
         """
         
         result_data = {'nodes': [], 'edges': []}
