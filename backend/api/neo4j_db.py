@@ -242,10 +242,10 @@ class Neo4jConnection:
               (size($property_value_node_ids) = 0 AND size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
         WITH collect(n) as matchingNodes
         
-        // 2. Find matching edges (case-insensitive)
+        // 2. Find matching edges
         OPTIONAL MATCH (source:Node {space_id: $space_id})-[r]->(target:Node {space_id: $space_id})
         WHERE size($edge_queries) > 0 AND 
-              any(term IN $edge_queries WHERE toLower(type(r)) CONTAINS toLower(term) OR toLower(r.label) CONTAINS toLower(term))
+              any(term IN $edge_queries WHERE type(r) CONTAINS term OR r.label CONTAINS term)
         WITH matchingNodes, collect(r) as matchingEdges, collect(source) + collect(target) as edgeEndpointNodes
         
         // 3. Combine to get seed nodes
@@ -272,15 +272,15 @@ class Neo4jConnection:
         WITH uniqueNodes, collect(DISTINCT r) as uniqueRels, propValNodeIds
         
         // 7. Clean up nulls from edges
-        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges
+        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges, propValNodeIds
         
-        // 8. Get matching edges for highlighting (case-insensitive)
+        // 8. Get matching edges for highlighting
         OPTIONAL MATCH (s:Node {space_id: $space_id})-[mr]->(t:Node {space_id: $space_id})
         WHERE size($edge_queries) > 0 AND 
-              any(term IN $edge_queries WHERE toLower(type(mr)) CONTAINS toLower(term) OR toLower(mr.label) CONTAINS toLower(term))
+              any(term IN $edge_queries WHERE type(mr) CONTAINS term OR mr.label CONTAINS term)
         WITH uniqueNodes, finalEdges, collect(DISTINCT mr.pg_id) as matchedEdgeIds
         
-        RETURN uniqueNodes, finalEdges, matchedEdgeIds
+        RETURN uniqueNodes, finalEdges, matchedEdgeIds as allEdges, propValNodeIds
         """
         
         result_data = {'nodes': [], 'edges': []}
