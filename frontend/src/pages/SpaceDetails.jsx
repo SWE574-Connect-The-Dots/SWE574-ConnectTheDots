@@ -2168,6 +2168,31 @@ const SpaceDetails = () => {
                     {t("infoModal.search.simpleSearch.description")}
                   </p>
                 </div>
+                <div className="info-subsection">
+                  <h4>{t("infoModal.search.advancedGraphSearch.title")}</h4>
+                  <p>
+                    {t("infoModal.search.advancedGraphSearch.description")}
+                  </p>
+                  <ul>
+                    <li>{t("infoModal.search.advancedGraphSearch.nodes")}</li>
+                    <li>{t("infoModal.search.advancedGraphSearch.edges")}</li>
+                    <li>{t("infoModal.search.advancedGraphSearch.properties")}</li>
+                    <li>{t("infoModal.search.advancedGraphSearch.propertyValues")}</li>
+                    <li>{t("infoModal.search.advancedGraphSearch.depthControl")}
+                      <ul>
+                        <li>{t("infoModal.search.advancedGraphSearch.depth1")}</li>
+                        <li>{t("infoModal.search.advancedGraphSearch.depth2")}</li>
+                        <li>{t("infoModal.search.advancedGraphSearch.depth3Plus")}</li>
+                      </ul>
+                    </li>
+                  </ul>
+                  <div className="info-highlight">
+                    {t("infoModal.search.advancedGraphSearch.visualIndicators")}
+                  </div>
+                  <div className="info-highlight">
+                    {t("infoModal.search.advancedGraphSearch.depthSemantics")}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -3389,6 +3414,7 @@ const SpaceDetails = () => {
                       fontSize: '14px',
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: '8px',
                       transition: 'background 0.2s',
                       flex: 1

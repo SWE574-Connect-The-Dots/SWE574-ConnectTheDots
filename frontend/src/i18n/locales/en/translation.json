@@ -412,6 +412,20 @@
         "description": "Click Advanced Search to build complex queries:",
         "propertyBased": "Property-based: Search by specific properties (e.g., \"instance of\")",
         "multipleCriteria": "Multiple Criteria: Combine multiple search conditions with AND/OR logic"
+      },
+      "advancedGraphSearch": {
+        "title": "Advanced Graph Search",
+        "description": "The Advanced Graph Search allows you to explore your knowledge graph with powerful filtering and depth control capabilities.",
+        "nodes": "Nodes: Search and select specific entities (e.g., people, places, concepts) to use as starting points",
+        "edges": "Edges: Filter by relationship types (e.g., \"location\", \"member of\") to find specific connections",
+        "properties": "Properties: Search nodes that have specific properties (e.g., \"birth date\", \"occupation\")",
+        "propertyValues": "Property Values: Find nodes with exact property values (e.g., \"radio operator\", \"Australia\")",
+        "depthControl": "Depth Control: Choose how many relationship hops to explore (1-5 levels)",
+        "depth1": "Depth 1: Direct connections only",
+        "depth2": "Depth 2: Friends of friends",
+        "depth3Plus": "Depth 3+: Extended network exploration",
+        "visualIndicators": "Visual Indicators: Search results are color-coded in the graph - Blue for matched nodes, Green for matched properties, Gold for matched property values, and Red for matched edges.",
+        "depthSemantics": "Depth Semantics: When searching by edges, depth=1 shows only the matched edge itself. Higher depths explore additional hops from the edge endpoints."
       }
     },
     "collaborators": {
