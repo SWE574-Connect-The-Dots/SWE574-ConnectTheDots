@@ -5313,7 +5313,7 @@ const SpaceDetails = () => {
                 alignItems: 'center',
                 gap: '10px'
               }}>
-                <span>🕸️</span> Full Screen Subgraph Visualization
+                Full Screen Subgraph Visualization
               </h3>
               <button
                 onClick={() => setIsSubgraphFullscreen(false)}
