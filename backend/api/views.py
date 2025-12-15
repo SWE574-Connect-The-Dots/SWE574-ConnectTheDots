@@ -1,6 +1,9 @@
 from datetime import timedelta
+import logging
 import requests
 from django.contrib.auth import authenticate
+
+logger = logging.getLogger(__name__)
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
@@ -16,6 +19,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Space, Tag, Property, EdgeProperty, Profile, Node, Edge, GraphSnapshot, Discussion, DiscussionReaction, SpaceModerator, Report, Activity, Archive, record_activity
 from .graph import SpaceGraph
+from .neo4j_db import Neo4jConnection 
 from .serializers import (RegisterSerializer, SpaceSerializer, TagSerializer, 
                           UserSerializer, ProfileSerializer, DiscussionSerializer, 
                           ReportSerializer, ActivityStreamSerializer, ArchiveSerializer,
@@ -256,7 +260,7 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if self.action in ['discussions', 'wikidata_search']:
             permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'trending', 'new', 'top_scored', 'collaborators', 'top_collaborators', 
-                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties', 'summarize_space']:
+                             'nodes', 'edges', 'snapshots', 'wikidata_entity_properties', 'node_properties', 'graph_search', 'summarize_space']:
             permission_classes = [permissions.IsAuthenticated]
         elif self.action in ['join_space', 'leave_space', 'check_collaborator', 'add_discussion', 'delete_discussion',
                              'react_discussion', 'add_node', 'delete_node', 'update_node_properties', 'delete_node_property',
@@ -265,6 +269,46 @@ class SpaceViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAuthenticated, IsCollaboratorOrReadOnly, IsNotArchivedUser]
         return [permission() for permission in permission_classes]
+
+    @action(detail=True, methods=['get'], url_path='graph-search')
+    def graph_search(self, request, pk=None):
+        """
+        Search the graph using Neo4j with support for multiple node, edge, and property queries.
+        Supports depth parameter for N-hop neighbor search.
+        """
+        node_query = request.query_params.get('node_q', '').strip()
+        edge_query = request.query_params.get('edge_q', '').strip()
+        property_query = request.query_params.get('property_q', '').strip()
+        property_values_query = request.query_params.get('property_values_q', '').strip()
+        depth = request.query_params.get('depth', '1')
+        
+        print(f"🔍 GRAPH SEARCH VIEW CALLED: node_q={node_query}, edge_q={edge_query}, property_q={property_query}, property_values_q={property_values_query}, depth={depth}")
+        logger.info(f"graph_search VIEW: node_q={node_query}, edge_q={edge_query}, property_q={property_query}, property_values_q={property_values_query}, depth={depth}")
+        
+        # Parse depth parameter
+        try:
+            depth = int(depth)
+            if depth < 1:
+                depth = 1
+            elif depth > 5:  # Max depth limit for performance
+                depth = 5
+        except ValueError:
+            depth = 1
+        
+        # Fallback for backward compatibility or single search box
+        general_query = request.query_params.get('q', '').strip()
+        if general_query and not node_query and not edge_query and not property_query:
+            node_query = general_query
+            edge_query = general_query
+            
+        if not node_query and not edge_query and not property_query and not property_values_query:
+            print(f"⚠️ EARLY RETURN: All queries empty")
+            return Response({'nodes': [], 'edges': []})
+        
+        print(f"✅ Calling search_graph with space_id={int(pk)}")
+        results = Neo4jConnection.search_graph(int(pk), node_queries=node_query, edge_queries=edge_query, property_queries=property_query, property_values=property_values_query, depth=depth)
+        print(f"✅ search_graph returned {len(results.get('nodes', []))} nodes and {len(results.get('edges', []))} edges")
+        return Response(results)
         
     def perform_create(self, serializer):
         space = serializer.save(creator=self.request.user)
@@ -558,6 +602,34 @@ class SpaceViewSet(viewsets.ModelViewSet):
             created_by=request.user,
             space = space
         )
+
+        # --- NEO4J INTEGRATION START ---
+        # Prepare properties for Neo4j
+        neo4j_props = {
+            'wikidata_id': new_node.wikidata_id,
+            'description': new_node.description,
+            'created_by': request.user.username,
+            'created_at': new_node.created_at.isoformat()
+        }
+        
+        for prop in selected_properties:
+            key = prop.get('property_label') or prop.get('property')
+            value = prop.get('value')
+            if key and value:
+                # Sanitize key for Neo4j property
+                safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                if safe_key:
+                    neo4j_props[safe_key] = str(value)
+
+        # Save to Neo4j
+        Neo4jConnection.create_node(
+            node_id=new_node.id,
+            label=new_node.label,
+            space_id=space.id,
+            properties=neo4j_props
+        )
+        # --- NEO4J INTEGRATION END ---
+
         try:
             record_activity(
                 actor_user=request.user,
@@ -632,6 +704,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                # --- NEO4J INTEGRATION START ---
+                Neo4jConnection.create_edge(
+                    edge_id=e.id,
+                    source_node_id=new_node.id,
+                    target_node_id=related_node.id,
+                    relation_label=edge_label,
+                    properties={'wikidata_property_id': wikidata_property_id}
+                )
+                # --- NEO4J INTEGRATION END ---
                 try:
                     edge_summary = self._format_edge_summary(
                         request.user.username,
@@ -656,6 +737,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
                     relation_property=edge_label,
                     wikidata_property_id=wikidata_property_id
                 )
+                # --- NEO4J INTEGRATION START ---
+                Neo4jConnection.create_edge(
+                    edge_id=e.id,
+                    source_node_id=related_node.id,
+                    target_node_id=new_node.id,
+                    relation_label=edge_label,
+                    properties={'wikidata_property_id': wikidata_property_id}
+                )
+                # --- NEO4J INTEGRATION END ---
                 try:
                     edge_summary = self._format_edge_summary(
                         request.user.username,
@@ -1198,6 +1288,63 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 status=500
             )
 
+    @action(detail=True, methods=['get'], url_path='all-properties')
+    def all_properties(self, request, pk=None):
+        """Get all unique properties across all nodes in a space"""
+        try:
+            space = self.get_object()
+            
+            # Get all unique properties with their nodes
+            properties_dict = {}
+            
+            property_instances = Property.objects.filter(
+                node__space_id=pk
+            ).select_related('node').values(
+                'property_id', 
+                'property_label',
+                'node__id',
+                'node__label'
+            )
+            
+            for prop in property_instances:
+                prop_id = prop['property_id']
+                if prop_id not in properties_dict:
+                    properties_dict[prop_id] = {
+                        'property': prop_id,
+                        'property_label': prop['property_label'] or prop_id,
+                        'nodes': []
+                    }
+                
+                # Add node info if not already added
+                node_info = {
+                    'id': prop['node__id'],
+                    'label': prop['node__label']
+                }
+                if node_info not in properties_dict[prop_id]['nodes']:
+                    properties_dict[prop_id]['nodes'].append(node_info)
+            
+            # Convert to list and add counts
+            props_list = []
+            for prop_id, prop_data in properties_dict.items():
+                props_list.append({
+                    'id': prop_id,
+                    'property': prop_id,
+                    'property_label': prop_data['property_label'],
+                    'node_count': len(prop_data['nodes']),
+                    'nodes': prop_data['nodes']
+                })
+            
+            # Sort by label for better UX
+            props_list.sort(key=lambda x: x['property_label'])
+            
+            return Response(props_list)
+        except Exception as e:
+            print(f"Error fetching all properties: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=500
+            )
+
     @action(detail=True, methods=['get'], url_path='nodes/(?P<node_id>[^/.]+)/properties')
     def node_properties(self, request, pk=None, node_id=None):
         """Get properties of a specific node with human-readable labels"""
@@ -1252,6 +1399,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
             Property.objects.filter(node=node).delete()
             deleted_node_id = node.id
             node.delete()
+
+            # --- NEO4J INTEGRATION START ---
+            Neo4jConnection.delete_node(deleted_node_id)
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1403,6 +1555,27 @@ class SpaceViewSet(viewsets.ModelViewSet):
                             setattr(node, field, value)
                     node.save()
                 
+                # --- NEO4J INTEGRATION START ---
+                # Update Neo4j properties
+                neo4j_update_props = {}
+                if location_data:
+                    neo4j_update_props.update(location_data)
+                
+                for prop in selected_properties:
+                    key = prop.get('property_label') or prop.get('property')
+                    value = prop.get('value')
+                    if key and value:
+                        safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                        if safe_key:
+                            neo4j_update_props[safe_key] = str(value)
+                
+                if neo4j_update_props:
+                    Neo4jConnection.update_node(
+                        node_id=node.id,
+                        properties=neo4j_update_props
+                    )
+                # --- NEO4J INTEGRATION END ---
+                
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1434,6 +1607,15 @@ class SpaceViewSet(viewsets.ModelViewSet):
         try:
             node = Node.objects.get(id=node_id, space_id=pk)
             property_to_delete = Property.objects.get(node=node, statement_id=statement_id)
+            
+            # --- NEO4J INTEGRATION START ---
+            prop_key = property_to_delete.property_label or property_to_delete.property_id
+            if prop_key:
+                safe_key = "".join(x for x in prop_key if x.isalnum() or x == "_")
+                if safe_key:
+                    Neo4jConnection.delete_node_property(node.id, safe_key)
+            # --- NEO4J INTEGRATION END ---
+
             property_to_delete.delete()
             try:
                 record_activity(
@@ -1484,6 +1666,23 @@ class SpaceViewSet(viewsets.ModelViewSet):
             print(f"Updated node location - Country: {node.country}, City: {node.city}, Lat: {node.latitude}, Lng: {node.longitude}")
             
             node.save()
+
+            # --- NEO4J INTEGRATION START ---
+            neo4j_loc_props = {
+                'country': node.country,
+                'city': node.city,
+                'district': node.district,
+                'street': node.street,
+                'latitude': node.latitude,
+                'longitude': node.longitude,
+                'location_name': node.location_name
+            }
+            Neo4jConnection.update_node(
+                node_id=node.id,
+                properties=neo4j_loc_props
+            )
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1545,6 +1744,32 @@ class SpaceViewSet(viewsets.ModelViewSet):
             edge.wikidata_property_id = wikidata_property_id
             edge.save()
 
+            # --- NEO4J INTEGRATION START ---
+            # If label or endpoints changed, we must recreate the edge in Neo4j
+            # because relationship types are immutable and endpoints define the relationship identity.
+            # For simplicity, we'll delete and recreate if there's any structural change.
+            # If only properties changed, we could just update properties, but recreating is safer for consistency here.
+            
+            neo4j_edge_props = {'wikidata_property_id': wikidata_property_id}
+            if edge_properties:
+                for prop in edge_properties:
+                    key = prop.get('property_label') or prop.get('property')
+                    value = prop.get('value')
+                    if key and value:
+                        safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                        if safe_key:
+                            neo4j_edge_props[safe_key] = str(value)
+
+            Neo4jConnection.delete_edge(edge.id)
+            Neo4jConnection.create_edge(
+                edge_id=edge.id,
+                source_node_id=edge.source.id,
+                target_node_id=edge.target.id,
+                relation_label=edge.relation_property,
+                properties=neo4j_edge_props
+            )
+            # --- NEO4J INTEGRATION END ---
+
             if edge_properties is not None:
                 EdgeProperty.objects.filter(edge=edge).delete()
                 for prop in edge_properties:
@@ -1593,6 +1818,11 @@ class SpaceViewSet(viewsets.ModelViewSet):
             sid = edge.source_id
             tid = edge.target_id
             edge.delete()
+
+            # --- NEO4J INTEGRATION START ---
+            Neo4jConnection.delete_edge(eid)
+            # --- NEO4J INTEGRATION END ---
+
             try:
                 record_activity(
                     actor_user=request.user,
@@ -1638,6 +1868,26 @@ class SpaceViewSet(viewsets.ModelViewSet):
                 relation_property=label,
                 wikidata_property_id=wikidata_property_id
             )
+
+            # --- NEO4J INTEGRATION START ---
+            neo4j_edge_props = {'wikidata_property_id': wikidata_property_id}
+            for prop in edge_properties:
+                key = prop.get('property_label') or prop.get('property')
+                value = prop.get('value')
+                if key and value:
+                    safe_key = "".join(x for x in key if x.isalnum() or x == "_")
+                    if safe_key:
+                        neo4j_edge_props[safe_key] = str(value)
+
+            Neo4jConnection.create_edge(
+                edge_id=edge.id,
+                source_node_id=source.id,
+                target_node_id=target.id,
+                relation_label=label,
+                properties=neo4j_edge_props
+            )
+            # --- NEO4J INTEGRATION END ---
+
             for prop in edge_properties:
                 value_text, value_id = _normalize_property_value_for_storage(prop.get('value'))
                 EdgeProperty.objects.create(
@@ -2414,8 +2664,6 @@ def change_user_type(request):
             
             try:
                 space = Space.objects.get(id=space_id)
-                
-                # Check if requesting user can moderate this space
                 if not requesting_profile.can_moderate_space(space):
                     return Response({'error': 'You are not a moderator of this space'}, status=status.HTTP_403_FORBIDDEN)
                 
@@ -2747,7 +2995,7 @@ def archive_item(request):
                     if space.id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Space.DoesNotExist:
-                    return Response({'error': 'Space not found'}, status=404)
+                    return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
             
             elif content_type == Archive.CONTENT_NODE:
                 try:
@@ -2755,7 +3003,7 @@ def archive_item(request):
                     if node.space_id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Node.DoesNotExist:
-                    return Response({'error': 'Node not found'}, status=404)
+                    return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
         
         Report.objects.filter(
             content_type=content_type,
@@ -2868,7 +3116,7 @@ def restore_archived_item(request, archive_id):
                     if space.id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Space.DoesNotExist:
-                    return Response({'error': 'Space not found'}, status=404)
+                    return Response({'error': 'Space not found'}, status=status.HTTP_404_NOT_FOUND)
             
             elif archive.content_type == Archive.CONTENT_NODE:
                 try:
@@ -2876,7 +3124,7 @@ def restore_archived_item(request, archive_id):
                     if node.space_id not in moderated_space_ids:
                         return Response({'error': 'You are not a moderator of this space'}, status=403)
                 except Node.DoesNotExist:
-                    return Response({'error': 'Node not found'}, status=404)
+                    return Response({'error': 'Node not found'}, status=status.HTTP_404_NOT_FOUND)
         
         if archive.content_type == Archive.CONTENT_SPACE:
             try:
