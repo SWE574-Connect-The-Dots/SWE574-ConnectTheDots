@@ -242,10 +242,10 @@ class Neo4jConnection:
               (size($property_value_node_ids) = 0 AND size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
         WITH collect(n) as matchingNodes
         
-        // 2. Find matching edges
+        // 2. Find matching edges (case-insensitive)
         OPTIONAL MATCH (source:Node {space_id: $space_id})-[r]->(target:Node {space_id: $space_id})
         WHERE size($edge_queries) > 0 AND 
-              any(term IN $edge_queries WHERE type(r) CONTAINS term OR r.label CONTAINS term)
+              any(term IN $edge_queries WHERE toLower(type(r)) CONTAINS toLower(term) OR toLower(r.label) CONTAINS toLower(term))
         WITH matchingNodes, collect(r) as matchingEdges, collect(source) + collect(target) as edgeEndpointNodes
         
         // 3. Combine to get seed nodes
@@ -272,9 +272,15 @@ class Neo4jConnection:
         WITH uniqueNodes, collect(DISTINCT r) as uniqueRels, propValNodeIds
         
         // 7. Clean up nulls from edges
-        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges, propValNodeIds
+        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges
         
-        RETURN uniqueNodes, finalEdges as allEdges, propValNodeIds
+        // 8. Get matching edges for highlighting (case-insensitive)
+        OPTIONAL MATCH (s:Node {space_id: $space_id})-[mr]->(t:Node {space_id: $space_id})
+        WHERE size($edge_queries) > 0 AND 
+              any(term IN $edge_queries WHERE toLower(type(mr)) CONTAINS toLower(term) OR toLower(mr.label) CONTAINS toLower(term))
+        WITH uniqueNodes, finalEdges, collect(DISTINCT mr.pg_id) as matchedEdgeIds
+        
+        RETURN uniqueNodes, finalEdges, matchedEdgeIds
         """
         
         result_data = {'nodes': [], 'edges': []}
@@ -318,7 +324,8 @@ class Neo4jConnection:
                 
                 if record:
                     nodes = record.get('uniqueNodes', [])
-                    edges = record.get('allEdges', [])
+                    edges = record.get('finalEdges', [])
+                    matched_edge_ids = record.get('matchedEdgeIds', [])
                     prop_val_node_ids = record.get('propValNodeIds', [])
                     logger.info(f"Graph search found {len(nodes)} nodes and {len(edges)} edges")
                     logger.info(f"Property node IDs (has property): {property_node_ids}")
@@ -375,11 +382,16 @@ class Neo4jConnection:
                         })
                         
                     for edge in edges:
+                        edge_id = edge.get('pg_id')
+                        matched_edge = edge_id in matched_edge_ids
+                        if matched_edge:
+                            logger.info(f"🔗 Edge {edge_id} ({edge.get('label')}) matched EDGE search")
                         result_data['edges'].append({
-                            'id': str(edge.get('pg_id')),
+                            'id': str(edge_id),
                             'label': edge.get('label', edge.type),
                             'source': str(edge.start_node.get('pg_id')),
-                            'target': str(edge.end_node.get('pg_id'))
+                            'target': str(edge.end_node.get('pg_id')),
+                            'matchedEdge': matched_edge  # Mark edges that matched search
                         })
                         
         except Exception as e:

@@ -9,12 +9,21 @@ const CircularNode = ({ data, selected }) => {
   const isFiltered = data.isFiltered || false;
   const matchedProperty = data.matchedProperty || false;  // Check if node matched property filter
   const matchedPropertyValue = data.matchedPropertyValue || false;  // Check if node matched property value filter
-  const isMatched = matchedProperty || matchedPropertyValue;  // Either type of match
+  const matchedNode = data.matchedNode || false;  // Check if node was directly searched
+  const isMatched = matchedNode || matchedProperty || matchedPropertyValue;  // Any type of match
   const greyedOutColor = 'var(--color-gray-300)';
   const greyedOutBorder = 'var(--color-gray-400)';
   
+  // Choose highlight color based on match type
+  const getHighlightColor = () => {
+    if (matchedNode) return '#0076B5';  // Blue for directly searched nodes
+    if (matchedPropertyValue) return '#FFD700';  // Gold for property value matches
+    if (matchedProperty) return '#90EE90';  // Light green for property matches
+    return nodeColor;
+  };
+  
   const finalColor = isFiltered ? greyedOutColor : nodeColor;
-  const finalBorderColor = isFiltered ? greyedOutBorder : (isMatched ? '#FFD700' : nodeColor);  // Gold border for matched nodes
+  const finalBorderColor = isFiltered ? greyedOutBorder : (isMatched ? getHighlightColor() : nodeColor);
   
   const selectedColor = selected 
     ? `color-mix(in srgb, ${finalColor} 100%, #000 20%)` 
@@ -64,7 +73,7 @@ const CircularNode = ({ data, selected }) => {
         boxShadow: isFiltered 
           ? "0 1px 3px rgba(0,0,0,0.1)"
           : isMatched
-            ? "0 4px 16px rgba(255, 215, 0, 0.5)"  // Gold glow for matched nodes
+            ? `0 4px 16px ${getHighlightColor()}80`  // Glow with highlight color
             : selected 
               ? `0 4px 12px ${nodeColor}66` 
               : "0 2px 8px rgba(0,0,0,0.15)",
