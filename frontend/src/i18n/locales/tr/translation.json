@@ -413,6 +413,20 @@
         "description": "Karmaşık sorgular oluşturmak için Gelişmiş Arama'ya tıklayın:",
         "propertyBased": "Özellik Tabanlı: Belirli özelliklere göre arama yapın (örn. \"örneği\")",
         "multipleCriteria": "Çoklu Kriter: VE/VEYA mantığı ile birden fazla arama koşulunu birleştirin"
+      },
+      "advancedGraphSearch": {
+        "title": "Gelişmiş Grafik Arama",
+        "description": "Gelişmiş Grafik Arama, güçlü filtreleme ve derinlik kontrolü yetenekleri ile bilgi grafiğinizi keşfetmenizi sağlar.",
+        "nodes": "Düğümler: Başlangıç noktası olarak kullanmak üzere belirli varlıkları (örn. kişiler, yerler, kavramlar) arayın ve seçin",
+        "edges": "Bağlantılar: Belirli ilişkileri bulmak için ilişki türlerine göre filtreleyin (örn. \"konum\", \"üyesi\")",
+        "properties": "Özellikler: Belirli özelliklere sahip düğümleri arayın (örn. \"doğum tarihi\", \"meslek\")",
+        "propertyValues": "Özellik Değerleri: Tam özellik değerlerine sahip düğümleri bulun (örn. \"radyo operatörü\", \"Avustralya\")",
+        "depthControl": "Derinlik Kontrolü: Kaç ilişki adımı keşfedeceğinizi seçin (1-5 seviye)",
+        "depth1": "Derinlik 1: Yalnızca doğrudan bağlantılar",
+        "depth2": "Derinlik 2: Arkadaşların arkadaşları",
+        "depth3Plus": "Derinlik 3+: Genişletilmiş ağ keşfi",
+        "visualIndicators": "Görsel Göstergeler: Arama sonuçları grafikte renkle kodlanmıştır - Eşleşen düğümler için Mavi, eşleşen özellikler için Yeşil, eşleşen özellik değerleri için Altın ve eşleşen bağlantılar için Kırmızı.",
+        "depthSemantics": "Derinlik Anlamı: Bağlantılara göre arama yaparken, derinlik=1 yalnızca eşleşen bağlantının kendisini gösterir. Daha yüksek derinlikler, bağlantı uç noktalarından ek adımları keşfeder."
       }
     },
     "collaborators": {

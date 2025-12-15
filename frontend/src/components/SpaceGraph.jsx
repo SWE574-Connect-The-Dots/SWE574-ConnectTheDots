@@ -210,6 +210,10 @@ const SpaceGraphInner = ({ nodes, edges, loading, error, onNodeClick, onEdgeClic
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
+        panOnDrag={true}
+        panOnScroll={false}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
         fitView
         fitViewOptions={{
           padding: isFullscreen ? 0.3 : 0.2,
