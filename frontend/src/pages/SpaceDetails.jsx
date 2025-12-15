@@ -5372,7 +5372,10 @@ const SpaceDetails = () => {
                       ...fullNode.data,
                       instanceTypeColor,
                       instanceTypeLabel,
-                      instanceTypeIcon
+                      instanceTypeIcon,
+                      matchedNode: node.matchedNode,  // Pass node match flag
+                      matchedProperty: node.matchedProperty,  // Pass property match flag
+                      matchedPropertyValue: node.matchedPropertyValue  // Pass property value match flag
                     }
                   } : {
                     id: String(node.id),
@@ -5386,17 +5389,40 @@ const SpaceDetails = () => {
                       description: node.description,
                       instanceTypeColor,
                       instanceTypeLabel,
-                      instanceTypeIcon
+                      instanceTypeIcon,
+                      matchedNode: node.matchedNode,  // Pass node match flag
+                      matchedProperty: node.matchedProperty,  // Pass property match flag
+                      matchedPropertyValue: node.matchedPropertyValue  // Pass property value match flag
                     }
                   };
                 })}
                 edges={graphSearchResults.edges.map(edge => {
                   const fullEdge = edges.find(e => String(e.id) === String(edge.id));
-                  return fullEdge || {
+                  if (fullEdge) {
+                    return {
+                      ...fullEdge,
+                      style: {
+                        ...fullEdge.style,
+                        stroke: edge.matchedEdge ? '#FF6B6B' : fullEdge.style?.stroke,
+                        strokeWidth: edge.matchedEdge ? 3.5 : fullEdge.style?.strokeWidth
+                      },
+                      animated: edge.matchedEdge,
+                      data: {
+                        ...fullEdge.data,
+                        matchedEdge: edge.matchedEdge
+                      }
+                    };
+                  }
+                  return {
                     id: String(edge.id),
                     source: String(edge.source),
                     target: String(edge.target),
-                    label: edge.label
+                    label: edge.label,
+                    style: {
+                      stroke: edge.matchedEdge ? '#FF6B6B' : 'var(--color-gray-400)',
+                      strokeWidth: edge.matchedEdge ? 3.5 : 2
+                    },
+                    animated: edge.matchedEdge
                   };
                 })}
                 loading={false}
