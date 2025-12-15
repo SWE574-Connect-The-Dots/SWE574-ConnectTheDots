@@ -272,7 +272,8 @@ class Neo4jConnection:
               (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)) OR
               (size($property_value_node_ids) > 0 AND any(id IN $property_value_node_ids WHERE n.pg_id = id)) OR
               (size($property_value_node_ids) = 0 AND size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
-        WITH collect(DISTINCT n) as matchingNodes
+        WITH collect(DISTINCT n) as matchingNodesWithNull
+        WITH [node IN matchingNodesWithNull WHERE node IS NOT NULL] as matchingNodes
         
         // 2. Find matching edges
         OPTIONAL MATCH (edgeSource:Node {space_id: $space_id})-[matchedEdge]->(edgeTarget:Node {space_id: $space_id})
@@ -283,17 +284,21 @@ class Neo4jConnection:
              collect(DISTINCT edgeTarget) as edgeTargets
         
         // 3. Expand from matched nodes with node_depth
-        UNWIND matchingNodes as matchedNode
+        WITH matchingNodes, edgeSources, edgeTargets,
+             CASE WHEN size(matchingNodes) > 0 THEN matchingNodes ELSE [null] END as nodesToExpand
+        UNWIND nodesToExpand as matchedNode
         OPTIONAL MATCH nodePath = (matchedNode)-[*0..""" + str(node_depth) + """]-(nodeNeighbor:Node {space_id: $space_id})
-        WHERE none(r IN relationships(nodePath) WHERE type(r) = 'IN_SPACE')
+        WHERE matchedNode IS NOT NULL AND none(r IN relationships(nodePath) WHERE type(r) = 'IN_SPACE')
         WITH edgeSources, edgeTargets, 
              collect(DISTINCT {node: nodeNeighbor, depth: length(nodePath)}) as nodeResults
         
         // 4. Expand from edge endpoints with edge_depth
         WITH (edgeSources + edgeTargets) as edgeEndpoints, nodeResults
-        UNWIND edgeEndpoints as endpoint
+        WITH edgeEndpoints, nodeResults,
+             CASE WHEN size(edgeEndpoints) > 0 THEN edgeEndpoints ELSE [null] END as endpointsToExpand
+        UNWIND endpointsToExpand as endpoint
         OPTIONAL MATCH edgePath = (endpoint)-[*0..""" + str(edge_depth) + """]-(edgeNeighbor:Node {space_id: $space_id})
-        WHERE none(r IN relationships(edgePath) WHERE type(r) = 'IN_SPACE')
+        WHERE endpoint IS NOT NULL AND none(r IN relationships(edgePath) WHERE type(r) = 'IN_SPACE')
         WITH nodeResults, collect(DISTINCT {node: edgeNeighbor, depth: length(edgePath)}) as edgeResults
         
         // 5. Combine and flatten results
