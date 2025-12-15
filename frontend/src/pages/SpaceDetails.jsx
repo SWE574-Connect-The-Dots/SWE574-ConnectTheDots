@@ -1755,6 +1755,19 @@ const SpaceDetails = () => {
     }
   }, [showPropertyValuesDropdown, selectedPropertyFilters, fetchPropertyValues]);
 
+  const handleClearGraphSearch = () => {
+    setGraphSearchResults(null);
+    setSelectedNodeIds([]);
+    setSelectedEdgeTypes([]);
+    setSelectedPropertyFilters([]);
+    setSelectedPropertyValues([]);
+    setNodeSearchQuery("");
+    setEdgeSearchQuery("");
+    setPropertySearchQuery("");
+    setPropertyValuesSearchQuery("");
+    setGraphSearchDepth(1);
+  };
+
   const handleGraphSearch = async () => {
     if (selectedNodeIds.length === 0 && selectedEdgeTypes.length === 0 && selectedPropertyFilters.length === 0) return;
     
@@ -2714,7 +2727,7 @@ const SpaceDetails = () => {
             borderRadius: '8px'
           }}>
             <h4 style={{ marginBottom: '10px', color: '#1B1F3B', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>🕸️</span> Advanced Graph Search
+              Advanced Graph Search
             </h4>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
               Search the graph by selecting specific nodes, edge types, and/or node properties. Use relation depth to expand your search to neighbors and extended networks.
@@ -2723,7 +2736,7 @@ const SpaceDetails = () => {
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '15px' }}>
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  🔵 Select Nodes
+                   Select Nodes
                 </label>
                 <div ref={nodeDropdownRef} style={{ position: 'relative' }}>
                   <button
@@ -2834,7 +2847,7 @@ const SpaceDetails = () => {
               
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  🔗 Select Edge Types
+                   Select Edge Types
                 </label>
                 <div ref={edgeDropdownRef} style={{ position: 'relative' }}>
                   <button
@@ -2943,7 +2956,7 @@ const SpaceDetails = () => {
 
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  🏷️ Select Properties
+                   Select Properties
                 </label>
                 <div ref={propertyDropdownRef} style={{ position: 'relative' }}>
                   <button
@@ -3072,7 +3085,7 @@ const SpaceDetails = () => {
 
               <div style={{ flex: 1, minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  📊 Property Values {selectedPropertyFilters.length === 0 && <span style={{color: '#999', fontSize: '12px'}}>(select properties first)</span>}
+                   Property Values {selectedPropertyFilters.length === 0 && <span style={{color: '#999', fontSize: '12px'}}>(select properties first)</span>}
                 </label>
                 <div ref={propertyValuesDropdownRef} style={{ position: 'relative' }}>
                   <button
@@ -3324,7 +3337,7 @@ const SpaceDetails = () => {
 
               <div style={{ minWidth: '150px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#1B1F3B' }}>
-                  📏 Relation Depth
+                   Relation Depth
                 </label>
                 <select
                   value={graphSearchDepth}
@@ -3361,36 +3374,63 @@ const SpaceDetails = () => {
               {graphSearchDepth >= 3 && " (Extended network)"}
             </div>
 
-            <button 
-                onClick={handleGraphSearch} 
-                disabled={isGraphSearching} 
-                style={{ 
-                    padding: '12px 30px', 
-                    backgroundColor: isGraphSearching ? '#ccc' : '#2D6A4F',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isGraphSearching ? 'not-allowed' : 'pointer',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#1e4d38')}
-                onMouseLeave={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#2D6A4F')}
-            >
-                {isGraphSearching ? (
-                  <>
-                    <span>⏳</span> Searching...
-                  </>
-                ) : (
-                  <>
-                    <span>🔍</span> Search Graph
-                  </>
-                )}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button 
+                  onClick={handleGraphSearch} 
+                  disabled={isGraphSearching} 
+                  style={{ 
+                      padding: '12px 30px', 
+                      backgroundColor: isGraphSearching ? '#ccc' : '#2D6A4F',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: isGraphSearching ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background 0.2s',
+                      flex: 1
+                  }}
+                  onMouseEnter={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#1e4d38')}
+                  onMouseLeave={(e) => !isGraphSearching && (e.target.style.backgroundColor = '#2D6A4F')}
+              >
+                  {isGraphSearching ? (
+                    <>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      Search Graph
+                    </>
+                  )}
+              </button>
+              
+              {(graphSearchResults || selectedNodeIds.length > 0 || selectedEdgeTypes.length > 0 || selectedPropertyFilters.length > 0 || selectedPropertyValues.length > 0) && (
+                <button 
+                    onClick={handleClearGraphSearch} 
+                    style={{ 
+                        padding: '12px 20px', 
+                        backgroundColor: '#d32f2f',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#b71c1c'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#d32f2f'}
+                >
+                    Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {graphSearchResults && (
@@ -3404,7 +3444,7 @@ const SpaceDetails = () => {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h4 style={{ margin: 0, color: '#1B1F3B', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>📊</span> Graph Search Results
+                      Graph Search Results
                     </h4>
                     <button 
                       onClick={() => setGraphSearchResults(null)} 
@@ -3460,7 +3500,7 @@ const SpaceDetails = () => {
                               alignItems: 'center',
                               gap: '8px'
                             }}>
-                              <span>🕸️</span> Subgraph Visualization
+                              Subgraph Visualization
                             </h5>
                             <button
                               onClick={() => setIsSubgraphFullscreen(!isSubgraphFullscreen)}
@@ -3602,7 +3642,7 @@ const SpaceDetails = () => {
                                       fontSize: '14px',
                                       fontWeight: '600'
                                     }}>
-                                        🔵 Nodes ({graphSearchResults.nodes.length})
+                                         Nodes ({graphSearchResults.nodes.length})
                                     </h5>
                                     <input
                                         type="text"
@@ -3709,7 +3749,7 @@ const SpaceDetails = () => {
                                       fontSize: '14px',
                                       fontWeight: '600'
                                     }}>
-                                        🔗 Edges ({graphSearchResults.edges.length})
+                                         Edges ({graphSearchResults.edges.length})
                                     </h5>
                                     <input
                                         type="text"
@@ -3846,7 +3886,7 @@ const SpaceDetails = () => {
                                         fontSize: '15px',
                                         fontWeight: '600'
                                     }}>
-                                        📋 Properties & Values
+                                         Properties & Values
                                     </h5>
                                     <input
                                         type="text"
@@ -3872,14 +3912,14 @@ const SpaceDetails = () => {
                                         {(() => {
                                             // Group properties by node
                                             const nodePropertiesMap = {};
-                                            console.log('📋 Checking properties for', graphSearchResults.nodes.length, 'nodes');
+                                            console.log(' Checking properties for', graphSearchResults.nodes.length, 'nodes');
                                             graphSearchResults.nodes.forEach(node => {
                                                 console.log(`Node ${node.id} (${node.label}):`, 'has properties?', !!node.properties, 'count:', node.properties?.length);
                                                 if (node.properties && node.properties.length > 0) {
                                                     nodePropertiesMap[node.id] = node.properties;
                                                 }
                                             });
-                                            console.log('📋 nodePropertiesMap:', nodePropertiesMap);
+                                            console.log(' nodePropertiesMap:', nodePropertiesMap);
 
                                             if (Object.keys(nodePropertiesMap).length === 0) {
                                                 return (
@@ -3961,7 +4001,7 @@ const SpaceDetails = () => {
                                                                     fontSize: '10px',
                                                                     fontWeight: 'bold'
                                                                 }}>
-                                                                    🎯 Searched Node
+                                                                     Searched Node
                                                                 </span>
                                                             )}
                                                             {node.matchedPropertyValue && (
@@ -3997,7 +4037,11 @@ const SpaceDetails = () => {
                                                                     fontSize: '10px',
                                                                     fontWeight: 'bold'
                                                                 }}>
-                                                                    🔗 Connected (Depth 1)
+                                                                     {node.depth === 0 && selectedEdgeTypes.length > 0 
+                                                                        ? 'Connected to Edge' 
+                                                                        : node.depth > 0 
+                                                                        ? `Connected (Depth ${node.depth})`
+                                                                        : 'Connected'}
                                                                 </span>
                                                             )}
                                                         </div>

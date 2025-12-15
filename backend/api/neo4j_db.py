@@ -233,59 +233,7 @@ class Neo4jConnection:
             property_value_node_ids = list(property_value_matches)
             logger.info(f"Found {len(property_value_node_ids)} nodes matching property values: {property_value_node_ids}")
         
-        query = """
-        // 1. Find matching nodes (by ID or text search)
-        OPTIONAL MATCH (n:Node {space_id: $space_id})
-        WHERE (size($node_ids) > 0 AND any(id IN $node_ids WHERE n.pg_id = id)) OR
-              (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)) OR
-              (size($property_value_node_ids) > 0 AND any(id IN $property_value_node_ids WHERE n.pg_id = id)) OR
-              (size($property_value_node_ids) = 0 AND size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
-        WITH collect(n) as matchingNodes
-        
-        // 2. Find matching edges
-        OPTIONAL MATCH (source:Node {space_id: $space_id})-[r]->(target:Node {space_id: $space_id})
-        WHERE size($edge_queries) > 0 AND 
-              any(term IN $edge_queries WHERE type(r) CONTAINS term OR r.label CONTAINS term)
-        WITH matchingNodes, collect(r) as matchingEdges, collect(source) + collect(target) as edgeEndpointNodes
-        
-        // 3. Combine to get seed nodes
-        WITH matchingNodes + edgeEndpointNodes as initialNodes
-        UNWIND initialNodes as n
-        WITH collect(DISTINCT n) as seedNodes
-        
-        // 4. Expand and collect paths (up to depth)
-        UNWIND seedNodes as seed
-        MATCH path = (seed)-[*0..""" + str(depth) + """]-(neighbor:Node {space_id: $space_id})
-        WHERE none(r IN relationships(path) WHERE type(r) = 'IN_SPACE')
-        WITH path, $property_value_node_ids as propValNodeIds
-        LIMIT 5000
-        WITH collect(path) as paths, propValNodeIds
-        
-        // 5. Extract unique nodes with matched property value flag
-        UNWIND paths as p
-        UNWIND nodes(p) as n
-        WITH collect(DISTINCT n) as uniqueNodes, paths, propValNodeIds
-        
-        // 6. Extract unique edges (handling empty relationships safely)
-        UNWIND paths as p
-        UNWIND (CASE WHEN size(relationships(p)) > 0 THEN relationships(p) ELSE [null] END) as r
-        WITH uniqueNodes, collect(DISTINCT r) as uniqueRels, propValNodeIds
-        
-        // 7. Clean up nulls from edges
-        WITH uniqueNodes, [r IN uniqueRels WHERE r IS NOT NULL] as finalEdges
-        
-        // 8. Get matching edges for highlighting
-        OPTIONAL MATCH (s:Node {space_id: $space_id})-[mr]->(t:Node {space_id: $space_id})
-        WHERE size($edge_queries) > 0 AND 
-              any(term IN $edge_queries WHERE type(mr) CONTAINS term OR mr.label CONTAINS term)
-        WITH uniqueNodes, finalEdges, collect(DISTINCT mr.pg_id) as matchedEdgeIds
-        
-        RETURN uniqueNodes, finalEdges, matchedEdgeIds
-        """
-        
-        result_data = {'nodes': [], 'edges': []}
-        
-        # Convert queries to lists if they're strings
+        # Convert queries to lists and parse before building query
         if node_queries is None:
             node_queries = []
         elif isinstance(node_queries, str):
@@ -296,11 +244,9 @@ class Neo4jConnection:
         node_text_queries = []
         for query_item in node_queries:
             try:
-                # Try to convert to int (it's a node ID from pg_id)
                 node_id = int(query_item)
                 node_ids.append(node_id)
             except (ValueError, TypeError):
-                # It's a text search term
                 node_text_queries.append(query_item)
             
         if edge_queries is None:
@@ -308,7 +254,75 @@ class Neo4jConnection:
         elif isinstance(edge_queries, str):
             edge_queries = [q.strip() for q in edge_queries.split(',') if q.strip()]
         
-        logger.info(f"Graph search called with space_id={space_id}, node_ids={node_ids}, node_text_queries={node_text_queries}, edge_queries={edge_queries}, property_queries={property_queries}, property_node_ids={property_node_ids}, property_values={property_values}, property_value_node_ids={property_value_node_ids}")
+        # Determine search type
+        has_edge_search = len(edge_queries) > 0
+        has_node_search = len(node_ids) > 0 or len(node_text_queries) > 0 or len(property_node_ids) > 0 or len(property_value_node_ids) > 0
+        
+        # For edge search: depth-1 (depth=1 means show only matched edge)
+        # For node search: full depth
+        edge_depth = max(0, depth - 1)
+        node_depth = depth
+        
+        logger.info(f"Search type: edge={has_edge_search}, node={has_node_search}, node_depth={node_depth}, edge_depth={edge_depth}")
+        
+        query = """
+        // 1. Find matching nodes (by ID or text search)
+        OPTIONAL MATCH (n:Node {space_id: $space_id})
+        WHERE (size($node_ids) > 0 AND any(id IN $node_ids WHERE n.pg_id = id)) OR
+              (size($node_text_queries) > 0 AND any(term IN $node_text_queries WHERE n.label CONTAINS term OR n.description CONTAINS term)) OR
+              (size($property_value_node_ids) > 0 AND any(id IN $property_value_node_ids WHERE n.pg_id = id)) OR
+              (size($property_value_node_ids) = 0 AND size($property_node_ids) > 0 AND any(id IN $property_node_ids WHERE n.pg_id = id))
+        WITH collect(DISTINCT n) as matchingNodes
+        
+        // 2. Find matching edges
+        OPTIONAL MATCH (edgeSource:Node {space_id: $space_id})-[matchedEdge]->(edgeTarget:Node {space_id: $space_id})
+        WHERE size($edge_queries) > 0 AND 
+              any(term IN $edge_queries WHERE type(matchedEdge) CONTAINS term OR matchedEdge.label CONTAINS term)
+        WITH matchingNodes, 
+             collect(DISTINCT edgeSource) as edgeSources,
+             collect(DISTINCT edgeTarget) as edgeTargets
+        
+        // 3. Expand from matched nodes with node_depth
+        UNWIND matchingNodes as matchedNode
+        OPTIONAL MATCH nodePath = (matchedNode)-[*0..""" + str(node_depth) + """]-(nodeNeighbor:Node {space_id: $space_id})
+        WHERE none(r IN relationships(nodePath) WHERE type(r) = 'IN_SPACE')
+        WITH edgeSources, edgeTargets, 
+             collect(DISTINCT {node: nodeNeighbor, depth: length(nodePath)}) as nodeResults
+        
+        // 4. Expand from edge endpoints with edge_depth
+        WITH (edgeSources + edgeTargets) as edgeEndpoints, nodeResults
+        UNWIND edgeEndpoints as endpoint
+        OPTIONAL MATCH edgePath = (endpoint)-[*0..""" + str(edge_depth) + """]-(edgeNeighbor:Node {space_id: $space_id})
+        WHERE none(r IN relationships(edgePath) WHERE type(r) = 'IN_SPACE')
+        WITH nodeResults, collect(DISTINCT {node: edgeNeighbor, depth: length(edgePath)}) as edgeResults
+        
+        // 5. Combine and flatten results
+        WITH nodeResults + edgeResults as allResults
+        UNWIND allResults as result
+        WITH result.node as neighbor, min(result.depth) as minDepth
+        WHERE neighbor IS NOT NULL
+        WITH collect(DISTINCT neighbor) as uniqueNodes, 
+             collect(DISTINCT {id: neighbor.pg_id, depth: minDepth}) as nodeDepths
+        
+        // 6. Extract all edges between the discovered nodes
+        UNWIND uniqueNodes as n1
+        UNWIND uniqueNodes as n2
+        OPTIONAL MATCH (n1)-[r]->(n2)
+        WHERE n1 <> n2 AND r IS NOT NULL AND type(r) <> 'IN_SPACE'
+        WITH uniqueNodes, nodeDepths, collect(DISTINCT r) as finalEdges
+        
+        // 7. Get matching edges for highlighting
+        OPTIONAL MATCH (s:Node {space_id: $space_id})-[mr]->(t:Node {space_id: $space_id})
+        WHERE size($edge_queries) > 0 AND 
+              any(term IN $edge_queries WHERE type(mr) CONTAINS term OR mr.label CONTAINS term)
+        WITH uniqueNodes, nodeDepths, finalEdges, collect(DISTINCT mr.pg_id) as matchedEdgeIds
+        
+        RETURN uniqueNodes, nodeDepths, finalEdges, matchedEdgeIds
+        """
+        
+        result_data = {'nodes': [], 'edges': []}
+        
+        logger.info(f"Graph search executing with space_id={space_id}, node_ids={node_ids}, node_text_queries={node_text_queries}, edge_queries={edge_queries}, property_node_ids={property_node_ids}, property_value_node_ids={property_value_node_ids}, node_depth={node_depth}, edge_depth={edge_depth}")
         
         try:
             driver = Neo4jConnection.get_driver()
@@ -324,13 +338,16 @@ class Neo4jConnection:
                 
                 if record:
                     nodes = record.get('uniqueNodes', [])
+                    node_depths_list = record.get('nodeDepths', [])
                     edges = record.get('finalEdges', [])
                     matched_edge_ids = record.get('matchedEdgeIds', [])
-                    prop_val_node_ids = record.get('propValNodeIds', [])
+                    
+                    # Create a map of node_id -> depth
+                    node_depth_map = {item['id']: item['depth'] for item in node_depths_list}
+                    
                     logger.info(f"Graph search found {len(nodes)} nodes and {len(edges)} edges")
                     logger.info(f"Property node IDs (has property): {property_node_ids}")
                     logger.info(f"Property value node IDs (has property value): {property_value_node_ids}")
-                    logger.info(f"Property value node IDs from query: {prop_val_node_ids}")
                     
                     # Fetch properties for all nodes in the result
                     from .models import Property
@@ -378,6 +395,7 @@ class Neo4jConnection:
                             'matchedNode': matched_node or matched_text,  # Mark nodes that were directly searched
                             'matchedProperty': matched_property,  # Mark nodes that matched property filter
                             'matchedPropertyValue': matched_property_value,  # Mark nodes that matched property value filter
+                            'depth': node_depth_map.get(node_id, 0),  # Actual depth from seed nodes
                             'properties': properties_by_node.get(node_id, [])  # Include properties for this node
                         })
                         
