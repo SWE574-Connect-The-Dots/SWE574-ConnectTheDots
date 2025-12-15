@@ -325,11 +325,39 @@ class Neo4jConnection:
                     logger.info(f"Property value node IDs (has property value): {property_value_node_ids}")
                     logger.info(f"Property value node IDs from query: {prop_val_node_ids}")
                     
+                    # Fetch properties for all nodes in the result
+                    from .models import Property
+                    node_ids_list = [node.get('pg_id') for node in nodes]
+                    properties_by_node = {}
+                    if node_ids_list:
+                        properties = Property.objects.filter(
+                            node__id__in=node_ids_list
+                        ).select_related('node').values(
+                            'node__id', 'property_id', 'property_label', 'value_text', 'value_id'
+                        )
+                        for prop in properties:
+                            node_db_id = prop['node__id']
+                            if node_db_id not in properties_by_node:
+                                properties_by_node[node_db_id] = []
+                            properties_by_node[node_db_id].append({
+                                'property_id': prop['property_id'],
+                                'label': prop['property_label'],
+                                'value_text': prop['value_text'],
+                                'value_id': prop['value_id']
+                            })
+                    
                     for node in nodes:
                         node_id = node.get('pg_id')
+                        matched_node = node_id in node_ids  # Directly searched by ID
                         matched_property = node_id in property_node_ids
                         matched_property_value = node_id in property_value_node_ids
+                        # Check if node label matches text queries
+                        matched_text = any(term.lower() in (node.get('label') or '').lower() or 
+                                         term.lower() in (node.get('description') or '').lower() 
+                                         for term in node_text_queries) if node_text_queries else False
                         
+                        if matched_node or matched_text:
+                            logger.info(f"🎯 Node {node_id} ({node.get('label')}) matched NODE search")
                         if matched_property:
                             logger.info(f"✓ Node {node_id} ({node.get('label')}) matched PROPERTY filter")
                         if matched_property_value:
@@ -340,8 +368,10 @@ class Neo4jConnection:
                             'label': node.get('label'),
                             'description': node.get('description'),
                             'group': 'node', # Helper for visualization
+                            'matchedNode': matched_node or matched_text,  # Mark nodes that were directly searched
                             'matchedProperty': matched_property,  # Mark nodes that matched property filter
-                            'matchedPropertyValue': matched_property_value  # Mark nodes that matched property value filter
+                            'matchedPropertyValue': matched_property_value,  # Mark nodes that matched property value filter
+                            'properties': properties_by_node.get(node_id, [])  # Include properties for this node
                         })
                         
                     for edge in edges:

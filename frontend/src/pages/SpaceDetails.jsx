@@ -837,6 +837,11 @@ const SpaceDetails = () => {
   const [isSubgraphFullscreen, setIsSubgraphFullscreen] = useState(false);
   const [isNodeListExpanded, setIsNodeListExpanded] = useState(true);
   const [nodeSortOption, setNodeSortOption] = useState('recent');
+  
+  // Search filters for graph search results
+  const [graphResultsNodeFilter, setGraphResultsNodeFilter] = useState('');
+  const [graphResultsEdgeFilter, setGraphResultsEdgeFilter] = useState('');
+  const [graphResultsPropertiesFilter, setGraphResultsPropertiesFilter] = useState('');
 
   // Location editing states
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -3577,8 +3582,42 @@ const SpaceDetails = () => {
                                     }}>
                                         🔵 Nodes ({graphSearchResults.nodes.length})
                                     </h5>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {graphSearchResults.nodes.map(node => (
+                                    <input
+                                        type="text"
+                                        placeholder="Filter nodes..."
+                                        value={graphResultsNodeFilter}
+                                        onChange={(e) => setGraphResultsNodeFilter(e.target.value)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            marginBottom: '12px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            fontSize: '13px'
+                                        }}
+                                    />
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '10px',
+                                        maxHeight: '400px',
+                                        overflowY: 'auto',
+                                        paddingRight: '8px'
+                                    }}>
+                                        {graphSearchResults.nodes.filter(node => {
+                                            if (!graphResultsNodeFilter) return true;
+                                            const searchLower = graphResultsNodeFilter.toLowerCase();
+                                            return (node.label || '').toLowerCase().includes(searchLower) ||
+                                                   (node.description || '').toLowerCase().includes(searchLower);
+                                        }).sort((a, b) => {
+                                            // Sort by match priority: direct match > property value > property > connected
+                                            const getMatchPriority = (node) => {
+                                                if (node.matchedNode) return 0;
+                                                if (node.matchedPropertyValue) return 1;
+                                                if (node.matchedProperty) return 2;
+                                                return 3;
+                                            };
+                                            return getMatchPriority(a) - getMatchPriority(b);
+                                        }).map(node => (
                                             <div 
                                                 key={node.id}
                                                 style={{
@@ -3650,8 +3689,38 @@ const SpaceDetails = () => {
                                     }}>
                                         🔗 Edges ({graphSearchResults.edges.length})
                                     </h5>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {graphSearchResults.edges.map(edge => {
+                                    <input
+                                        type="text"
+                                        placeholder="Filter edges..."
+                                        value={graphResultsEdgeFilter}
+                                        onChange={(e) => setGraphResultsEdgeFilter(e.target.value)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            marginBottom: '12px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            fontSize: '13px'
+                                        }}
+                                    />
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '10px',
+                                        maxHeight: '400px',
+                                        overflowY: 'auto',
+                                        paddingRight: '8px'
+                                    }}>
+                                        {graphSearchResults.edges.filter(edge => {
+                                            if (!graphResultsEdgeFilter) return true;
+                                            const sourceNode = graphSearchResults.nodes.find(n => n.id === edge.source) || nodes.find(n => n.id === edge.source);
+                                            const targetNode = graphSearchResults.nodes.find(n => n.id === edge.target) || nodes.find(n => n.id === edge.target);
+                                            const sourceName = sourceNode ? sourceNode.label : `Node ${edge.source}`;
+                                            const targetName = targetNode ? targetNode.label : `Node ${edge.target}`;
+                                            const searchLower = graphResultsEdgeFilter.toLowerCase();
+                                            return (edge.label || '').toLowerCase().includes(searchLower) ||
+                                                   sourceName.toLowerCase().includes(searchLower) ||
+                                                   targetName.toLowerCase().includes(searchLower);
+                                        }).map(edge => {
                                             const sourceNode = graphSearchResults.nodes.find(n => n.id === edge.source) || nodes.find(n => n.id === edge.source);
                                             const targetNode = graphSearchResults.nodes.find(n => n.id === edge.target) || nodes.find(n => n.id === edge.target);
                                             const sourceName = sourceNode ? sourceNode.label : `Node ${edge.source}`;
@@ -3736,6 +3805,234 @@ const SpaceDetails = () => {
                                                 </div>
                                             );
                                         })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Properties Section */}
+                            {graphSearchResults.nodes.length > 0 && (
+                                <div style={{ 
+                                    marginTop: '20px',
+                                    padding: '20px', 
+                                    backgroundColor: '#fef9f3', 
+                                    borderRadius: '8px',
+                                    border: '2px solid #ffe4b5'
+                                }}>
+                                    <h5 style={{ 
+                                        margin: '0 0 15px 0', 
+                                        color: '#B8860B', 
+                                        fontSize: '15px',
+                                        fontWeight: '600'
+                                    }}>
+                                        📋 Properties & Values
+                                    </h5>
+                                    <input
+                                        type="text"
+                                        placeholder="Filter properties..."
+                                        value={graphResultsPropertiesFilter}
+                                        onChange={(e) => setGraphResultsPropertiesFilter(e.target.value)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            marginBottom: '12px',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            fontSize: '13px'
+                                        }}
+                                    />
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '12px',
+                                        maxHeight: '400px',
+                                        overflowY: 'auto',
+                                        paddingRight: '8px'
+                                    }}>
+                                        {(() => {
+                                            // Group properties by node
+                                            const nodePropertiesMap = {};
+                                            console.log('📋 Checking properties for', graphSearchResults.nodes.length, 'nodes');
+                                            graphSearchResults.nodes.forEach(node => {
+                                                console.log(`Node ${node.id} (${node.label}):`, 'has properties?', !!node.properties, 'count:', node.properties?.length);
+                                                if (node.properties && node.properties.length > 0) {
+                                                    nodePropertiesMap[node.id] = node.properties;
+                                                }
+                                            });
+                                            console.log('📋 nodePropertiesMap:', nodePropertiesMap);
+
+                                            if (Object.keys(nodePropertiesMap).length === 0) {
+                                                return (
+                                                    <div style={{ 
+                                                        padding: '12px', 
+                                                        color: '#999', 
+                                                        fontStyle: 'italic',
+                                                        fontSize: '13px',
+                                                        textAlign: 'center'
+                                                    }}>
+                                                        No properties found for nodes in this subgraph
+                                                    </div>
+                                                );
+                                            }
+
+                                            return Object.entries(nodePropertiesMap).filter(([nodeId, properties]) => {
+                                                if (!graphResultsPropertiesFilter) return true;
+                                                const node = graphSearchResults.nodes.find(n => String(n.id) === String(nodeId));
+                                                if (!node) return false;
+                                                const searchLower = graphResultsPropertiesFilter.toLowerCase();
+                                                // Filter by node name or any property label/value
+                                                return (node.label || '').toLowerCase().includes(searchLower) ||
+                                                       properties.some(prop => 
+                                                           (prop.label || '').toLowerCase().includes(searchLower) ||
+                                                           (prop.value_text || '').toLowerCase().includes(searchLower) ||
+                                                           (prop.property_id || '').toLowerCase().includes(searchLower)
+                                                       );
+                                            }).sort((a, b) => {
+                                                // Sort by match priority
+                                                const nodeA = graphSearchResults.nodes.find(n => String(n.id) === String(a[0]));
+                                                const nodeB = graphSearchResults.nodes.find(n => String(n.id) === String(b[0]));
+                                                const getMatchPriority = (node) => {
+                                                    if (!node) return 4;
+                                                    if (node.matchedNode) return 0;
+                                                    if (node.matchedPropertyValue) return 1;
+                                                    if (node.matchedProperty) return 2;
+                                                    return 3;
+                                                };
+                                                return getMatchPriority(nodeA) - getMatchPriority(nodeB);
+                                            }).map(([nodeId, properties]) => {
+                                                const node = graphSearchResults.nodes.find(n => String(n.id) === String(nodeId));
+                                                console.log(`Looking for node ${nodeId}, found:`, node?.label || 'NOT FOUND');
+                                                if (!node) return null;
+
+                                                return (
+                                                    <div 
+                                                        key={nodeId}
+                                                        style={{
+                                                            padding: '14px',
+                                                            backgroundColor: '#fff',
+                                                            borderRadius: '6px',
+                                                            border: '2px solid #ffe4b5',
+                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                                        }}
+                                                    >
+                                                        <div style={{ 
+                                                            fontSize: '14px', 
+                                                            fontWeight: '600', 
+                                                            color: '#1B1F3B',
+                                                            marginBottom: '10px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
+                                                        }}>
+                                                            <span style={{
+                                                                backgroundColor: '#e3f2fd',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '4px',
+                                                                color: '#0076B5'
+                                                            }}>
+                                                                {node.label}
+                                                            </span>
+                                                            {node.matchedNode && (
+                                                                <span style={{
+                                                                    backgroundColor: '#4CAF50',
+                                                                    color: '#fff',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 'bold'
+                                                                }}>
+                                                                    🎯 Searched Node
+                                                                </span>
+                                                            )}
+                                                            {node.matchedPropertyValue && (
+                                                                <span style={{
+                                                                    backgroundColor: '#FFD700',
+                                                                    color: '#000',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 'bold'
+                                                                }}>
+                                                                    ✓ Matched Value
+                                                                </span>
+                                                            )}
+                                                            {node.matchedProperty && !node.matchedPropertyValue && !node.matchedNode && (
+                                                                <span style={{
+                                                                    backgroundColor: '#90EE90',
+                                                                    color: '#000',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 'bold'
+                                                                }}>
+                                                                    ✓ Matched Property
+                                                                </span>
+                                                            )}
+                                                            {!node.matchedPropertyValue && !node.matchedProperty && !node.matchedNode && (
+                                                                <span style={{
+                                                                    backgroundColor: '#e0e0e0',
+                                                                    color: '#666',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 'bold'
+                                                                }}>
+                                                                    🔗 Connected (Depth 1)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            flexDirection: 'column', 
+                                                            gap: '6px',
+                                                            paddingLeft: '12px'
+                                                        }}>
+                                                            {properties.map((prop, idx) => (
+                                                                <div 
+                                                                    key={idx}
+                                                                    style={{
+                                                                        fontSize: '12px',
+                                                                        padding: '6px 8px',
+                                                                        backgroundColor: '#fafafa',
+                                                                        borderRadius: '4px',
+                                                                        borderLeft: '3px solid #B8860B'
+                                                                    }}
+                                                                >
+                                                                    <div style={{ 
+                                                                        display: 'flex', 
+                                                                        gap: '8px',
+                                                                        alignItems: 'baseline',
+                                                                        flexWrap: 'wrap'
+                                                                    }}>
+                                                                        <span style={{ 
+                                                                            fontWeight: '600', 
+                                                                            color: '#B8860B',
+                                                                            minWidth: '100px'
+                                                                        }}>
+                                                                            {prop.label || prop.property_id}:
+                                                                        </span>
+                                                                        <span style={{ 
+                                                                            color: '#333',
+                                                                            wordBreak: 'break-word',
+                                                                            flex: 1
+                                                                        }}>
+                                                                            {prop.value_text || prop.value_id || 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    {prop.property_id && (
+                                                                        <div style={{ 
+                                                                            fontSize: '10px', 
+                                                                            color: '#999',
+                                                                            marginTop: '2px'
+                                                                        }}>
+                                                                            {prop.property_id}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             )}
